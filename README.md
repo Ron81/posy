@@ -20,3 +20,8 @@ WebRTC data channels and lightweight pose synchronization (PoSy).
 
 ## Status
 1.0-draft — packet format frozen, signaling layer may still change
+
+## But why?
+I love VMC Protocol, but its fundamentally a local machine protocol.
+What i wanted is a lightweight pose synchronization over the internet. 
+Others have their protocols closed source so here we are...
