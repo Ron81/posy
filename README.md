@@ -13,10 +13,10 @@ WebRTC data channels and lightweight pose synchronization (PoSy).
     git clone … && cd examples/loopback-demo && npm i && npm start
 
 ## Implement it
-1. Read [spec/PoSy-1.0.md] — §3 (coordinates), §4 (bones), §5 (packets)
+1. Read [Posy-1.0.md] — §3 (coordinates), §4 (bones), §5 (packets)
    are the normative core
-2. Validate against [testvectors/] — if these pass, you're conformant
-3. Steal from [reference/js/] freely
+2. Planned/TBD: Validate against [testvectors/] — if these pass, you're conformant
+3. Planned/TBD: Grab from [reference/js/] freely
 
 ## Status
 1.0-draft — packet format frozen, signaling layer may still change
