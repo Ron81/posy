@@ -96,16 +96,19 @@ If the spec, the reference code and the test vectors ever disagree, **the spec w
 
 ## Status
 
-**1.0-draft** — packet format frozen, signaling layer (§2) may still change. Other-language implementations (Rust, C#, Python, …) are very welcome as **separate repos** — open a PR adding a link here.
+**1.0.0** — packet format frozen, signaling layer (§2) may still change. Other-language implementations (Rust, C#, Python, …) are very welcome — please open a PR adding a link here.
 
 ## But why?
 
-I love the VMC protocol, but it's fundamentally a local-machine protocol. What I wanted was lightweight pose sync over the internet. The ones that already do this keep their protocols closed, so… here we are.
+I love the VMC protocol, its awesome for its intended use, but it's fundamentally a local-machine protocol. 
+What I needed / wanted was lightweight pose sync over the internet that doesn't break with multiple users. 
+The ones that already do this or lets say most likely do have a own protocol (e.g Vupechat or VRChat) are closed source.
+So here we are...
 
 ## Contributing
 
-Issues are for the protocol, [Discussions](https://github.com/Ron81/posy/discussions) are for everything else. Spec changes need an issue first. Details in [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Issues are for the protocol, [Discussions](https://github.com/Ron81/posy/discussions) are for everything else. 
+Spec changes need an issue first. Details in [`CONTRIBUTING.md`].
 
 ## License
-
-[Apache-2.0](LICENSE).
+[Apache-2.0](LICENSE). 
