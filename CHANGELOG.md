@@ -1,6 +1,7 @@
 # Changelog
 
-All notable changes to the Posy spec, reference implementation and test vectors. Format follows [Keep a Changelog](https://keepachangelog.com/); the spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
+All notable changes to the Posy spec, reference implementation and test vectors. 
+The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
 ## [Unreleased]
 
@@ -9,7 +10,7 @@ All notable changes to the Posy spec, reference implementation and test vectors.
 - `schemas/signaling.schema.json` — JSON Schema for the §2 messages.
 - `FAQ.md`, `CONTRIBUTING.md`, issue templates.
 
-## [1.0.0-draft] - 2026-09-28
+## [1.0.0] - 2026-09-28
 
 ### Added
-- First public draft of the specification (`Posy-1.0.md`): transport, session layer, coordinate system, bone table, packet format, sizing, sender/receiver behaviour, versioning, conformance.
+- First public version of the specification (`Posy-1.0.md`): transport, session layer, coordinate system, bone table, packet format, sizing, sender/receiver behaviour, versioning, conformance.
