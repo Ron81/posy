@@ -166,10 +166,10 @@
       it('README, FAQ, CONTRIBUTING, issue templates; GitHub topics + Discussions', 'done')
     ] },
     { phase: 'Phase 2', title: 'Repo is trustworthy', summary: 'A spec nobody can independently verify is just an opinion.', items: [
-      it('Implement reference/js encode & decode (~300 lines, Appendix B does most of the work)', 'planned'),
-      it("Verify the 'posy' npm name is free before wiring up package.json", 'planned'),
-      it('Generate test vectors from the reference impl, then hand-verify 3–4 byte-by-byte against spec text', 'planned'),
-      it('CI: run the reference impl against test vectors on every push, badge in README', 'planned')
+      it('Implement reference/js encode & decode (~300 lines, Appendix B does most of the work)', 'done'),
+      it("Verify the 'posy' npm name is free before wiring up package.json", 'done'),
+      it('Generate test vectors from the reference impl, then hand-verify byte-by-byte against spec text', 'done'),
+      it('CI: run the reference impl against test vectors on every push, badge in README', 'done')
     ] },
     { phase: 'Phase 3', title: 'Repo is usable by strangers', summary: 'Someone with zero context should get an avatar moving in minutes.', items: [
       it('Build examples/loopback-demo — encode → decode → drive a three-vrm avatar, no network', 'planned'),
@@ -201,34 +201,34 @@
     dir('scripts/', 'live', 'Tooling that keeps the spec tables honest.', [
       file('generate-spec-tables.mjs', 'live', 'Single source of truth for the bone and blendshape tables; --check guards freshness.')
     ]),
-    dir('reference/', 'planned', 'One language for v1 — JS/TS, since the whole toolchain (browser, mediasoup, three-vrm) already lives there.', [
-      dir('js/', 'planned', 'Reference encoder/decoder. ~300 lines; Appendix B pseudocode is most of it.', [
-        file('src/encode.ts', 'planned', 'Builds a wire frame from a Frame object.'),
-        file('src/decode.ts', 'planned', 'Parses a wire frame back into a Frame object, per Appendix B.'),
-        file('src/quat.ts', 'planned', 'Smallest-three pack/unpack — the part worth unit-testing hardest.'),
-        file('src/index.ts', 'planned', 'Public exports.'),
-        file('package.json', 'planned', 'name: "posy" (pending an npm-name availability check) or a scoped fallback.'),
-        file('README.md', 'planned', '"npm i posy" usage — 20 lines max, no more.')
+    dir('reference/', 'live', 'One language for v1 — JS/TS, since the whole toolchain (browser, mediasoup, three-vrm) already lives there.', [
+      dir('js/', 'live', 'Reference encoder/decoder. Zero runtime dependencies.', [
+        file('src/encode.ts', 'live', 'Builds a wire frame from a Frame object.'),
+        file('src/decode.ts', 'live', 'Parses a wire frame back into a Frame object, per Appendix B.'),
+        file('src/quat.ts', 'live', 'Smallest-three pack/unpack — the part worth unit-testing hardest.'),
+        file('src/index.ts', 'live', 'Public exports.'),
+        file('package.json', 'live', 'name: "posy" (not yet published to npm).'),
+        file('README.md', 'live', '"npm i posy" usage — short by design.')
       ]),
-      file('README.md', 'planned', 'What "reference" means here: if it ever disagrees with the spec, the spec wins and the code gets fixed.')
+      file('README.md', 'live', 'What "reference" means here: if it ever disagrees with the spec, the spec wins and the code gets fixed.')
     ]),
-    dir('testvectors/', 'planned', 'The single most valuable directory in the repo — without it, implementations quietly diverge.', [
-      file('README.md', 'planned', 'Decode each .bin, compare to .json, reject the ones marked expect: reject. Done = conformant.'),
-      dir('frames/', 'planned', 'Binary .bin fixtures with matching .json expected output.', [
-        file('001-minimal.bin / .json', 'planned', 'Smallest legal frame — header only, empty bone_mask.'),
-        file('002-fullbody-standard.bin / .json', 'planned', 'Full body, Standard-Sync expressions, root + fingers present.'),
-        file('003-perfectsync.bin / .json', 'planned', '52-blendshape Perfect-Sync face block.'),
-        file('004-malformed-length.bin / .json', 'planned', 'Deliberately wrong length — expected outcome is reject.'),
-        file('005-quat-edgecases.bin / .json', 'planned', 'Near-1/√2 components and sign flips, the cases that break naive codecs.')
+    dir('testvectors/', 'live', 'The single most valuable directory in the repo — without it, implementations quietly diverge.', [
+      file('README.md', 'live', 'Decode each .bin, compare to .json, reject the ones marked expect: reject. Done = conformant.'),
+      dir('frames/', 'live', 'Binary .bin fixtures with matching .json expected output.', [
+        file('001-minimal.bin / .json', 'live', 'Smallest legal frame — header plus one bone.'),
+        file('002-fullbody-standard.bin / .json', 'live', 'Full body, Standard-Sync expressions, root + fingers present.'),
+        file('003-perfectsync.bin / .json', 'live', '52-blendshape Perfect-Sync face block.'),
+        file('004-malformed-length.bin / .json', 'live', 'Deliberately wrong length — expected outcome is reject.'),
+        file('005-quat-edgecases.bin / .json', 'live', 'Near-1/√2 components and sign flips, the cases that break naive codecs.')
       ]),
-      file('quaternions.csv', 'planned', '~50 rows of input quaternion → expected packed u32, for isolated codec testing.')
+      file('quaternions.csv', 'live', 'Input quaternion → expected packed u32, for isolated codec testing.')
     ]),
     dir('examples/', 'planned', 'Zero-infrastructure proof that the format actually moves an avatar.', [
       dir('minimal-viewer/', 'planned', 'Receives Posy frames over a real data channel and moves a VRM in the browser.'),
       dir('loopback-demo/', 'planned', 'encode → decode → render locally. No server, no signup, npm start and see an avatar move.')
     ]),
     dir('.github/', 'live', 'Issue templates and CI.', [
-      dir('workflows/', 'planned', 'CI runs the reference implementation against testvectors/ on every push.'),
+      dir('workflows/', 'live', 'CI runs the reference implementation against testvectors/ on every push.'),
       dir('ISSUE_TEMPLATE/', 'live', 'Spec-bug and protocol-change templates, plus a link to Discussions.')
     ]),
     file('FAQ.md', 'live', 'Rationale, kept out of the spec so the spec stays lean.'),

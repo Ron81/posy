@@ -2,6 +2,7 @@
 
 **Stream avatar poses over WebRTC — body, fingers and face in about 116 bytes per frame.**
 
+[![CI](https://github.com/Ron81/posy/actions/workflows/ci.yml/badge.svg)](https://github.com/Ron81/posy/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 ![Spec: 1.0-draft](https://img.shields.io/badge/spec-1.0--draft-orange.svg)
 
@@ -74,8 +75,8 @@ A no-server loopback demo (`examples/loopback-demo`) is planned — it will enco
 ## Implement it
 
 1. Read [`spec/Posy-1.0.md`](spec/Posy-1.0.md) — §3 (coordinates), §4 (bones) and §5 (packets) are the normative core.
-2. *(planned)* Validate against `testvectors/` — pass them and you're conformant.
-3. *(planned)* A TypeScript reference encoder/decoder will live in `reference/js/` — use it freely, or as a cross-check for your own.
+2. Validate against [`testvectors/`](testvectors/) — if those pass, you're conformant.
+3. Grab code from [`reference/js/`](reference/js/) freely — or use it as a cross-check for your own.
 
 If the spec, the reference code and the test vectors ever disagree, **the spec wins** and the other two get fixed.
 
@@ -86,11 +87,11 @@ If the spec, the reference code and the test vectors ever disagree, **the spec w
 | [`spec/`](spec/) | The spec, plus the generated bone and blendshape tables |
 | [`schemas/`](schemas/) | JSON Schema for the signaling messages (§2) |
 | [`scripts/`](scripts/) | Generator for the spec's lookup tables |
+| [`reference/js/`](reference/js/) | TypeScript reference encoder/decoder |
+| [`testvectors/`](testvectors/) | Binary frames and quaternions with expected results — the most valuable folder here |
 | [`docs/`](docs/) | The interactive site (static, no build step) |
 | [`FAQ.md`](FAQ.md) | Why things are the way they are |
 | [`CHANGELOG.md`](CHANGELOG.md) | What changed |
-| `testvectors/` | *(planned)* Binary frames and quaternions with expected results |
-| `reference/js/` | *(planned)* TypeScript reference encoder/decoder |
 | `examples/` | *(planned)* Runnable demos |
 
 ## Status
