@@ -1,0 +1,28 @@
+{
+  "name": "006-reserved-bits",
+  "description": "bit 0 (hips) plus reserved bit 60 set; decoder consumes both quaternions",
+  "expect": "accept",
+  "bytes_hex": "01 00 06 00 00 00 00 00 01 00 00 00 00 00 00 10 00 02 08 e0 00 02 08 e0",
+  "frame": {
+    "version": 1,
+    "flags": 0,
+    "seq": 6,
+    "timestamp_ms": 0,
+    "bone_mask": "0x1000000000000001",
+    "bones": [
+      {
+        "bit": 0,
+        "name": "hips",
+        "u32": "0xE0080200"
+      },
+      {
+        "bit": 60,
+        "name": "reserved",
+        "u32": "0xE0080200"
+      }
+    ],
+    "root": null,
+    "fingers": null,
+    "expressions": null
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "name": "004e-bad-version",
+  "description": "version byte with a non-zero high nibble",
+  "expect": "reject",
+  "bytes_hex": "10 00 01 00 00 00 00 00 01 00 00 00 00 00 00 00 00 02 08 e0",
+  "reason": "unsupported major version"
+}

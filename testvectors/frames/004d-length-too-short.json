@@ -1,0 +1,7 @@
+{
+  "name": "004d-length-too-short",
+  "description": "a 15-byte buffer (< 16)",
+  "expect": "reject",
+  "bytes_hex": "00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+  "reason": "length < 16"
+}

@@ -1,0 +1,23 @@
+{
+  "name": "001-minimal",
+  "description": "one bone (hips, identity), nothing else",
+  "expect": "accept",
+  "bytes_hex": "01 00 01 00 00 00 00 00 01 00 00 00 00 00 00 00 00 02 08 e0",
+  "frame": {
+    "version": 1,
+    "flags": 0,
+    "seq": 1,
+    "timestamp_ms": 0,
+    "bone_mask": "0x0000000000000001",
+    "bones": [
+      {
+        "bit": 0,
+        "name": "hips",
+        "u32": "0xE0080200"
+      }
+    ],
+    "root": null,
+    "fingers": null,
+    "expressions": null
+  }
+}

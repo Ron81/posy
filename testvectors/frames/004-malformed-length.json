@@ -1,0 +1,7 @@
+{
+  "name": "004-malformed-length",
+  "description": "001-minimal with its last byte removed",
+  "expect": "reject",
+  "bytes_hex": "01 00 01 00 00 00 00 00 01 00 00 00 00 00 00 00 00 02 08",
+  "reason": "length does not match flags/mask"
+}

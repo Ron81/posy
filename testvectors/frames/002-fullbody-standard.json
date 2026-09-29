@@ -1,0 +1,178 @@
+{
+  "name": "002-fullbody-standard",
+  "description": "21 bones (spine/head + legs + arms), root + fingers + Standard-Sync face",
+  "expect": "accept",
+  "bytes_hex": "01 0e 02 00 21 00 00 00 3f fe ff 00 00 00 00 00 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 80 00 40 24 fa 00 81 40 c0 80 00 c0 40 ff 7f 1e 00 00 81 40 c0 80 00 c0 40 ff 7f 1e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 0c f8",
+  "frame": {
+    "version": 1,
+    "flags": 14,
+    "seq": 2,
+    "timestamp_ms": 33,
+    "bone_mask": "0x0000000000fffe3f",
+    "bones": [
+      {
+        "bit": 0,
+        "name": "hips",
+        "u32": "0xE0080200"
+      },
+      {
+        "bit": 1,
+        "name": "spine",
+        "u32": "0xE0080200"
+      },
+      {
+        "bit": 2,
+        "name": "chest",
+        "u32": "0xE0080200"
+      },
+      {
+        "bit": 3,
+        "name": "upperChest",
+        "u32": "0xE0080200"
+      },
+      {
+        "bit": 4,
+        "name": "neck",
+        "u32": "0xE0080200"
+      },
+      {
+        "bit": 5,
+        "name": "head",
+        "u32": "0xE0080200"
+      },
+      {
+        "bit": 9,
+        "name": "leftUpperLeg",
+        "u32": "0xE0080200"
+      },
+      {
+        "bit": 10,
+        "name": "leftLowerLeg",
+        "u32": "0xE0080200"
+      },
+      {
+        "bit": 11,
+        "name": "leftFoot",
+        "u32": "0xE0080200"
+      },
+      {
+        "bit": 12,
+        "name": "leftToes",
+        "u32": "0xE0080200"
+      },
+      {
+        "bit": 13,
+        "name": "rightUpperLeg",
+        "u32": "0xE0080200"
+      },
+      {
+        "bit": 14,
+        "name": "rightLowerLeg",
+        "u32": "0xE0080200"
+      },
+      {
+        "bit": 15,
+        "name": "rightFoot",
+        "u32": "0xE0080200"
+      },
+      {
+        "bit": 16,
+        "name": "rightToes",
+        "u32": "0xE0080200"
+      },
+      {
+        "bit": 17,
+        "name": "leftShoulder",
+        "u32": "0xE0080200"
+      },
+      {
+        "bit": 18,
+        "name": "leftUpperArm",
+        "u32": "0xE0080200"
+      },
+      {
+        "bit": 19,
+        "name": "leftLowerArm",
+        "u32": "0xE0080200"
+      },
+      {
+        "bit": 20,
+        "name": "leftHand",
+        "u32": "0xE0080200"
+      },
+      {
+        "bit": 21,
+        "name": "rightShoulder",
+        "u32": "0xE0080200"
+      },
+      {
+        "bit": 22,
+        "name": "rightUpperArm",
+        "u32": "0xE0080200"
+      },
+      {
+        "bit": 23,
+        "name": "rightLowerArm",
+        "u32": "0xE0080200"
+      }
+    ],
+    "root": {
+      "x": 32768,
+      "y": 16384,
+      "z": -1500
+    },
+    "fingers": {
+      "left": [
+        0,
+        -127,
+        64,
+        -64,
+        128,
+        0,
+        192,
+        64,
+        255,
+        127,
+        30,
+        0
+      ],
+      "right": [
+        0,
+        -127,
+        64,
+        -64,
+        128,
+        0,
+        192,
+        64,
+        255,
+        127,
+        30,
+        0
+      ]
+    },
+    "expressions": {
+      "perfect_sync": false,
+      "weights": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "gaze_yaw": 12,
+      "gaze_pitch": -8
+    }
+  }
+}
