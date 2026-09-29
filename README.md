@@ -8,7 +8,8 @@
 
 Posy (**Po**se **Sy**nchronization) is an open, compact protocol for syncing humanoid avatar poses between lots of people in real time. It's built for WebRTC data channels. A typical upper-body frame with fingers and face is ~116 bytes — roughly 70× smaller than VMC — so a whole room can move at once without anybody's upload crying.
 
-> 🧪 **Poke at it in your browser:** the [interactive site](https://ron81.github.io/posy/) lets you build a frame byte by byte, play with the bandwidth calculator and browse the tables. It also works offline — open `docs/index.html` straight from a clone, no server needed.
+🧪 **Try out the [interactive site](https://ron81.github.io/posy/)** 
+It lets you build a frame byte by byte, play with the bandwidth calculator and browse the tables. 
 
 ## Is this for me?
 
@@ -47,7 +48,8 @@ One thing that trips people up: **the face doesn't travel as bones.** Blinks, mo
 
 ## How much bandwidth does it eat?
 
-Each person uploads **one** stream — about 40 kbit/s at 30 Hz, 20 kbit/s at 15 Hz, 6.6 kbit/s at 5 Hz (including ~50 B of transport overhead). The thing that actually scales is what the routing peer has to push back out:
+Each person with active mocap uploads **one** stream — about 40 kbit/s at 30 Hz, 20 kbit/s at 15 Hz, 6.6 kbit/s at 5 Hz (including ~50 B of transport overhead). 
+The thing that actually scales is what the routing peer has to push back out:
 
 | Room | Routing peer upload |
 |---|---|
@@ -74,29 +76,30 @@ A no-server loopback demo (`examples/loopback-demo`) is planned — it will enco
 
 ## Implement it
 
-1. Read [`spec/Posy-1.0.md`](spec/Posy-1.0.md) — §3 (coordinates), §4 (bones) and §5 (packets) are the normative core.
-2. Validate against [`testvectors/`](testvectors/) — if those pass, you're conformant.
-3. Grab code from [`reference/js/`](reference/js/) freely — or use it as a cross-check for your own.
+1. Read [`spec/Posy-1.0.md`] — §3 (coordinates), §4 (bones) and §5 (packets) are the normative core.
+2. Validate against [`testvectors/`] — if those pass, you're conformant.
+3. Grab code from [`reference/js/`] freely — or use it as a cross-check for your own.
 
-If the spec, the reference code and the test vectors ever disagree, **the spec wins** and the other two get fixed.
+If the spec, the reference code and the test vectors ever disagree, **the spec wins** and the other two get fixed. Please report the problem, so i actually know about it.
 
 ## What's where
 
 | Path | What it is |
 |---|---|
-| [`spec/`](spec/) | The spec, plus the generated bone and blendshape tables |
-| [`schemas/`](schemas/) | JSON Schema for the signaling messages (§2) |
-| [`scripts/`](scripts/) | Generator for the spec's lookup tables |
-| [`reference/js/`](reference/js/) | TypeScript reference encoder/decoder |
-| [`testvectors/`](testvectors/) | Binary frames and quaternions with expected results — the most valuable folder here |
-| [`docs/`](docs/) | The interactive site (static, no build step) |
-| [`FAQ.md`](FAQ.md) | Why things are the way they are |
-| [`CHANGELOG.md`](CHANGELOG.md) | What changed |
+| [`spec/`] | The spec, plus the generated bone and blendshape tables |
+| [`schemas/`]| JSON Schema for the signaling messages (§2) |
+| [`scripts/`]| Generator for the spec's lookup tables |
+| [`reference/js/`] | TypeScript reference encoder/decoder |
+| [`testvectors/`] | Binary frames and quaternions with expected results — the most valuable folder here |
+| [`docs/`] | The interactive site (static, no build step) |
+| [`FAQ.md`] | Why things are the way they are |
+| [`CHANGELOG.md`] | What changed |
 | `examples/` | *(planned)* Runnable demos |
 
 ## Status
 
-**1.0.0** — packet format frozen, signaling layer (§2) may still change. Other-language implementations (Rust, C#, Python, …) are very welcome — please open a PR adding a link here.
+**1.0.0** — packet format frozen, signaling layer (§2) may still change. 
+Other-language implementations (Rust, C#, Python, …) are very welcome — please open a PR adding a link here.
 
 ## But why?
 
@@ -107,8 +110,8 @@ So here we are...
 
 ## Contributing
 
-Issues are for the protocol, [Discussions](https://github.com/Ron81/posy/discussions) are for everything else. 
+Issues are for the protocol, [Discussions] are for everything else. 
 Spec changes need an issue first. Details in [`CONTRIBUTING.md`].
 
 ## License
-[Apache-2.0](LICENSE). 
+[Apache-2.0](LICENSE)
