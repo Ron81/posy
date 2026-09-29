@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Building an app with Posy? Questions go to Discussions
+    url: https://github.com/Ron81/posy/discussions
+    about: Rooms, mediasoup, three-vrm, tracking, hosting from home … anything that isn't a problem in the protocol itself.

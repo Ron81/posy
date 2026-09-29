@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Posy — Open Avatar Pose Protocol for WebRTC</title>
+  <meta name="description" content="Posy is an open, compact protocol for streaming humanoid avatar poses (body, fingers, face) over WebRTC data channels — ~116 bytes/frame, ~70x smaller than VMC." />
+  <meta name="color-scheme" content="dark" />
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="assets/style.css" />
+  <script>document.documentElement.className += ' js';</script>
+</head>
+<body id="top">
+
+<!-- Icon sprite (inline, so nothing is fetched from the network) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 12h16"/><path d="M4 6h16"/><path d="M4 18h16"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
+  <symbol id="i-alert-triangle" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-smile" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" x2="9.01" y1="9" y2="9"/><line x1="15" x2="15.01" y1="9" y2="9"/></symbol>
+  <symbol id="i-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="i-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+  <symbol id="i-folder-open" viewBox="0 0 24 24"><path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></symbol>
+  <symbol id="i-git-fork" viewBox="0 0 24 24"><circle cx="12" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9"/><path d="M12 12v3"/></symbol>
+  <symbol id="i-radio" viewBox="0 0 24 24"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></symbol>
+  <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></symbol>
+</svg>
+
+<noscript>
+  <div style="position:relative;z-index:100;margin:72px auto 0;max-width:720px;padding:12px 16px;border:1px solid #f59e0b;border-radius:10px;background:#1c1407;color:#fde68a;font:14px/1.5 system-ui,sans-serif">
+    JavaScript is disabled, so the interactive parts (packet builder, bandwidth calculator, spec tables, repo explorer, FAQ) are empty. The rest of the page still reads fine.
+  </div>
+</noscript>
+
+<!-- ============================================================ header -->
+<header class="site-header" id="site-header">
+  <div class="container header-inner">
+    <a class="brand" href="#top">
+      <span class="brand-mark">P</span>
+      <span class="brand-name">Posy</span>
+      <span class="brand-tag">1.0-draft</span>
+    </a>
+    <nav class="nav-links" id="site-nav" aria-label="Sections">
+      <a href="#overview">Overview</a>
+      <a href="#how-it-works">How it works</a>
+      <a href="#packet-lab">Packet Lab</a>
+      <a href="#bandwidth">Bandwidth</a>
+      <a href="#spec">Spec</a>
+      <a href="#repo">Repo</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <div class="header-actions">
+      <a class="gh-link" href="https://github.com/Ron81/posy" target="_blank" rel="noopener">
+        <svg class="ico"><use href="#i-git-fork"/></svg> GitHub
+      </a>
+      <button type="button" class="menu-btn" id="nav-toggle" aria-label="Toggle menu" aria-expanded="false" aria-controls="mobile-menu">
+        <svg class="ico ico-lg"><use href="#i-menu"/></svg>
+      </button>
+    </div>
+  </div>
+  <div class="mobile-menu" id="mobile-menu" hidden>
+    <a href="#overview">Overview</a>
+    <a href="#how-it-works">How it works</a>
+    <a href="#packet-lab">Packet Lab</a>
+    <a href="#bandwidth">Bandwidth</a>
+    <a href="#spec">Spec</a>
+    <a href="#repo">Repo</a>
+    <a href="#roadmap">Roadmap</a>
+    <a href="#faq">FAQ</a>
+    <a href="https://github.com/Ron81/posy" target="_blank" rel="noopener">GitHub ↗</a>
+  </div>
+</header>
+
+<main>
+
+<!-- ============================================================== hero -->
+<section class="hero">
+  <div class="hero-bg" aria-hidden="true"><div class="blob1"></div><div class="blob2"></div><div class="gridlines"></div></div>
+  <div class="container">
+    <div class="grid gap-8 g-hero" style="gap:56px">
+      <div>
+        <div class="row wrap" style="gap:8px">
+          <span class="pill tone-emerald">Apache-2.0</span>
+          <span class="pill tone-amber">spec: 1.0-draft</span>
+          <span class="pill tone-sky">posy/1 channel</span>
+        </div>
+        <h1>Stream avatar poses over <span class="grad">WebRTC</span>, not a mocap suit's worth of bandwidth.</h1>
+        <p class="sub">Posy is an open, compact protocol for streaming humanoid body, finger and facial pose between many users in real time — <b>~116 bytes per frame</b>, roughly <b>70× smaller than VMC</b>, purpose-built for WebRTC data channels.</p>
+        <div class="row wrap mt-8" style="gap:12px">
+          <a class="btn btn-primary" href="https://github.com/Ron81/posy" target="_blank" rel="noopener">
+            <svg class="ico"><use href="#i-git-fork"/></svg> View the repo <svg class="ico"><use href="#i-arrow-right"/></svg>
+          </a>
+          <a class="btn btn-ghost" href="#packet-lab"><svg class="ico"><use href="#i-sparkles"/></svg> Play with the packet format</a>
+        </div>
+        <p class="row small dim mt-8" style="gap:8px;flex-wrap:wrap">
+          <svg class="ico hl-emerald"><use href="#i-radio"/></svg>
+          <span>Channel label <code>avatar-pose</code> · protocol string <code>posy/1</code></span>
+        </p>
+      </div>
+
+      <div class="card frame-card">
+        <div class="row between">
+          <span class="label">Standard-Sync frame</span>
+          <span class="pill tone-violet" style="font-size:11px;font-weight:600">116 bytes</span>
+        </div>
+        <div class="mt-5" style="font-family:var(--mono);font-size:12px">
+          <div class="bar-row"><div class="bar-label"><span>header + bone_mask</span><span>16 B</span></div><div class="bar"><i class="c-violet" style="width:28%"></i></div></div>
+          <div class="bar-row"><div class="bar-label"><span>13× quaternions (smallest-three)</span><span>52 B</span></div><div class="bar"><i class="c-fuchsia" style="width:90%"></i></div></div>
+          <div class="bar-row"><div class="bar-label"><span>root position</span><span>6 B</span></div><div class="bar"><i class="c-sky" style="width:10%"></i></div></div>
+          <div class="bar-row"><div class="bar-label"><span>fingers (both hands)</span><span>24 B</span></div><div class="bar"><i class="c-emerald" style="width:42%"></i></div></div>
+          <div class="bar-row"><div class="bar-label"><span>expressions + gaze</span><span>18 B</span></div><div class="bar"><i class="c-amber" style="width:30%"></i></div></div>
+        </div>
+        <div class="stat-trio">
+          <div><b>30 Hz</b><span>FULL tier</span></div>
+          <div><b>~40 kbit/s</b><span>on wire</span></div>
+          <div><b>~70×</b><span>smaller than VMC</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================== overview -->
+<section class="section" id="overview">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">Is this for me?</span>
+      <h2 class="h2">Three questions, sixty seconds</h2>
+      <p class="lead">What is this, does it work, and how do I use it. Everything below exists to answer one of those — nothing here is here to look impressive.</p>
+    </div>
+
+    <div class="grid g-2 mt-12">
+      <div class="callout tone-emerald reveal" style="padding:24px;border-radius:16px">
+        <h3 class="callout-title">Good fit</h3>
+        <ul class="checklist mt-4">
+          <li><svg class="ico hl-emerald"><use href="#i-check"/></svg>You build multi-user VTuber / avatar apps in the browser or over WebRTC</li>
+          <li><svg class="ico hl-emerald"><use href="#i-check"/></svg>You need many participants over normal, non-datacenter internet connections</li>
+          <li><svg class="ico hl-emerald"><use href="#i-check"/></svg>You want lightweight full-body + finger + face sync, not lossless studio capture</li>
+          <li><svg class="ico hl-emerald"><use href="#i-check"/></svg>You just want to hang out with a few friends — one of you can host the room from home</li>
+        </ul>
+      </div>
+      <div class="callout tone-rose reveal" style="padding:24px;border-radius:16px">
+        <h3 class="callout-title">Not a fit (yet)</h3>
+        <ul class="checklist mt-4">
+          <li><svg class="ico hl-rose"><use href="#i-x"/></svg>You need lossless studio mocap recording — use VMC or BVH instead</li>
+          <li><svg class="ico hl-rose"><use href="#i-x"/></svg>You need a fully serverless peer-to-peer mesh — Posy routes through one peer, though that peer can simply be you</li>
+          <li><svg class="ico hl-rose"><use href="#i-x"/></svg>You want v2 features today — delta encoding, field stripping, props &amp; scenes are deferred</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card mt-6 reveal">
+      <h3 class="label" style="color:var(--muted);font-size:13px">But why not just use VMC?</h3>
+      <p class="small muted leading mt-3" style="max-width:780px">VMC Protocol is great, but it's fundamentally a local-machine protocol — it assumes one sender and one receiver on the same LAN, at a size that gets expensive fast once you multiply it by dozens of participants. Posy exists for the case VMC never targeted: many people, real internet connections, one avatar's worth of pose data squeezed into a single UDP-sized datagram. The closed-source alternatives that already solve this just don't publish a spec — so here we are.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===================================================== how it works -->
+<section class="section" id="how-it-works">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">How it works</span>
+      <h2 class="h2">One peer routes — and that peer can be you</h2>
+      <p class="lead">Posy needs exactly one participant to act as the router: it owns the session clock, room membership, playspace and per-subscriber rate control. That's a role, not a product you have to rent. Voice rides on ordinary WebRTC Opus tracks; pose rides on an unreliable, unordered data channel — because a late pose frame is a useless one.</p>
+    </div>
+
+    <div class="card topology mt-14 reveal">
+      <div class="node"><div class="node-icon"><svg class="ico ico-lg"><use href="#i-user"/></svg></div><b>Sender</b><span>captures &amp; encodes</span></div>
+      <svg class="ico ico-lg arrow"><use href="#i-arrow-right"/></svg>
+      <div class="node hl"><div class="node-icon"><svg class="ico ico-lg"><use href="#i-server"/></svg></div><b>Routing peer</b><span>your PC, a VPS, or a hosted SFU</span></div>
+      <svg class="ico ico-lg arrow"><use href="#i-arrow-right"/></svg>
+      <div class="node"><div class="node-icon"><svg class="ico ico-lg"><use href="#i-users"/></svg></div><b>Receivers</b><span>slerp, interpolate, render</span></div>
+    </div>
+    <p class="center tiny dim mt-3">The routing peer MUST NOT modify a forwarded frame's byte content in v1 — that's what makes rate-tiering a pure frame-drop operation, and what makes a lightweight self-hosted router realistic.</p>
+
+    <div class="callout tone-violet mt-6 reveal" style="padding:24px;border-radius:16px">
+      <h3 class="callout-title" style="display:flex;gap:8px;align-items:center"><svg class="ico"><use href="#i-home"/></svg> Just want to hang out with friends? Host it yourself.</h3>
+      <p class="small muted leading mt-3" style="max-width:780px">You don't need infrastructure to use Posy. One person in the group runs the routing role on their own machine and everyone else connects to them — the same shape as hosting a game server for your friends. Because the router only forwards bytes it never rewrites, the job is light: a handful of peers is very comfortable on an ordinary home connection.</p>
+      <div class="grid g-sm-3 gap-3 mt-5" style="gap:16px">
+        <div class="host-opt"><b>One friend hosts</b><em>~2–8 people</em><p>Whoever has the best upload runs the routing role alongside their own client. Typical home fibre handles a small group at NORMAL without noticing.</p></div>
+        <div class="host-opt"><b>A cheap VPS</b><em>~10–40 people</em><p>Pose routing is bytes-in-bytes-out with no transcoding, so the smallest tier of box goes a long way. Bandwidth is the cost, not CPU.</p></div>
+        <div class="host-opt"><b>A hosted SFU</b><em>40+ or public rooms</em><p>Any SFU supporting per-producer data-channel forwarding works — mediasoup does natively. Posy never depends on a specific one.</p></div>
+      </div>
+      <p class="tiny dim leading mt-4">If your upload is the tight spot, you have real levers before giving up: drop everyone to <code>NORMAL</code> or <code>MINIMAL</code>, let non-performers join as receive-only viewers, or hand the routing role to whoever in the group has the best upstream. Play with the numbers in the <a class="link" href="#bandwidth">bandwidth calculator</a> — small rooms are cheaper than most people expect.</p>
+    </div>
+
+    <div class="grid g-3 mt-14" style="margin-top:56px">
+      <div class="card reveal" style="background:rgba(255,255,255,.02)"><h3 style="font-size:16px;color:#fff">1. Sender captures pose</h3><p class="small muted leading mt-2">A client resolves its tracker/avatar into VRM 1.0 normalized humanoid bones — identity rotation in T-pose, each quaternion a local parent-relative delta.</p></div>
+      <div class="card reveal" style="background:rgba(255,255,255,.02)"><h3 style="font-size:16px;color:#fff">2. A routing peer forwards, never rewrites</h3><p class="small muted leading mt-2">Frames travel sender → router → receivers. That router can be a hosted SFU, a VPS, or just one of your own machines — it only drops and forwards frames, it never touches their bytes.</p></div>
+      <div class="card reveal" style="background:rgba(255,255,255,.02)"><h3 style="font-size:16px;color:#fff">3. Receiver applies directly</h3><p class="small muted leading mt-2">A receiver applies incoming quaternions straight to its own normalized rig. It never needs to know the sender's skeleton, avatar type or tracker.</p></div>
+    </div>
+
+    <div class="grid g-2 mt-10">
+      <div class="card reveal">
+        <h3 class="card-title">Coordinate system (§3, normative)</h3>
+        <ul class="bullets mt-4" style="--x:0">
+          <li>Right-handed, <b style="color:#e4e4e7;font-weight:500">Y-up</b>, model faces <b style="color:#e4e4e7;font-weight:500">+Z</b>, metres.</li>
+          <li>Every humanoid bone has identity rotation in the T-pose.</li>
+          <li>Each quaternion is the bone's local, parent-relative delta from T-pose.</li>
+          <li>The hips bone additionally carries the root position block.</li>
+        </ul>
+        <p class="tiny dim leading mt-4">Conversion is always the <b style="color:#d4d4d8;font-weight:500">sender's</b> job. VRM 1.0 needs none; VRM 0.x reads the already-resolved normalized rig; MMD precomputes <code>inverse(q_rest) · q_current</code> once at load.</p>
+      </div>
+      <div class="card reveal">
+        <h3 class="card-title" style="color:var(--muted)">Explicitly out of scope for v1</h3>
+        <ul class="bullets mt-4">
+          <li>Delta / keyframe encoding</li>
+          <li>Server-side field stripping</li>
+          <li>Physics or props</li>
+          <li>Scene state</li>
+        </ul>
+        <p class="tiny dim leading mt-4">Listed on purpose so v1 doesn't accidentally block them later — see §11 of the spec.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ====================================================== packet lab -->
+<section class="section" id="packet-lab">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">Packet Lab</span>
+      <h2 class="h2">Build a frame, byte by byte</h2>
+      <p class="lead">Everything here runs the real formulas from Posy-1.0.md §5 — toggle flags and bones and watch the frame size, bit layout and bandwidth respond live.</p>
+    </div>
+
+    <div class="mt-12" style="display:grid;gap:32px">
+      <div class="card" id="packet-builder"><p class="small dim">Loading the packet builder… (needs JavaScript)</p></div>
+
+      <div class="card" id="quat-lab">
+        <div class="row between wrap gap-3">
+          <h3 class="card-title">§5.3 smallest-three, live</h3>
+          <span class="pill tone-emerald">one quaternion → 4 bytes</span>
+        </div>
+        <p class="small muted leading mt-2">Rotate a bone below. The demo runs the exact encode/decode algorithm from the spec's Appendix B in your browser — drop the largest component, sign-fix, quantise the other three to 10 bits each, pack into one <code>u32</code>.</p>
+
+        <div class="grid g-2 gap-8 mt-6">
+          <div class="stack" style="--sp:20px">
+            <div><div class="slider-head"><span>Yaw</span><span class="mono" id="q-yaw-v">35°</span></div><input id="q-yaw" type="range" min="-180" max="180" value="35" /></div>
+            <div><div class="slider-head"><span>Pitch</span><span class="mono" id="q-pitch-v">-15°</span></div><input id="q-pitch" type="range" min="-90" max="90" value="-15" /></div>
+            <div><div class="slider-head"><span>Roll</span><span class="mono" id="q-roll-v">10°</span></div><input id="q-roll" type="range" min="-180" max="180" value="10" /></div>
+
+            <div class="bone-stage">
+              <div class="bone-ring"></div>
+              <div class="bone-rot" id="q-bone">
+                <svg viewBox="0 0 80 190" fill="none" role="img" aria-label="A humanoid bone">
+                  <defs>
+                    <linearGradient id="posyBoneFill" x1="0" y1="0" x2="1" y2="0.6"><stop offset="0%" stop-color="#fdfaff"/><stop offset="50%" stop-color="#ede9fe"/><stop offset="100%" stop-color="#a78bfa"/></linearGradient>
+                    <linearGradient id="posyBoneGloss" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#fff" stop-opacity="0.75"/><stop offset="70%" stop-color="#fff" stop-opacity="0"/></linearGradient>
+                    <linearGradient id="posyBoneShadow" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#6d28d9" stop-opacity="0"/><stop offset="100%" stop-color="#6d28d9" stop-opacity="0.45"/></linearGradient>
+                  </defs>
+                  <g fill="url(#posyBoneFill)">
+                    <rect x="28" y="24" width="24" height="142" rx="11"/>
+                    <circle cx="26" cy="26" r="17"/><circle cx="54" cy="26" r="17"/><circle cx="26" cy="164" r="17"/><circle cx="54" cy="164" r="17"/>
+                  </g>
+                  <g fill="url(#posyBoneShadow)" opacity="0.9"><rect x="40" y="26" width="13" height="138" rx="6"/></g>
+                  <rect x="31" y="44" width="8" height="100" rx="4" fill="url(#posyBoneGloss)"/>
+                  <path d="M24 44 q16 7 32 0" stroke="#7c3aed" stroke-opacity="0.28" stroke-width="1.6" stroke-linecap="round"/>
+                  <path d="M24 146 q16 7 32 0" stroke="#7c3aed" stroke-opacity="0.28" stroke-width="1.6" stroke-linecap="round"/>
+                </svg>
+              </div>
+            </div>
+            <p class="center xs dim">One humanoid bone, rotating in its parent's frame — exactly what a single 4-byte quaternion on the wire represents.</p>
+          </div>
+
+          <div class="stack" style="--sp:14px">
+            <div class="readout"><span class="label">Normalized quaternion (x, y, z, w)</span><code id="q-comps" style="background:none;padding:0">–</code></div>
+            <p class="xs dim"><span class="hl-rose">Red</span> component (<span id="q-axis">?</span>) is the largest — it's dropped and reconstructed on decode, never sent over the wire.</p>
+            <div class="readout"><span class="label">Packed u32 (wire bytes)</span><code id="q-hex" style="background:none;padding:0">–</code></div>
+            <div class="readout"><span class="label">Bit layout</span><code class="bits" id="q-bits" style="background:none;padding:0">–</code>
+              <div class="legend"><span class="hl-violet">■ index (2b)</span><span class="hl-fuchsia">■ a (10b)</span><span class="hl-sky">■ b (10b)</span><span class="hl-emerald">■ c (10b)</span></div>
+            </div>
+            <div class="readout"><span class="label">Round-trip angular error</span>
+              <b class="hl-emerald" id="q-err" style="font-size:14px">–</b>
+              <span class="xs dim" style="margin-left:8px">worst case ≈ 0.14° (try 0 / 0 / 0 — the identity sits exactly on a rounding tie)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================================================== bandwidth -->
+<section class="section" id="bandwidth">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">Bandwidth</span>
+      <h2 class="h2">Per-person cost is trivial. The router's uplink is the budget.</h2>
+      <p class="lead">Nobody's individual connection ever struggles with Posy — a pose stream is smaller than the voice call it rides alongside. What scales is the total the routing peer has to push back out, which is exactly why viewers are so cheap to add. Numbers use the §6 methodology and reproduce the spec's worked examples.</p>
+    </div>
+
+    <div class="grid g-3-2 gap-8 mt-12">
+      <div class="card stack" style="--sp:24px">
+        <div><div class="label" style="margin-bottom:8px">Scenarios</div><div class="chips" id="bw-scenarios" style="gap:8px"></div></div>
+
+        <div><div class="slider-head"><span>FULL senders</span><span class="mono" id="bw-full-v">1</span></div>
+          <input id="bw-full" class="acc-fuchsia" type="range" min="0" max="100" value="1" />
+          <p class="slider-hint">30 Hz — active speakers, close-up faces, fast hands</p></div>
+        <div><div class="slider-head"><span>NORMAL senders</span><span class="mono" id="bw-normal-v">0</span></div>
+          <input id="bw-normal" class="acc-sky" type="range" min="0" max="100" value="0" />
+          <p class="slider-hint">15 Hz — the sensible default for everyone else</p></div>
+        <div><div class="slider-head"><span>MINIMAL senders</span><span class="mono" id="bw-minimal-v">0</span></div>
+          <input id="bw-minimal" class="acc-emerald" type="range" min="0" max="100" value="0" />
+          <p class="slider-hint">5 Hz — thumbnails, background peers, idle/AFK avatars</p></div>
+        <div><div class="slider-head"><span class="row" style="gap:6px"><svg class="ico ico-sm hl-violet"><use href="#i-eye"/></svg>Viewers (receive only)</span><span class="mono" id="bw-viewers-v">49</span></div>
+          <input id="bw-viewers" class="acc-violet" type="range" min="0" max="100" value="49" />
+          <p class="slider-hint">Send no pose data at all — they only subscribe. Cheap to add, and they never need an upload budget.</p></div>
+
+        <div class="well row between wrap gap-3">
+          <div><div class="label">Room size</div>
+            <div style="font-size:18px;font-weight:600;color:#fff"><span id="bw-total">50 people</span> <span class="small dim" style="font-weight:400" id="bw-total-sub">(1 sending, 49 watching)</span></div></div>
+          <button type="button" class="pill-btn" id="bw-perfect" style="font-family:var(--mono)">Standard-Sync (116 B)</button>
+        </div>
+
+        <div class="callout tone-violet tiny muted leading" style="display:flex;gap:8px;padding:12px;border-radius:10px">
+          <svg class="ico ico-sm hl-violet" style="margin-top:3px"><use href="#i-eye"/></svg>
+          <span><b style="color:#ddd6fe;font-weight:600">Viewers</b> are a pure subscription: no capture, no encoder, no upload. They cost the router one outbound copy of the sender pool each, and they cost themselves almost nothing — which is why an audience of hundreds is a routing problem, never a client problem.</span>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="stat tone-violet"><div class="stat-label">Viewer downstream</div><div class="stat-value" id="bw-viewer">–</div><div class="stat-sub" id="bw-viewer-sub">–</div></div>
+        <div class="stat tone-emerald"><div class="stat-label">Sender downstream</div><div class="stat-value" id="bw-sender">–</div><div class="stat-sub">Everyone else's pose, minus their own</div></div>
+        <div class="stat tone-emerald" id="bw-egress-card"><div class="stat-label">Routing peer egress</div><div class="stat-value" id="bw-egress">–</div><div class="stat-sub" id="bw-egress-sub">–</div></div>
+
+        <div class="well tiny dim">
+          <div class="row between"><span>Routing peer ingress</span><code id="bw-ingress" style="background:none">–</code></div>
+          <p class="row mt-2" style="gap:6px;align-items:flex-start"><svg class="ico ico-xs" style="margin-top:4px"><use href="#i-info"/></svg><span>Ingress stays tiny no matter the room size — only senders upload, and each uploads one small stream.</span></p>
+        </div>
+
+        <div class="grid gap-2" style="grid-template-columns:repeat(3,1fr)">
+          <div class="mini"><b id="bw-t-full">–</b><span>FULL kbit/s /stream</span></div>
+          <div class="mini"><b id="bw-t-normal">–</b><span>NORMAL kbit/s /stream</span></div>
+          <div class="mini"><b id="bw-t-minimal">–</b><span>MINIMAL kbit/s /stream</span></div>
+        </div>
+
+        <div class="well xs dim leading">Every peer's own upload is one stream — <code id="bw-own" style="background:none">–</code> even at FULL. That's the number that matters if you're the one hosting from home.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================= spec -->
+<section class="section" id="spec">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">Spec explorer</span>
+      <h2 class="h2">The normative core, made browsable</h2>
+      <p class="lead">The full text lives in <code>spec/Posy-1.0.md</code> — this is a navigable view of the tables you'll actually reference while implementing.</p>
+    </div>
+
+    <div class="tabs mt-10">
+      <button type="button" class="pill-btn active" data-tab="bones">Bone index table (§4)</button>
+      <button type="button" class="pill-btn" data-tab="blend">Expression order (§5.6 / Appendix A)</button>
+      <button type="button" class="pill-btn" data-tab="fingers">Finger block (§5.5)</button>
+      <button type="button" class="pill-btn" data-tab="errors">Error codes (§2.5)</button>
+    </div>
+
+    <div class="card mt-6">
+      <div data-pane="bones">
+        <div class="row between wrap gap-3">
+          <input class="input" id="bone-filter" type="search" placeholder="Filter by bone name or bit…" aria-label="Filter bones" />
+          <div class="chips" id="bone-legend" style="gap:8px"></div>
+        </div>
+        <div class="scroll-box mt-4"><div class="cells" id="bone-grid"></div></div>
+        <p class="tiny dim leading mt-3">64-bit mask, bit <em>n</em> set ⇒ quaternion for bone <em>n</em> present, appearing in the payload in ascending bit order. v1 constraint: bits 25–54 (fingers) MUST be 0.</p>
+      </div>
+
+      <div data-pane="blend" hidden>
+        <div class="row between wrap gap-3">
+          <div class="row" style="gap:8px">
+            <button type="button" class="pill-btn sky active" id="bs-standard">Standard-Sync (16, 18 B)</button>
+            <button type="button" class="pill-btn amber" id="bs-perfect">Perfect-Sync (52, 54 B)</button>
+          </div>
+          <span class="xs dim" id="bs-note" hidden>generated from the sorted ARKit enum — not hand-typed, resolving the flagged index-38 issue</span>
+        </div>
+        <div class="scroll-box mt-4"><div class="cells" id="bs-grid"></div></div>
+        <p class="tiny dim mt-3">Both blocks end with two extra <code>i8</code> gaze bytes (yaw, pitch), mapped −45°…+45°.</p>
+      </div>
+
+      <div data-pane="fingers" hidden>
+        <div class="grid g-2 gap-8">
+          <div>
+            <p class="small muted" style="margin-bottom:12px">24 bytes total — left hand first (12 B), then right hand (12 B). Per-hand layout:</p>
+            <div class="table-wrap"><table><thead><tr><th>Offset</th><th>Type</th><th>Field</th></tr></thead><tbody id="finger-body"></tbody></table></div>
+          </div>
+          <div class="stack small muted leading" style="--sp:12px">
+            <p><b class="strong" style="color:#e4e4e7;font-weight:600">Curl</b> (0 = extended … 255 = fully curled) drives all three joints with a fixed distribution — proximal 90°, intermediate 110°, distal 70° (thumb: proximal 60°, distal 80° only). Linear in the curl byte.</p>
+            <p><b class="strong" style="color:#e4e4e7;font-weight:600">Splay</b> (−127…+127 → −15°…+15°) applies to the proximal joint only, positive = abduction toward the thumb side.</p>
+            <p><b class="strong" style="color:#e4e4e7;font-weight:600">Thumb opposition</b> (0…255 → 0°…60°) rotates the thumb metacarpal across the palm.</p>
+            <p class="tiny dim">Senders MUST NOT also set finger bone bits in <code>bone_mask</code> — one byte per axis is enough because hand tracking rarely delivers more precision than 256 levels anyway.</p>
+          </div>
+        </div>
+      </div>
+
+      <div data-pane="errors" hidden>
+        <p class="small muted leading" style="margin-bottom:16px">Error handling is <b style="color:#e4e4e7;font-weight:500">server-enforced</b>, not sender-negotiated. Receivers never validate beyond a length check — they only ever see frames the server has already validated.</p>
+        <div class="table-wrap"><table><thead><tr><th>Code</th><th>Meaning</th><th>Server action</th></tr></thead><tbody id="error-body"></tbody></table></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================= repo -->
+<section class="section" id="repo">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">Repo layout</span>
+      <h2 class="h2">What each piece is for</h2>
+      <p class="lead">This is the intended shape of the repository end-to-end. Green is already there; amber is planned and ordered by the task list below — nothing here is clutter, each node answers one specific question.</p>
+    </div>
+    <div class="grid g-3-2 mt-10">
+      <div class="card tight" id="tree"></div>
+      <div class="card" id="tree-detail"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================================== roadmap -->
+<section class="section" id="roadmap">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">Roadmap</span>
+      <h2 class="h2">The critical path is Phases 1–2</h2>
+      <p class="lead">A spec plus passing test vectors is already a usable open standard. Everything past that is comfort — ordered so each phase unblocks the next.</p>
+    </div>
+    <div class="grid g-2 mt-12" id="roadmap-grid"></div>
+    <div class="card mt-8 small muted leading reveal" style="background:rgba(255,255,255,.02)">
+      <b class="strong" style="color:#e4e4e7;font-weight:600">Two anti-clutter rules, enforced from day one:</b> (1) one normative source — if spec, reference code and test vectors ever disagree, the spec wins and the others get fixed, unless the spec itself is flat-out wrong. (2) Issues are for the protocol; Discussions are for everything else — "how do I do rooms in mediasoup" gets redirected, not answered in an issue thread.
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================== faq -->
+<section class="section" id="faq">
+  <div class="container narrow">
+    <div class="section-head center reveal">
+      <span class="eyebrow">FAQ</span>
+      <h2 class="h2">Rationale, kept out of the spec</h2>
+      <p class="lead">Keeps the normative document lean while still answering the 'why' questions somewhere.</p>
+    </div>
+    <div class="mt-12" id="faq-list"></div>
+  </div>
+</section>
+
+<!-- ======================================================= get started -->
+<section class="section" id="get-started">
+  <div class="container">
+    <div class="section-head reveal">
+      <span class="eyebrow">Get started</span>
+      <h2 class="h2">Try it in two minutes</h2>
+    </div>
+    <div class="grid g-2 gap-8 mt-10" style="gap:40px">
+      <div>
+        <div class="terminal">
+          <div class="row between" style="margin-bottom:12px"><span class="label" style="font-family:var(--sans)">shell</span>
+            <button type="button" class="copy-btn" id="copy-btn"><svg class="ico ico-sm"><use href="#i-copy"/></svg><span>Copy</span></button></div>
+          <pre id="copy-src">git clone https://github.com/Ron81/posy.git
+cd posy/examples/loopback-demo
+npm install &amp;&amp; npm start</pre>
+        </div>
+        <div class="row wrap mt-6" style="gap:12px">
+          <a class="btn btn-primary btn-sm" href="https://github.com/Ron81/posy" target="_blank" rel="noopener">Open the repo <svg class="ico"><use href="#i-external"/></svg></a>
+          <a class="btn btn-ghost btn-sm" href="https://github.com/Ron81/posy/blob/main/spec/Posy-1.0.md" target="_blank" rel="noopener">Read the spec <svg class="ico"><use href="#i-external"/></svg></a>
+        </div>
+      </div>
+      <div class="stack" style="--sp:20px">
+        <div class="step"><h3>1. Read the normative core</h3><p>Start with §3 (coordinates), §4 (bones) and §5 (packets) of <code>Posy-1.0.md</code> — that's the part every conformant implementation must agree on.</p></div>
+        <div class="step"><h3>2. Try the loopback demo (planned)</h3><p>Zero infrastructure: encode → decode → render locally, no server or signup required. Once published it becomes the README's demo GIF.</p></div>
+        <div class="step"><h3>3. Validate against test vectors (planned)</h3><p>Decode each <code>.bin</code> fixture, diff against its <code>.json</code>, reject the ones marked <code>expect: reject</code>. That's conformance.</p></div>
+        <div class="step"><h3>4. Grab the reference encoder/decoder (planned)</h3><p><code>reference/js</code> will ship a small, dependency-free TS implementation — read it, fork it, or just use it as a spec cross-check.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<!-- ========================================================== footer -->
+<footer class="footer">
+  <div class="container">
+    <div class="grid g-2" style="gap:32px">
+      <div style="max-width:380px">
+        <div class="brand"><span class="brand-mark" style="width:28px;height:28px;font-size:12px">P</span><span>Posy</span></div>
+        <p class="small dim leading mt-3">An open, compact protocol for streaming humanoid avatar poses over WebRTC. Draft 1.0 — packet format frozen, signaling layer may still change.</p>
+      </div>
+      <div class="grid g-sm-3" style="gap:32px">
+        <div><h4>Protocol</h4><ul><li><a href="#spec">Bone index (§4)</a></li><li><a href="#packet-lab">Packet format (§5)</a></li><li><a href="#bandwidth">Bandwidth (§6)</a></li></ul></div>
+        <div><h4>Project</h4><ul><li><a href="#repo">Repo layout</a></li><li><a href="#roadmap">Roadmap</a></li><li><a href="#faq">FAQ</a></li></ul></div>
+        <div><h4>Elsewhere</h4><ul><li><a href="https://github.com/Ron81/posy" target="_blank" rel="noopener">GitHub ↗</a></li><li class="faint">Discussions (app questions)</li><li class="faint">Issues (protocol only)</li></ul></div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>Code licensed Apache-2.0. This site is an unofficial companion, built from the repo's own spec.</span>
+      <span class="offline-note">Works without a network connection; only the GitHub links need one.</span>
+    </div>
+  </div>
+</footer>
+
+<script src="assets/data.js"></script>
+<script src="assets/codec.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

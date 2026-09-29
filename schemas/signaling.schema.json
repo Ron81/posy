@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/Ron81/posy/main/schemas/signaling.schema.json",
+  "title": "Posy signaling messages (spec §2)",
+  "description": "Every JSON control message defined in §2 of the Posy 1.0 spec, discriminated by the 't' field. They travel as UTF-8 JSON over the reliable, ordered signaling channel (WebSocket or a reliable data channel). Direction is noted in each definition. The 'examples' arrays are the examples from the spec text.",
+  "oneOf": [
+    { "$ref": "#/$defs/hello" },
+    { "$ref": "#/$defs/session" },
+    { "$ref": "#/$defs/ping" },
+    { "$ref": "#/$defs/pong" },
+    { "$ref": "#/$defs/peers" },
+    { "$ref": "#/$defs/subscribe" },
+    { "$ref": "#/$defs/rate" },
+    { "$ref": "#/$defs/error" }
+  ],
+  "$defs": {
+    "tier": {
+      "description": "Rate tier. Frequencies come from the 'tiers' map of the session message (spec example: FULL 30 Hz, NORMAL 15 Hz, MINIMAL 5 Hz). OFF stops forwarding.",
+      "enum": ["FULL", "NORMAL", "MINIMAL", "OFF"]
+    },
+    "uid": {
+      "description": "Opaque user identifier, e.g. \"u_8f31\".",
+      "type": "string",
+      "minLength": 1
+    },
+    "hello": {
+      "description": "Client → Server (§2.1). First message on the signaling channel. The uid is sent here and only here; it never appears inside a pose frame.",
+      "type": "object",
+      "required": ["t", "uid", "token", "protocol", "caps"],
+      "additionalProperties": false,
+      "properties": {
+        "t": { "const": "hello" },
+        "uid": { "$ref": "#/$defs/uid" },
+        "token": { "type": "string", "description": "Authentication token. May be an empty string if the server does not require one." },
+        "protocol": { "type": "string", "pattern": "^posy/[0-9]+$", "description": "Channel protocol string, \"posy/1\" for this version. A mismatching major version is answered with a BAD_VERSION error, so the schema only checks the shape." },
+        "caps": {
+          "type": "object",
+          "required": ["perfect_sync", "max_rate_hz", "fingers"],
+          "additionalProperties": false,
+          "properties": {
+            "perfect_sync": { "type": "boolean" },
+            "max_rate_hz": { "type": "integer", "minimum": 1 },
+            "fingers": { "type": "boolean" }
+          }
+        }
+      },
+      "examples": [
+        { "t": "hello", "uid": "u_8f31", "token": "", "protocol": "posy/1", "caps": { "perfect_sync": true, "max_rate_hz": 30, "fingers": true } }
+      ]
+    },
+    "session": {
+      "description": "Server → Client (§2.1). May be re-sent at any time to change authorization or playspace; clients apply it immediately.",
+      "type": "object",
+      "required": ["t", "session_id", "epoch_unix_ms", "playspace", "allowed", "tiers", "default_tier"],
+      "additionalProperties": false,
+      "properties": {
+        "t": { "const": "session" },
+        "session_id": { "type": "string", "minLength": 1 },
+        "epoch_unix_ms": { "type": "integer", "minimum": 0, "description": "Session epoch; timestamp_ms in pose frames counts from here." },
+        "playspace": {
+          "type": "object",
+          "required": ["w", "h"],
+          "additionalProperties": false,
+          "properties": {
+            "w": { "type": "integer", "minimum": 1 },
+            "h": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "allowed": {
+          "type": "array",
+          "uniqueItems": true,
+          "description": "Authoritative list of permitted data types. A client MUST NOT set a flag bit for a type not listed here.",
+          "items": { "enum": ["bones", "fingers", "expressions", "root", "perfect_sync"] }
+        },
+        "tiers": {
+          "type": "object",
+          "required": ["FULL", "NORMAL", "MINIMAL"],
+          "additionalProperties": false,
+          "properties": {
+            "FULL": { "type": "integer", "minimum": 1 },
+            "NORMAL": { "type": "integer", "minimum": 1 },
+            "MINIMAL": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "default_tier": { "$ref": "#/$defs/tier" }
+      },
+      "examples": [
+        {
+          "t": "session",
+          "session_id": "r_412",
+          "epoch_unix_ms": 1730900000000,
+          "playspace": { "w": 1920, "h": 1080 },
+          "allowed": ["bones", "fingers", "expressions", "root", "perfect_sync"],
+          "tiers": { "FULL": 30, "NORMAL": 15, "MINIMAL": 5 },
+          "default_tier": "NORMAL"
+        }
+      ]
+    },
+    "ping": {
+      "description": "Client → Server (§2.2). t1 is the client's monotonic clock in milliseconds at send time.",
+      "type": "object",
+      "required": ["t", "t1"],
+      "additionalProperties": false,
+      "properties": {
+        "t": { "const": "ping" },
+        "t1": { "type": "number" }
+      },
+      "examples": [{ "t": "ping", "t1": 1234.5 }]
+    },
+    "pong": {
+      "description": "Server → Client (§2.2). Echoes t1 and adds ts, the server's session-clock time in milliseconds.",
+      "type": "object",
+      "required": ["t", "t1", "ts"],
+      "additionalProperties": false,
+      "properties": {
+        "t": { "const": "pong" },
+        "t1": { "type": "number" },
+        "ts": { "type": "number" }
+      },
+      "examples": [{ "t": "pong", "t1": 1234.5, "ts": 98765 }]
+    },
+    "peers": {
+      "description": "Server → Client (§2.3). Maps data consumers to uids; identity is carried by the channel, not the packet. At least one of 'add' / 'remove' must be present (the spec example has both) — enforced with minProperties: 't' plus at least one more.",
+      "type": "object",
+      "required": ["t"],
+      "minProperties": 2,
+      "additionalProperties": false,
+      "properties": {
+        "t": { "const": "peers" },
+        "add": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["uid", "consumer_id"],
+            "additionalProperties": false,
+            "properties": {
+              "uid": { "$ref": "#/$defs/uid" },
+              "consumer_id": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "remove": { "type": "array", "items": { "$ref": "#/$defs/uid" } }
+      },
+      "examples": [
+        { "t": "peers", "add": [{ "uid": "u_8f31", "consumer_id": "c_77a2" }], "remove": ["u_1100"] }
+      ]
+    },
+    "subscribe": {
+      "description": "Client → Server (§2.4). Chooses the rate tier for one peer; also the congestion fallback.",
+      "type": "object",
+      "required": ["t", "peer_uid", "tier"],
+      "additionalProperties": false,
+      "properties": {
+        "t": { "const": "subscribe" },
+        "peer_uid": { "$ref": "#/$defs/uid" },
+        "tier": { "$ref": "#/$defs/tier" }
+      },
+      "examples": [{ "t": "subscribe", "peer_uid": "u_8f31", "tier": "FULL" }]
+    },
+    "rate": {
+      "description": "Server → Client (§2.4). The highest tier currently demanded by any of the sender's subscribers, in Hz. Senders MUST NOT exceed it (+10% tolerance).",
+      "type": "object",
+      "required": ["t", "hz"],
+      "additionalProperties": false,
+      "properties": {
+        "t": { "const": "rate" },
+        "hz": { "type": "number", "exclusiveMinimum": 0 }
+      },
+      "examples": [{ "t": "rate", "hz": 15 }]
+    },
+    "error": {
+      "description": "Server → Client (§2.5). Error handling is server-enforced. 'action' is free-form text in 1.0-draft (the only value that appears in the spec is the example \"POSE_MUTED\").",
+      "type": "object",
+      "required": ["t", "code", "detail", "action"],
+      "additionalProperties": false,
+      "properties": {
+        "t": { "const": "error" },
+        "code": { "enum": ["BAD_VERSION", "UNAUTHORIZED_TYPE", "MALFORMED_THRESHOLD", "RATE_EXCEEDED"] },
+        "detail": { "type": "string" },
+        "action": { "type": "string" }
+      },
+      "examples": [
+        { "t": "error", "code": "MALFORMED_THRESHOLD", "detail": "34 invalid frames / 10s", "action": "POSE_MUTED" }
+      ]
+    }
+  }
+}

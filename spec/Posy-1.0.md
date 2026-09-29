@@ -42,7 +42,7 @@ pc.createDataChannel("avatar-pose", {
 
 - A lost pose frame MUST NOT be retransmitted. Late frames are useless by definition.
 - Every pose frame MUST fit in a single datagram. Implementations MUST NOT emit a
-  pose frame larger than 1100 bytes. v1 frames are ≤ 152 bytes, so fragmentation
+  pose frame larger than 1100 bytes. v1 frames are ≤ 200 bytes, so fragmentation
   never occurs.
 
 ### 1.2 Topology
@@ -95,8 +95,10 @@ forwarded packets.
 Client → Server: `{ "t": "ping", "t1": <client_monotonic_ms> }`
 Server → Client: `{ "t": "pong", "t1": <echo>, "ts": <server_ms_since_epoch> }`
 
-The client MUST perform at least 5 exchanges at join, compute per-sample
-`offset = ts + rtt/2 - t1`, and take the **median** as its session offset. The client
+The client MUST perform at least 5 exchanges at join. For each sample, with `t1` the
+client's send time, `t2` its receive time and `rtt = t2 - t1`, compute
+`offset = ts + rtt/2 - t2` (equivalently `ts - t1 - rtt/2`), and take the **median** as its
+session offset, so that `session_time = capture_monotonic_ms + offset`. The client
 SHOULD repeat this every 30 s and apply the new offset with a slew of ≤ 5 ms/s to
 avoid pose discontinuities.
 
@@ -206,36 +208,36 @@ Quaternions appear in the payload in **ascending bit order**.
 
 | Bit | Bone | Bit | Bone |
 |---|---|---|---|
-| 0 | hips | 28 | leftIndexDistal |
-| 1 | spine | 29 | leftMiddleProximal |
-| 2 | chest | 30 | leftMiddleIntermediate |
-| 3 | upperChest | 31 | leftMiddleDistal |
-| 4 | neck | 32 | leftRingProximal |
-| 5 | head | 33 | leftRingIntermediate |
-| 6 | leftEye | 34 | leftRingDistal |
-| 7 | rightEye | 35 | leftLittleProximal |
-| 8 | jaw | 36 | leftLittleIntermediate |
-| 9 | leftUpperLeg | 37 | leftLittleDistal |
-| 10 | leftLowerLeg | 38 | rightThumbMetacarpal |
-| 11 | leftFoot | 39 | rightThumbProximal |
-| 12 | leftToes | 40 | rightThumbDistal |
-| 13 | rightUpperLeg | 41 | rightIndexProximal |
-| 14 | rightLowerLeg | 42 | rightIndexIntermediate |
-| 15 | rightFoot | 43 | rightIndexDistal |
-| 16 | rightToes | 44 | rightMiddleProximal |
-| 17 | leftShoulder | 45 | rightMiddleIntermediate |
-| 18 | leftUpperArm | 46 | rightMiddleDistal |
-| 19 | leftLowerArm | 47 | rightRingProximal |
-| 20 | leftHand | 48 | rightRingIntermediate |
-| 21 | rightShoulder | 49 | rightRingDistal |
-| 22 | rightUpperArm | 50 | rightLittleProximal |
-| 23 | rightLowerArm | 51 | rightLittleIntermediate |
-| 24 | rightHand | 52 | rightLittleDistal |
-| 25 | leftThumbMetacarpal | 53 | *reserved* |
-| 26 | leftThumbProximal | 54 | *reserved* |
+| 0 | hips | 28 | leftIndexProximal |
+| 1 | spine | 29 | leftIndexIntermediate |
+| 2 | chest | 30 | leftIndexDistal |
+| 3 | upperChest | 31 | leftMiddleProximal |
+| 4 | neck | 32 | leftMiddleIntermediate |
+| 5 | head | 33 | leftMiddleDistal |
+| 6 | leftEye | 34 | leftRingProximal |
+| 7 | rightEye | 35 | leftRingIntermediate |
+| 8 | jaw | 36 | leftRingDistal |
+| 9 | leftUpperLeg | 37 | leftLittleProximal |
+| 10 | leftLowerLeg | 38 | leftLittleIntermediate |
+| 11 | leftFoot | 39 | leftLittleDistal |
+| 12 | leftToes | 40 | rightThumbMetacarpal |
+| 13 | rightUpperLeg | 41 | rightThumbProximal |
+| 14 | rightLowerLeg | 42 | rightThumbDistal |
+| 15 | rightFoot | 43 | rightIndexProximal |
+| 16 | rightToes | 44 | rightIndexIntermediate |
+| 17 | leftShoulder | 45 | rightIndexDistal |
+| 18 | leftUpperArm | 46 | rightMiddleProximal |
+| 19 | leftLowerArm | 47 | rightMiddleIntermediate |
+| 20 | leftHand | 48 | rightMiddleDistal |
+| 21 | rightShoulder | 49 | rightRingProximal |
+| 22 | rightUpperArm | 50 | rightRingIntermediate |
+| 23 | rightLowerArm | 51 | rightRingDistal |
+| 24 | rightHand | 52 | rightLittleProximal |
+| 25 | leftThumbMetacarpal | 53 | rightLittleIntermediate |
+| 26 | leftThumbProximal | 54 | rightLittleDistal |
 | 27 | leftThumbDistal | 55–63 | *reserved, MUST be 0* |
 
-**v1 constraint:** bits **25–52** (all finger bones) MUST be 0. Fingers are carried by
+**v1 constraint:** bits **25–54** (all finger bones) MUST be 0. Fingers are carried by
 the compact finger block (§5.5). Bits 9–16 (legs/feet) MAY be used but are OPTIONAL;
 receivers MUST handle their absence.
 
@@ -304,7 +306,7 @@ Receiver:
 3. **The receiver MUST renormalise the reconstructed quaternion.** Quantisation error
    guarantees it is not exactly unit length.
 
-Worst-case angular error of this encoding is ≈ 0.1°, well below tracker noise.
+Worst-case angular error of this encoding is ≈ 0.14°, well below tracker noise.
 
 ### 5.4 Root position block (6 B)
 
@@ -505,7 +507,7 @@ track is muted or absent.
 - The `version` byte carries the **minor** revision within a major version. Receivers
   MUST accept any minor version with `version >> 4 == 0` for v1.x and MUST ignore
   unknown flag bits and unknown `bone_mask` bits.
-- Extension mechanism: reserved flag bits 5–7, reserved bone bits 53–63, reserved
+- Extension mechanism: reserved flag bits 5–7, reserved bone bits 55–63, reserved
   expression indices 13–15, and the reserved finger byte.
 
 ---
@@ -536,29 +538,28 @@ Explicitly out of scope for v1, listed so v1 does not accidentally block them:
 
 ## Appendix A — Perfect-Sync Blendshape Order (Normative)
 
-Indices 0–51, ARKit canonical alphabetical order:
+Indices 0–51, the 52 ARKit `ARFaceAnchor.BlendShapeLocation` names sorted ascending by
+code unit. Implementations MUST generate this table programmatically from that sorted
+list rather than transcribing it.
 
-```
- 0 browDownLeft        13 eyeLookInRight     26 mouthClose          39 mouthRight
- 1 browDownRight       14 eyeLookOutLeft     27 mouthDimpleLeft     40 mouthRollLower
- 2 browInnerUp         15 eyeLookOutRight    28 mouthDimpleRight    41 mouthRollUpper
- 3 browOuterUpLeft     16 eyeLookUpLeft      29 mouthFrownLeft      42 mouthShrugLower
- 4 browOuterUpRight    17 eyeLookUpRight     30 mouthFrownRight     43 mouthShrugUpper
- 5 cheekPuff           18 eyeSquintLeft      31 mouthFunnel         44 mouthSmileLeft
- 6 cheekSquintLeft     19 eyeSquintRight     32 mouthLeft           45 mouthSmileRight
- 7 cheekSquintRight    20 eyeWideLeft        33 mouthLowerDownLeft  46 mouthStretchLeft
- 8 eyeBlinkLeft        21 eyeWideRight       34 mouthLowerDownRight 47 mouthStretchRight
- 9 eyeBlinkRight       22 jawForward         35 mouthPressLeft      48 mouthUpperUpLeft
-10 eyeLookDownLeft     23 jawLeft            36 mouthPressRight     49 mouthUpperUpRight
-11 eyeLookDownRight    24 jawOpen            37 mouthPucker         50 noseSneerLeft
-12 eyeLookInLeft       25 jawRight           38 mouthRight*         51 noseSneerRight
-```
-*index 38 is `mouthPucker`-adjacent; the authoritative list is the 52 ARKit
-`ARFaceAnchor.BlendShapeLocation` names sorted alphabetically. Implementations MUST
-generate this table programmatically from that sorted list rather than transcribing it.
+| Idx | Blendshape | Idx | Blendshape | Idx | Blendshape | Idx | Blendshape |
+|---:|---|---:|---|---:|---|---:|---|
+| 0 | `browDownLeft` | 13 | `eyeLookInRight` | 26 | `mouthClose` | 39 | `mouthRollLower` |
+| 1 | `browDownRight` | 14 | `eyeLookOutLeft` | 27 | `mouthDimpleLeft` | 40 | `mouthRollUpper` |
+| 2 | `browInnerUp` | 15 | `eyeLookOutRight` | 28 | `mouthDimpleRight` | 41 | `mouthShrugLower` |
+| 3 | `browOuterUpLeft` | 16 | `eyeLookUpLeft` | 29 | `mouthFrownLeft` | 42 | `mouthShrugUpper` |
+| 4 | `browOuterUpRight` | 17 | `eyeLookUpRight` | 30 | `mouthFrownRight` | 43 | `mouthSmileLeft` |
+| 5 | `cheekPuff` | 18 | `eyeSquintLeft` | 31 | `mouthFunnel` | 44 | `mouthSmileRight` |
+| 6 | `cheekSquintLeft` | 19 | `eyeSquintRight` | 32 | `mouthLeft` | 45 | `mouthStretchLeft` |
+| 7 | `cheekSquintRight` | 20 | `eyeWideLeft` | 33 | `mouthLowerDownLeft` | 46 | `mouthStretchRight` |
+| 8 | `eyeBlinkLeft` | 21 | `eyeWideRight` | 34 | `mouthLowerDownRight` | 47 | `mouthUpperUpLeft` |
+| 9 | `eyeBlinkRight` | 22 | `jawForward` | 35 | `mouthPressLeft` | 48 | `mouthUpperUpRight` |
+| 10 | `eyeLookDownLeft` | 23 | `jawLeft` | 36 | `mouthPressRight` | 49 | `noseSneerLeft` |
+| 11 | `eyeLookDownRight` | 24 | `jawOpen` | 37 | `mouthPucker` | 50 | `noseSneerRight` |
+| 12 | `eyeLookInLeft` | 25 | `jawRight` | 38 | `mouthRight` | 51 | `tongueOut` |
 
-Index 52 (`tongueOut`) completes the ARKit set; it occupies the last byte of the 52-byte
-block.
+`tongueOut` is index 51 (the last of the 52 names); the block is 52 bytes. The machine-readable
+form of this table is `spec/blendshape-order.json`, generated by `scripts/generate-spec-tables.mjs`.
 
 ---
 
