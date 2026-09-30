@@ -172,9 +172,9 @@
       it('CI: run the reference impl against test vectors on every push, badge in README', 'done')
     ] },
     { phase: 'Phase 3', title: 'Repo is usable by strangers', summary: 'Someone with zero context should get an avatar moving in minutes.', items: [
-      it('Build examples/loopback-demo — encode → decode → drive a three-vrm avatar, no network', 'planned'),
-      it('Write testvectors/README.md: decode, compare, reject the expect:reject ones, done', 'planned'),
-      it('Add issue templates + a 15-line CONTRIBUTING.md', 'planned')
+      it('Build examples/loopback-demo — encode → decode → drive a three-vrm avatar, no network', 'done'),
+      it('Write testvectors/README.md: decode, compare, reject the expect:reject ones, done', 'done'),
+      it('Add issue templates + a 15-line CONTRIBUTING.md', 'done')
     ] },
     { phase: 'Phase 4', title: 'Ecosystem', summary: "After 1.0 tags, other people's problems become other people's repos.", items: [
       it('Tag v1.0.0, freeze §2, add the first real CHANGELOG entry', 'planned'),
@@ -223,9 +223,9 @@
       ]),
       file('quaternions.csv', 'live', 'Input quaternion → expected packed u32, for isolated codec testing.')
     ]),
-    dir('examples/', 'planned', 'Zero-infrastructure proof that the format actually moves an avatar.', [
+    dir('examples/', 'live', 'Zero-infrastructure proof that the format actually moves an avatar.', [
       dir('minimal-viewer/', 'planned', 'Receives Posy frames over a real data channel and moves a VRM in the browser.'),
-      dir('loopback-demo/', 'planned', 'encode → decode → render locally. No server, no signup, npm start and see an avatar move.')
+      dir('loopback-demo/', 'live', 'encode → decode → render locally. No server, no signup, npm start and see an avatar move.')
     ]),
     dir('.github/', 'live', 'Issue templates and CI.', [
       dir('workflows/', 'live', 'CI runs the reference implementation against testvectors/ on every push.'),

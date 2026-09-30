@@ -9,7 +9,7 @@
 Posy (**Po**se **Sy**nchronization) is an open, compact protocol for syncing humanoid avatar poses between lots of people in real time. It's built for WebRTC data channels. A typical upper-body frame with fingers and face is ~116 bytes — roughly 70× smaller than VMC — so a whole room can move at once without anybody's upload crying.
 
 ---> 🧪 **Try out the [interactive site](https://ron81.github.io/posy/)** <---
-It lets you build a frame byte by byte, play with the **bandwidth calculator** and browse the tables. 
+It lets you build a frame byte by byte, play with the **[bandwidth calculator](https://ron81.github.io/posy/#bandwidth)** and browse the tables. Or try the **[loopback demo](https://ron81.github.io/posy/demo/)** to watch how a avatar looks on different connections from premium Fibre to the last copper cable, in a cave, at the end of the world.
 
 ## Is this for me?
 
@@ -70,9 +70,19 @@ Same maths as spec §6. Viewers are the cheap part: they never send anything, so
 
 Bigger rooms want a cheap VPS, and public ones a hosted SFU (mediasoup does data-channel forwarding natively). A ready-made example server is planned as a separate repo.
 
-## Try it in 2 minutes *(planned)*
+## Try it in 2 minutes
 
-A no-server loopback demo (`examples/loopback-demo`) is planned — it will encode a pose, decode it again and drive an avatar, all locally. Not in the repo yet.
+A no-server loopback demo lives in [`examples/loopback-demo`]. It animates a pose, `encode()`s it to Posy bytes, sends it through a fake channel with packet-loss and jitter sliders, `decode()`s it and drives two avatars side by side — the sender and what actually survived the trip. All local, all in the browser.
+
+The quickest look is the [hosted version](https://ron81.github.io/posy/demo/) — nothing to install. To run or hack on it yourself:
+
+```sh
+cd examples/loopback-demo
+npm install
+npm start
+```
+
+A stick figure works out of the box; you can also load your own `.vrm`. Nothing is uploaded anywhere.
 
 ## Implement it
 
@@ -94,7 +104,7 @@ If the spec, the reference code and the test vectors ever disagree, **the spec w
 | [`docs/`] | The interactive site (static, no build step) |
 | [`FAQ.md`] | Why things are the way they are |
 | [`CHANGELOG.md`] | What changed |
-| `examples/` | *(planned)* Runnable demos |
+| [`examples/`] | Runnable demos — start with the loopback demo |
 
 ## Status
 
