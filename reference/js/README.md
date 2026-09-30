@@ -1,9 +1,13 @@
-# posy (reference JS/TS)
+# posy-protocol (reference JS/TS)
 
-TypeScript reference encoder/decoder for the Posy pose protocol. Zero runtime dependencies, Node ≥ 18.
+TypeScript reference encoder/decoder for the Posy pose protocol. Zero runtime dependencies, Node ≥ 18. Published on npm as [`posy-protocol`](https://www.npmjs.com/package/posy-protocol).
+
+```sh
+npm install posy-protocol
+```
 
 ```ts
-import { encode, decode } from 'posy';
+import { encode, decode } from 'posy-protocol';
 
 const bytes = encode({
   version: 1, seq: 1, timestampMs: 0, idle: false,
