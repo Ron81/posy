@@ -191,7 +191,8 @@ export class VrmAvatar implements Avatar {
     const gltf = await loader.parseAsync(buffer, '');
     const vrm = gltf.userData.vrm as VRM | undefined;
     if (!vrm) throw new Error('file is not a VRM');
-    vrm.scene.rotation.y = Math.PI; // VRM faces −Z; turn it to face the camera
+    // three-vrm already normalises orientation to face +Z (toward our camera);
+    // don't add another flip or the model turns its back to the viewer.
     return new VrmAvatar(vrm);
   }
 

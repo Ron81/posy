@@ -117,15 +117,60 @@ const bind = (id: string, outId: string, fmt: (v: number) => string, apply: (v: 
   };
   input.addEventListener('input', handler);
   handler();
+  // Programmatic setter so presets can move the slider and its label together.
+  return (v: number) => {
+    input.value = String(v);
+    handler();
+  };
 };
 
-bind('loss', 'loss-out', (v) => `${v}%`, (v) => (channel.lossPct = v));
-bind('jitter', 'jitter-out', (v) => `${v} ms`, (v) => (channel.jitterMs = v));
+const setLoss = bind('loss', 'loss-out', (v) => `${v}%`, (v) => (channel.lossPct = v));
+const setJitter = bind('jitter', 'jitter-out', (v) => `${v} ms`, (v) => (channel.jitterMs = v));
 bind('rate', 'rate-out', (v) => `${v} Hz`, (v) => (sendRateHz = v));
+
+// Connection-quality presets. Posy frames are tiny, so a link's *feel* is set by
+// latency, jitter and loss — not bandwidth. Each preset dials those to match a
+// real-world tier. baseLatency is the fixed one-way-ish delay; jitter is the
+// random spread on top; loss is drop probability.
+const PRESETS: Record<string, { latency: number; jitter: number; loss: number }> = {
+  excellent: { latency: 10, jitter: 5, loss: 0 }, // low-latency fibre
+  standard: { latency: 30, jitter: 25, loss: 1 }, // solid home broadband
+  countryside: { latency: 80, jitter: 90, loss: 6 }, // average-to-weak rural line
+  nosignal: { latency: 180, jitter: 260, loss: 35 }, // barely usable
+};
+
+const presetButtons = [...document.querySelectorAll<HTMLButtonElement>('.preset')];
+for (const btn of presetButtons) {
+  btn.addEventListener('click', () => {
+    const p = PRESETS[btn.dataset.preset ?? ''];
+    if (!p) return;
+    channel.baseLatencyMs = p.latency;
+    setJitter(p.jitter);
+    setLoss(p.loss);
+    presetButtons.forEach((b) => b.classList.toggle('active', b === btn));
+  });
+}
+
+// Moving a slider by hand means we're no longer on a named preset.
+for (const id of ['loss', 'jitter']) {
+  document.getElementById(id)!.addEventListener('input', () => {
+    presetButtons.forEach((b) => b.classList.remove('active'));
+  });
+}
 
 // .vrm picker — swaps both avatars; failures fall back to a fresh stick figure.
 const vrmInput = document.getElementById('vrm') as HTMLInputElement;
 const vrmNote = document.getElementById('vrm-note')!;
+const vrmUnload = document.getElementById('vrm-unload') as HTMLButtonElement;
+
+function backToStickFigure(): void {
+  senderView.setAvatar(new StickFigure());
+  receiverView.setAvatar(new StickFigure());
+  vrmUnload.hidden = true;
+  vrmInput.value = ''; // let the same file be picked again later
+  vrmNote.textContent = 'Optional. Built-in stick figure is used by default. Nothing is uploaded.';
+}
+
 vrmInput.addEventListener('change', async () => {
   const file = vrmInput.files?.[0];
   if (!file) return;
@@ -136,13 +181,15 @@ vrmInput.addEventListener('change', async () => {
     const [a, b] = await Promise.all([VrmAvatar.load(buf.slice(0)), VrmAvatar.load(buf.slice(0))]);
     senderView.setAvatar(a);
     receiverView.setAvatar(b);
+    vrmUnload.hidden = false;
     vrmNote.textContent = `showing ${file.name}. Nothing was uploaded.`;
   } catch (err) {
-    senderView.setAvatar(new StickFigure());
-    receiverView.setAvatar(new StickFigure());
+    backToStickFigure();
     vrmNote.textContent = `couldn't load that file (${(err as Error).message}). Back to the stick figure.`;
   }
 });
+
+vrmUnload.addEventListener('click', backToStickFigure);
 
 // --- loops -----------------------------------------------------------------
 

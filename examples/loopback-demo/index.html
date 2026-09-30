@@ -46,6 +46,18 @@
         display: flex; flex-wrap: wrap; gap: 28px;
         padding: 4px 24px 20px; align-items: flex-end;
       }
+      .presets {
+        display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+        padding: 8px 24px 0;
+      }
+      .presets-label { color: var(--muted); font-size: 13px; margin-right: 4px; }
+      .preset {
+        cursor: pointer; background: #242736; color: var(--ink);
+        border: 1px solid var(--line); border-radius: 999px;
+        padding: 6px 14px; font-size: 13px;
+      }
+      .preset:hover { border-color: var(--accent); }
+      .preset.active { border-color: var(--accent); color: var(--accent); }
       .ctl { display: flex; flex-direction: column; gap: 4px; min-width: 180px; }
       .ctl label { font-size: 13px; color: var(--muted); }
       .ctl output { font: 600 14px var(--mono); color: var(--accent); }
@@ -102,6 +114,14 @@
       <span>delivered: <b><span id="stat-delivered">–</span></b> / dropped: <b><span id="stat-dropped">–</span></b></span>
     </div>
 
+    <div class="presets">
+      <span class="presets-label">Connection:</span>
+      <button type="button" class="preset" data-preset="excellent">Excellent · fibre</button>
+      <button type="button" class="preset" data-preset="standard">Standard · good</button>
+      <button type="button" class="preset" data-preset="countryside">Countryside</button>
+      <button type="button" class="preset" data-preset="nosignal">NoSignalNation</button>
+    </div>
+
     <div class="controls">
       <div class="ctl">
         <label for="loss">Packet loss — <output id="loss-out">0%</output></label>
@@ -118,6 +138,7 @@
       <div class="ctl file">
         <label class="fake" for="vrm">Load your own .vrm…</label>
         <input id="vrm" type="file" accept=".vrm,model/gltf-binary" />
+        <button type="button" class="fake" id="vrm-unload" hidden>Back to stick figure</button>
         <span class="note" id="vrm-note">Optional. Built-in stick figure is used by default. Nothing is uploaded.</span>
       </div>
     </div>
@@ -129,8 +150,8 @@
           <a href="https://threejs.org/" target="_blank" rel="noopener"><b>three.js</b></a> —
           does all the 3D heavy lifting here: scenes, cameras, the WebGL renderer, and the quaternion
           maths we lean on when applying decoded rotations. It's the backbone of basically all 3D on
-          the open web, and a from-scratch mocap toy like this simply wouldn't come together in a
-          weekend without it. Thank you for keeping something this powerful free and readable.
+          the open web, and a from-scratch mocap tool like this simply wouldn't come together in a
+          reasonable time without it. Thank you for keeping something this powerful free and readable.
         </p>
         <p>
           <a href="https://github.com/pixiv/three-vrm" target="_blank" rel="noopener"><b>@pixiv/three-vrm</b></a> —

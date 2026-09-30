@@ -9,7 +9,7 @@
 Posy (**Po**se **Sy**nchronization) is an open, compact protocol for syncing humanoid avatar poses between lots of people in real time. It's built for WebRTC data channels. A typical upper-body frame with fingers and face is ~116 bytes — roughly 70× smaller than VMC — so a whole room can move at once without anybody's upload crying.
 
 ---> 🧪 **Try out the [interactive site](https://ron81.github.io/posy/)** <---
-It lets you build a frame byte by byte, play with the **bandwidth calculator** and browse the tables. 
+It lets you build a frame byte by byte, play with the **[bandwidth calculator](https://ron81.github.io/posy/#bandwidth)** and browse the tables. Or run the [loopback demo](examples/loopback-demo) locally to watch a pose survive a lossy connection.
 
 ## Is this for me?
 
