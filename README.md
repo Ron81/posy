@@ -9,7 +9,7 @@
 Posy (**Po**se **Sy**nchronization) is an open, compact protocol for syncing humanoid avatar poses between lots of people in real time. It's built for WebRTC data channels. A typical upper-body frame with fingers and face is ~116 bytes — roughly 70× smaller than VMC — so a whole room can move at once without anybody's upload crying.
 
 ---> 🧪 **Try out the [interactive site](https://ron81.github.io/posy/)** <---
-It lets you build a frame byte by byte, play with the **[bandwidth calculator](https://ron81.github.io/posy/#bandwidth)** and browse the tables. Or run the **[loopback demo](examples/loopback-demo)** locally to watch how a avatar looks on different connections from premium Fibre to the last copper cable, in a cave, at the end of the world.
+It lets you build a frame byte by byte, play with the **[bandwidth calculator](https://ron81.github.io/posy/#bandwidth)** and browse the tables. Or try the **[loopback demo](https://ron81.github.io/posy/demo/)** to watch how a avatar looks on different connections from premium Fibre to the last copper cable, in a cave, at the end of the world.
 
 ## Is this for me?
 
@@ -73,6 +73,8 @@ Bigger rooms want a cheap VPS, and public ones a hosted SFU (mediasoup does data
 ## Try it in 2 minutes
 
 A no-server loopback demo lives in [`examples/loopback-demo`]. It animates a pose, `encode()`s it to Posy bytes, sends it through a fake channel with packet-loss and jitter sliders, `decode()`s it and drives two avatars side by side — the sender and what actually survived the trip. All local, all in the browser.
+
+The quickest look is the [hosted version](https://ron81.github.io/posy/demo/) — nothing to install. To run or hack on it yourself:
 
 ```sh
 cd examples/loopback-demo

@@ -1,0 +1,68 @@
+# Publishes GitHub Pages: the interactive site (docs/) plus the built loopback demo (docs/ -> /, demo -> /demo/).
+#
+# The interactive site is buildless static files under docs/. The loopback demo is a Vite app that must be
+# compiled first, so Pages can't just serve the source. This workflow assembles both into one artifact:
+#   _site/            <- everything in docs/ (the interactive site, served at the Pages root)
+#   _site/demo/       <- examples/loopback-demo built with `vite build`
+#
+# Because Pages is in "GitHub Actions" mode, THIS workflow is the only thing that publishes the site —
+# it deliberately republishes docs/ so the interactive site never goes offline.
+name: Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Let a newer run supersede an in-flight one, but don't cancel a run mid-deploy.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: examples/loopback-demo/package-lock.json
+
+      - name: Assemble the interactive site
+        run: |
+          mkdir -p _site
+          cp -r docs/. _site/
+          touch _site/.nojekyll
+
+      - name: Build the loopback demo
+        working-directory: examples/loopback-demo
+        run: |
+          npm ci
+          npm run build
+
+      - name: Add the demo under /demo
+        run: |
+          mkdir -p _site/demo
+          cp -r examples/loopback-demo/dist/. _site/demo/
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
