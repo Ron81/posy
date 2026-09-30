@@ -126,17 +126,26 @@ const bind = (id: string, outId: string, fmt: (v: number) => string, apply: (v: 
 
 const setLoss = bind('loss', 'loss-out', (v) => `${v}%`, (v) => (channel.lossPct = v));
 const setJitter = bind('jitter', 'jitter-out', (v) => `${v} ms`, (v) => (channel.jitterMs = v));
-bind('rate', 'rate-out', (v) => `${v} Hz`, (v) => (sendRateHz = v));
+bind('rate', 'rate-out', (v) => `${v} FPS`, (v) => (sendRateHz = v));
 
 // Connection-quality presets. Posy frames are tiny, so a link's *feel* is set by
 // latency, jitter and loss — not bandwidth. Each preset dials those to match a
 // real-world tier. baseLatency is the fixed one-way-ish delay; jitter is the
-// random spread on top; loss is drop probability.
-const PRESETS: Record<string, { latency: number; jitter: number; loss: number }> = {
-  excellent: { latency: 10, jitter: 5, loss: 0 }, // low-latency fibre
-  standard: { latency: 30, jitter: 25, loss: 1 }, // solid home broadband
-  countryside: { latency: 80, jitter: 90, loss: 6 }, // average-to-weak rural line
-  nosignal: { latency: 180, jitter: 260, loss: 35 }, // barely usable
+// random spread on top; loss is drop probability. `mbit` is that tier's real
+// bandwidth (used only for the "tiny slice of your connection" comparison), and
+// `quip` is the flavour text that leads the comparison line.
+interface Preset {
+  latency: number;
+  jitter: number;
+  loss: number;
+  mbit: number;
+  quip: string;
+}
+const PRESETS: Record<string, Preset> = {
+  excellent: { latency: 10, jitter: 5, loss: 0, mbit: 1000, quip: 'Gigabit fibre, fancy — Posy barely tickles it,' },
+  standard: { latency: 30, jitter: 25, loss: 1, mbit: 50, quip: 'Normal home broadband, and Posy is comfy at' },
+  countryside: { latency: 80, jitter: 90, loss: 6, mbit: 25, quip: 'Out in the countryside, huh? Still totally fine at' },
+  nosignal: { latency: 180, jitter: 260, loss: 35, mbit: 5, quip: 'Oh, so you live in a cave. Sucks to be you — but it still works at' },
 };
 
 const presetButtons = [...document.querySelectorAll<HTMLButtonElement>('.preset')];
@@ -147,6 +156,7 @@ for (const btn of presetButtons) {
     channel.baseLatencyMs = p.latency;
     setJitter(p.jitter);
     setLoss(p.loss);
+    stats.setConnection(p.mbit, p.quip);
     presetButtons.forEach((b) => b.classList.toggle('active', b === btn));
   });
 }
@@ -154,6 +164,7 @@ for (const btn of presetButtons) {
 // Moving a slider by hand means we're no longer on a named preset.
 for (const id of ['loss', 'jitter']) {
   document.getElementById(id)!.addEventListener('input', () => {
+    stats.setConnection(null, null);
     presetButtons.forEach((b) => b.classList.remove('active'));
   });
 }

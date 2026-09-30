@@ -42,7 +42,7 @@
 
 <noscript>
   <div style="position:relative;z-index:100;margin:72px auto 0;max-width:720px;padding:12px 16px;border:1px solid #f59e0b;border-radius:10px;background:#1c1407;color:#fde68a;font:14px/1.5 system-ui,sans-serif">
-    JavaScript is disabled, so the interactive parts (packet builder, bandwidth calculator, spec tables, repo explorer, FAQ) are empty. The rest of the page still reads fine.
+    JavaScript is disabled, so the interactive parts (packet builder, bandwidth calculator, spec tables) are empty. The rest of the page still reads fine.
   </div>
 </noscript>
 
@@ -60,9 +60,6 @@
       <a href="#packet-lab">Packet Lab</a>
       <a href="#bandwidth">Bandwidth</a>
       <a href="#spec">Spec</a>
-      <a href="#repo">Repo</a>
-      <a href="#roadmap">Roadmap</a>
-      <a href="#faq">FAQ</a>
     </nav>
     <div class="header-actions">
       <a class="gh-link" href="https://github.com/Ron81/posy" target="_blank" rel="noopener">
@@ -79,9 +76,6 @@
     <a href="#packet-lab">Packet Lab</a>
     <a href="#bandwidth">Bandwidth</a>
     <a href="#spec">Spec</a>
-    <a href="#repo">Repo</a>
-    <a href="#roadmap">Roadmap</a>
-    <a href="#faq">FAQ</a>
     <a href="https://github.com/Ron81/posy" target="_blank" rel="noopener">GitHub ↗</a>
   </div>
 </header>
@@ -418,48 +412,6 @@
   </div>
 </section>
 
-<!-- ============================================================= repo -->
-<section class="section" id="repo">
-  <div class="container">
-    <div class="section-head reveal">
-      <span class="eyebrow">Repo layout</span>
-      <h2 class="h2">What each piece is for</h2>
-      <p class="lead">This is the intended shape of the repository end-to-end. Green is already there; amber is planned and ordered by the task list below — nothing here is clutter, each node answers one specific question.</p>
-    </div>
-    <div class="grid g-3-2 mt-10">
-      <div class="card tight" id="tree"></div>
-      <div class="card" id="tree-detail"></div>
-    </div>
-  </div>
-</section>
-
-<!-- ========================================================== roadmap -->
-<section class="section" id="roadmap">
-  <div class="container">
-    <div class="section-head reveal">
-      <span class="eyebrow">Roadmap</span>
-      <h2 class="h2">The critical path is Phases 1–2</h2>
-      <p class="lead">A spec plus passing test vectors is already a usable open standard. Everything past that is comfort — ordered so each phase unblocks the next.</p>
-    </div>
-    <div class="grid g-2 mt-12" id="roadmap-grid"></div>
-    <div class="card mt-8 small muted leading reveal" style="background:rgba(255,255,255,.02)">
-      <b class="strong" style="color:#e4e4e7;font-weight:600">Two anti-clutter rules, enforced from day one:</b> (1) one normative source — if spec, reference code and test vectors ever disagree, the spec wins and the others get fixed, unless the spec itself is flat-out wrong. (2) Issues are for the protocol; Discussions are for everything else — "how do I do rooms in mediasoup" gets redirected, not answered in an issue thread.
-    </div>
-  </div>
-</section>
-
-<!-- ============================================================== faq -->
-<section class="section" id="faq">
-  <div class="container narrow">
-    <div class="section-head center reveal">
-      <span class="eyebrow">FAQ</span>
-      <h2 class="h2">Rationale, kept out of the spec</h2>
-      <p class="lead">Keeps the normative document lean while still answering the 'why' questions somewhere.</p>
-    </div>
-    <div class="mt-12" id="faq-list"></div>
-  </div>
-</section>
-
 <!-- ======================================================= get started -->
 <section class="section" id="get-started">
   <div class="container">
@@ -503,7 +455,6 @@ npm install &amp;&amp; npm start</pre>
       </div>
       <div class="grid g-sm-3" style="gap:32px">
         <div><h4>Protocol</h4><ul><li><a href="#spec">Bone index (§4)</a></li><li><a href="#packet-lab">Packet format (§5)</a></li><li><a href="#bandwidth">Bandwidth (§6)</a></li></ul></div>
-        <div><h4>Project</h4><ul><li><a href="#repo">Repo layout</a></li><li><a href="#roadmap">Roadmap</a></li><li><a href="#faq">FAQ</a></li></ul></div>
         <div><h4>Elsewhere</h4><ul><li><a href="https://github.com/Ron81/posy" target="_blank" rel="noopener">GitHub ↗</a></li><li class="faint">Discussions (app questions)</li><li class="faint">Issues (protocol only)</li></ul></div>
       </div>
     </div>

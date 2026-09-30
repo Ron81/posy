@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Posy loopback demo</title>
+    <title>Posy transmission quality demo</title>
     <style>
       :root {
         --bg: #12131a;
@@ -67,6 +67,15 @@
         padding: 0 24px 8px; font: 13px var(--mono); color: var(--muted);
       }
       .stats b { color: var(--ink); font-weight: 600; }
+      .compare {
+        margin: 0; padding: 0 24px 4px; font-size: 13px; color: var(--muted);
+      }
+      .compare b { color: var(--accent); font-weight: 600; }
+      .explainer {
+        margin: 0; padding: 0 24px 20px; max-width: 80ch;
+        color: var(--muted); font-size: 13px; line-height: 1.6;
+      }
+      .explainer b { color: var(--ink); font-weight: 600; }
       .file button, .file label.fake {
         display: inline-block; cursor: pointer;
         background: #242736; color: var(--ink);
@@ -88,7 +97,7 @@
   </head>
   <body>
     <header>
-      <h1>Posy loopback demo</h1>
+      <h1>Posy transmission quality demo</h1>
       <p>
         A pose is generated, <code>encode()</code>d to Posy wire bytes, pushed through a
         simulated lossy channel, then <code>decode()</code>d and rendered. No server, no signup —
@@ -109,10 +118,11 @@
 
     <div class="stats">
       <span>frame: <b><span id="stat-bytes">–</span> B</b></span>
-      <span>rate: <b><span id="stat-hz">–</span> Hz</b></span>
+      <span>rate: <b><span id="stat-hz">–</span> FPS</b></span>
       <span>bitrate: <b><span id="stat-bitrate">–</span> kbit/s</b></span>
       <span>delivered: <b><span id="stat-delivered">–</span></b> / dropped: <b><span id="stat-dropped">–</span></b></span>
     </div>
+    <p class="compare" id="stat-compare">&nbsp;</p>
 
     <div class="presets">
       <span class="presets-label">Connection:</span>
@@ -132,7 +142,7 @@
         <input id="jitter" type="range" min="0" max="300" step="5" value="0" />
       </div>
       <div class="ctl">
-        <label for="rate">Send rate — <output id="rate-out">30 Hz</output></label>
+        <label for="rate">Send rate — <output id="rate-out">30 FPS</output></label>
         <input id="rate" type="range" min="5" max="60" step="5" value="30" />
       </div>
       <div class="ctl file">
@@ -142,6 +152,14 @@
         <span class="note" id="vrm-note">Optional. Built-in stick figure is used by default. Nothing is uploaded.</span>
       </div>
     </div>
+
+    <p class="explainer">
+      <b>Send rate</b> is how many pose frames leave the sender each second (FPS).
+      Spec tiers: <b>30 FPS</b> (FULL) looks smooth; <b>15 FPS</b> (NORMAL) still looks
+      fine because the receiver interpolates between frames; <b>5 FPS</b> (MINIMAL) is the
+      readable floor. 15 FPS and up is a good experience — going higher mostly costs
+      bandwidth for little visible gain. (The spec calls this rate in Hz; it's the same number.)
+    </p>
 
     <footer>
       <h2>Thanks to the projects this demo stands on</h2>
