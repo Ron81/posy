@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/Ron81/posy/actions/workflows/ci.yml/badge.svg)](https://github.com/Ron81/posy/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-![Spec: 1.0-draft](https://img.shields.io/badge/spec-1.0--draft-orange.svg)
+![Spec: 1.0.0](https://img.shields.io/badge/spec-1.0.0-brightgreen.svg)
 
 Posy (**Po**se **Sy**nchronization) is an open, compact protocol for syncing humanoid avatar poses between lots of people in real time. It's built for WebRTC data channels. A typical upper-body frame with fingers and face is ~116 bytes — roughly 70× smaller than VMC — so a whole room can move at once without anybody's upload crying.
 
@@ -108,7 +108,7 @@ If the spec, the reference code and the test vectors ever disagree, **the spec w
 
 ## Status
 
-**1.0.0** — packet format frozen, signaling layer (§2) may still change. 
+**1.0.0** — released; packet format (§5) and signaling (§2) are frozen for the 1.x line. 
 Other-language implementations (Rust, C#, Python, …) are very welcome — please open a PR adding a link here.
 
 ## But why?

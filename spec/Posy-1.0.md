@@ -1,6 +1,6 @@
 # POSY — Pose Synchronization
-**Version:** 1.0 (draft)
-**Status:** Implementable draft
+**Version:** 1.0.0
+**Status:** Released — packet format (§5) and signaling (§2) frozen for 1.x
 **Channel label:** `avatar-pose`
 **Channel protocol string:** `posy/1`
 
@@ -58,6 +58,9 @@ exist for session control. All control messages in §2 travel there as UTF-8 JSO
 ---
 
 ## 2. Session Layer
+
+> **Frozen as of 1.0.0.** The message set and semantics in §2 are stable for the 1.x line;
+> future 1.x revisions may clarify wording but will not change the wire meaning.
 
 ### 2.1 Join
 
