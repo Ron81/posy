@@ -412,8 +412,9 @@ Receivers MUST compare using modular arithmetic:
 is_newer(a, b) = (int16_t)(a - b) > 0
 ```
 
-Frames older than the newest received frame MUST be discarded. `timestamp_ms` wraps at
-~49.7 days and MUST be compared the same way as `int32_t`.
+Frames older than the newest frame already **released for playout** MUST be discarded;
+frames that arrive out of order while still inside the jitter buffer are reordered by `seq`
+(§8.1). `timestamp_ms` wraps at ~49.7 days and MUST be compared the same way as `int32_t`.
 
 ---
 
