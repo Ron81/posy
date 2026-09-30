@@ -70,9 +70,17 @@ Same maths as spec §6. Viewers are the cheap part: they never send anything, so
 
 Bigger rooms want a cheap VPS, and public ones a hosted SFU (mediasoup does data-channel forwarding natively). A ready-made example server is planned as a separate repo.
 
-## Try it in 2 minutes *(planned)*
+## Try it in 2 minutes
 
-A no-server loopback demo (`examples/loopback-demo`) is planned — it will encode a pose, decode it again and drive an avatar, all locally. Not in the repo yet.
+A no-server loopback demo lives in [`examples/loopback-demo`]. It animates a pose, `encode()`s it to Posy bytes, sends it through a fake channel with packet-loss and jitter sliders, `decode()`s it and drives two avatars side by side — the sender and what actually survived the trip. All local, all in the browser.
+
+```sh
+cd examples/loopback-demo
+npm install
+npm start
+```
+
+A stick figure works out of the box; you can also load your own `.vrm`. Nothing is uploaded anywhere.
 
 ## Implement it
 
@@ -94,7 +102,7 @@ If the spec, the reference code and the test vectors ever disagree, **the spec w
 | [`docs/`] | The interactive site (static, no build step) |
 | [`FAQ.md`] | Why things are the way they are |
 | [`CHANGELOG.md`] | What changed |
-| `examples/` | *(planned)* Runnable demos |
+| [`examples/`] | Runnable demos — start with the loopback demo |
 
 ## Status
 

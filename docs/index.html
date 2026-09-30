@@ -483,9 +483,9 @@ npm install &amp;&amp; npm start</pre>
       </div>
       <div class="stack" style="--sp:20px">
         <div class="step"><h3>1. Read the normative core</h3><p>Start with §3 (coordinates), §4 (bones) and §5 (packets) of <code>Posy-1.0.md</code> — that's the part every conformant implementation must agree on.</p></div>
-        <div class="step"><h3>2. Try the loopback demo (planned)</h3><p>Zero infrastructure: encode → decode → render locally, no server or signup required. Once published it becomes the README's demo GIF.</p></div>
-        <div class="step"><h3>3. Validate against test vectors (planned)</h3><p>Decode each <code>.bin</code> fixture, diff against its <code>.json</code>, reject the ones marked <code>expect: reject</code>. That's conformance.</p></div>
-        <div class="step"><h3>4. Grab the reference encoder/decoder (planned)</h3><p><code>reference/js</code> will ship a small, dependency-free TS implementation — read it, fork it, or just use it as a spec cross-check.</p></div>
+        <div class="step"><h3>2. Try the loopback demo</h3><p>Zero infrastructure: <code>examples/loopback-demo</code> animates a pose, encodes it, runs it through a lossy channel and renders sender vs. receiver side by side. <code>npm install &amp;&amp; npm start</code> and watch it move.</p></div>
+        <div class="step"><h3>3. Validate against test vectors</h3><p>Decode each <code>.bin</code> fixture, diff against its <code>.json</code>, reject the ones marked <code>expect: reject</code>. That's conformance.</p></div>
+        <div class="step"><h3>4. Grab the reference encoder/decoder</h3><p><code>reference/js</code> is a small, dependency-free TS implementation — read it, fork it, or just use it as a spec cross-check.</p></div>
       </div>
     </div>
   </div>
