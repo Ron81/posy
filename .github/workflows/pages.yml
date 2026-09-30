@@ -32,7 +32,7 @@ jobs:
 
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: examples/loopback-demo/package-lock.json
 
@@ -53,6 +53,9 @@ jobs:
           mkdir -p _site/demo
           cp -r examples/loopback-demo/dist/. _site/demo/
 
+      # Note: this action bundles actions/upload-artifact internally, which still
+      # logs a Node 20 deprecation warning. That is upstream in GitHub's action,
+      # not something node-version above controls; harmless until they ship a newer major.
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
