@@ -48,17 +48,27 @@ One thing that trips people up: **the face doesn't travel as bones.** Blinks, mo
 
 ## How much bandwidth does it eat?
 
-Each person with active mocap uploads **one** stream — about 40 kbit/s at 30 Hz, 20 kbit/s at 15 Hz, 6.6 kbit/s at 5 Hz (including ~50 B of transport overhead). 
-The thing that actually scales is what the routing peer has to push back out:
+**Almost nothing on your end — and that never changes with room size.** Each person uploads exactly one small stream of their own pose, no matter how many people are in the room:
 
-| Room | Routing peer upload |
+| Your tracking (at 30 Hz) | Your upload |
 |---|---|
-| 1 performer (30 Hz) + 49 receive-only viewers | ≈ 2 Mbit/s |
-| 5 performers (30 Hz) + 45 viewers | ≈ 9.8 Mbit/s |
-| 50 people, everyone sending at 15 Hz | ≈ 49 Mbit/s |
-| 50 people, everyone sending at 30 Hz | ≈ 98 Mbit/s |
+| Face only | ≈ 20 kbit/s |
+| Upper body + fingers + face | ≈ 40 kbit/s |
+| Full body | ≈ 48 kbit/s |
 
-Same maths as spec §6. Viewers are the cheap part: they never send anything, so they cost themselves almost nothing.
+That's smaller than the voice call riding alongside it. Drop to 15 Hz and it roughly halves.
+
+The part that actually grows with the crowd is what the **routing peer** (the host) has to forward back out to everyone. A few real rooms:
+
+| Room | What the host forwards |
+|---|---|
+| **Classic 1:1** — two VTubers, upper-body tracking | ≈ 0.08 Mbit/s |
+| **Round of 8 friends** — 2 full-body, 4 upper-body, 2 face-only | ≈ 2 Mbit/s |
+| **Big party** — 5 full-body, 20 upper-body, 25 just watching | ≈ 51 Mbit/s |
+
+So a friends-sized room is nothing — any home connection hosts it. Only once you get to a real crowd does the host want a proper uplink; viewers who only watch cost almost nothing, since they never send.
+
+Want your own numbers? The [interactive bandwidth calculator](https://ron81.github.io/posy/#bandwidth) lets you dial the room size and rate tiers and watch the totals move. (Same maths as spec §6.)
 
 ## Host it yourself
 
@@ -111,9 +121,27 @@ If the spec, the reference code and the test vectors ever disagree, **the spec w
 **1.0.0** — released; packet format (§5) and signaling (§2) are frozen for the 1.x line. 
 Other-language implementations (Rust, C#, Python, …) are very welcome — please open a PR adding a link here.
 
+## Thanks — standing on a lot of shoulders
+
+Posy is small on purpose. I didn't reinvent anything I could just borrow, so honestly this whole thing only exists because other people did the hard work first and shared it openly.
+
+Huge thank you to:
+
+- **[VRM](https://vrm.dev/) (@pixiv & the VRM Consortium)** — for making and keeping humanoid avatars an actually open standard. Posy's bones and expressions just speak VRM 1.0 natively, no translation needed. The fact that avatars *can* be open like this is a big reason any of this works.
+
+- **ARKit blendshapes** — for that 52-name facial vocabulary everyone uses now. I reused it verbatim for the Perfect-Sync face block, so it just drops straight in. Boring in the best way.
+
+- **The folks behind the [VMC protocol](https://protocol.vmc.info/)** — you already nailed local pose streaming. Posy is really just asking "what if we did that VMC thing, but with a bunch of friends over the internet?" Thanks for the blueprint and the inspiration — hope you don't mind me borrowing your idea ;)
+
+- **WebRTC** — for unordered, zero-retransmit data channels. Which turns out to be *exactly* what you want when a late mocap frame is a useless mocap frame. Thanks to everyone who builds and maintains that unglamorous plumbing.
+
+- **[XR Animator](https://github.com/ButzYung/SystemAnimatorOnline) by ButzYung** — this one is special. Free, open, webcam-only AI mocap for full body, face, and hands, driving VRM/MMD avatars live. And maintained with crazy dedication for years. It's genuinely the gold standard for accessible VTuber mocap.
+
+Seriously, thank you all.
+
 ## But why?
 
-I love the VMC protocol, its awesome for its intended use, but it's fundamentally a local-machine protocol. 
+That VMC nod above deserves the full story. I love the VMC protocol, its awesome for its intended use, but it's fundamentally a local-machine protocol. 
 What I needed / wanted was lightweight pose sync over the internet that doesn't break with multiple users. 
 The ones that already do this or lets say most likely do have a own protocol (e.g Vupechat or VRChat) are closed source.
 So here we are...
