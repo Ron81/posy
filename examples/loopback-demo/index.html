@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Posy loopback demo</title>
+    <style>
+      :root {
+        --bg: #12131a;
+        --panel: #1b1d27;
+        --ink: #e7e9f0;
+        --muted: #9aa0b4;
+        --line: #2b2e3c;
+        --accent: #7dd3fc;
+        --warn: #fca5a5;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+      }
+      header {
+        padding: 20px 24px 8px;
+      }
+      header h1 { margin: 0 0 4px; font-size: 20px; }
+      header p { margin: 0; color: var(--muted); max-width: 70ch; }
+      .stage {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1px;
+        background: var(--line);
+        margin: 16px 0;
+      }
+      .panel { background: var(--panel); position: relative; }
+      .panel canvas { display: block; width: 100%; height: 46vh; }
+      .panel .tag {
+        position: absolute; top: 10px; left: 12px;
+        font: 600 12px/1 var(--mono);
+        letter-spacing: 0.04em; text-transform: uppercase;
+        color: var(--muted);
+      }
+      .controls {
+        display: flex; flex-wrap: wrap; gap: 28px;
+        padding: 4px 24px 20px; align-items: flex-end;
+      }
+      .ctl { display: flex; flex-direction: column; gap: 4px; min-width: 180px; }
+      .ctl label { font-size: 13px; color: var(--muted); }
+      .ctl output { font: 600 14px var(--mono); color: var(--accent); }
+      input[type="range"] { width: 100%; accent-color: var(--accent); }
+      .stats {
+        display: flex; gap: 28px; flex-wrap: wrap;
+        padding: 0 24px 8px; font: 13px var(--mono); color: var(--muted);
+      }
+      .stats b { color: var(--ink); font-weight: 600; }
+      .file button, .file label.fake {
+        display: inline-block; cursor: pointer;
+        background: #242736; color: var(--ink);
+        border: 1px solid var(--line); border-radius: 8px;
+        padding: 8px 12px; font-size: 13px;
+      }
+      .file input { display: none; }
+      .file .note { color: var(--muted); font-size: 12px; margin-top: 4px; }
+      footer {
+        border-top: 1px solid var(--line);
+        margin-top: 8px; padding: 20px 24px 40px; color: var(--muted);
+      }
+      footer h2 { font-size: 15px; color: var(--ink); margin: 0 0 10px; }
+      footer .thanks { display: grid; gap: 14px; max-width: 80ch; }
+      footer .thanks p { margin: 0; }
+      footer a { color: var(--accent); }
+      code { font-family: var(--mono); color: var(--ink); }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Posy loopback demo</h1>
+      <p>
+        A pose is generated, <code>encode()</code>d to Posy wire bytes, pushed through a
+        simulated lossy channel, then <code>decode()</code>d and rendered. No server, no signup —
+        everything runs in this tab. Turn up loss and jitter and watch the right-hand avatar suffer.
+      </p>
+    </header>
+
+    <div class="stage">
+      <div class="panel">
+        <span class="tag">sender · ground truth</span>
+        <canvas id="sender"></canvas>
+      </div>
+      <div class="panel">
+        <span class="tag">receiver · after the channel</span>
+        <canvas id="receiver"></canvas>
+      </div>
+    </div>
+
+    <div class="stats">
+      <span>frame: <b><span id="stat-bytes">–</span> B</b></span>
+      <span>rate: <b><span id="stat-hz">–</span> Hz</b></span>
+      <span>bitrate: <b><span id="stat-bitrate">–</span> kbit/s</b></span>
+      <span>delivered: <b><span id="stat-delivered">–</span></b> / dropped: <b><span id="stat-dropped">–</span></b></span>
+    </div>
+
+    <div class="controls">
+      <div class="ctl">
+        <label for="loss">Packet loss — <output id="loss-out">0%</output></label>
+        <input id="loss" type="range" min="0" max="80" step="1" value="0" />
+      </div>
+      <div class="ctl">
+        <label for="jitter">Jitter — <output id="jitter-out">0 ms</output></label>
+        <input id="jitter" type="range" min="0" max="300" step="5" value="0" />
+      </div>
+      <div class="ctl">
+        <label for="rate">Send rate — <output id="rate-out">30 Hz</output></label>
+        <input id="rate" type="range" min="5" max="60" step="5" value="30" />
+      </div>
+      <div class="ctl file">
+        <label class="fake" for="vrm">Load your own .vrm…</label>
+        <input id="vrm" type="file" accept=".vrm,model/gltf-binary" />
+        <span class="note" id="vrm-note">Optional. Built-in stick figure is used by default. Nothing is uploaded.</span>
+      </div>
+    </div>
+
+    <footer>
+      <h2>Thanks to the projects this demo stands on</h2>
+      <div class="thanks">
+        <p>
+          <a href="https://threejs.org/" target="_blank" rel="noopener"><b>three.js</b></a> —
+          does all the 3D heavy lifting here: scenes, cameras, the WebGL renderer, and the quaternion
+          maths we lean on when applying decoded rotations. It's the backbone of basically all 3D on
+          the open web, and a from-scratch mocap toy like this simply wouldn't come together in a
+          weekend without it. Thank you for keeping something this powerful free and readable.
+        </p>
+        <p>
+          <a href="https://github.com/pixiv/three-vrm" target="_blank" rel="noopener"><b>@pixiv/three-vrm</b></a> —
+          makes VRM avatars first-class citizens in three.js: humanoid bone mapping, expressions, the
+          whole rig. When you load your own <code>.vrm</code> above, this is what brings it to life.
+          pixiv open-sourcing the VRM tooling is a big part of why indie VTubing is something a hobbyist
+          can actually reach — genuinely grateful that it exists and that it's open.
+        </p>
+        <p>
+          And of course VRM itself, and the broader VTuber / mocap community whose formats and habits
+          this protocol tries to fit into rather than fight.
+        </p>
+      </div>
+    </footer>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
