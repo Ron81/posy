@@ -135,9 +135,7 @@ Huge thank you to:
 
 - **WebRTC** — for unordered, zero-retransmit data channels. Which turns out to be *exactly* what you want when a late mocap frame is a useless mocap frame. Thanks to everyone who builds and maintains that unglamorous plumbing.
 
-- **[XR Animator](https://github.com/ButzYung/SystemAnimatorOnline) by ButzYung** — this one is special. Free, open, webcam-only AI mocap for full body, face, and hands, driving VRM/MMD avatars live. And maintained with crazy dedication for years. It's genuinely the gold standard for accessible VTuber mocap.
-
-Seriously, thank you all.
+- **[XR Animator](https://github.com/ButzYung/SystemAnimatorOnline) by ButzYung** — Free, open, webcam-only AI mocap for full body, face, and hands, driving VRM/MMD avatars live. And maintained with crazy dedication for years. It's genuinely the gold standard for accessible VTuber mocap. Just awesome!
 
 ## But why?
 
