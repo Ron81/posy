@@ -1,6 +1,6 @@
 # POSY — Pose Synchronization
-**Version:** 1.0.0
-**Status:** Released — packet format (§5) and signaling (§2) frozen for 1.x
+**Version:** 1.0.5
+**Status:** Released — packet format (§5) frozen for 1.x; signaling (§2) frozen except the additive `transport` field (1.0.5)
 **Channel label:** `avatar-pose`
 **Channel protocol string:** `posy/1`
 
@@ -30,7 +30,7 @@ physics, props, scene state.
 
 ### 1.1 Media and data
 - Voice MUST use standard WebRTC Opus audio tracks. Posy does not define audio.
-- Pose data MUST use a WebRTC (SCTP) data channel configured as:
+- Pose data SHOULD use a WebRTC (SCTP) data channel configured as:
 
 ```js
 pc.createDataChannel("avatar-pose", {
@@ -40,10 +40,41 @@ pc.createDataChannel("avatar-pose", {
 });
 ```
 
+  This is the primary transport: its unordered, zero-retransmit delivery matches the
+  protocol's premise that a late pose frame is useless.
 - A lost pose frame MUST NOT be retransmitted. Late frames are useless by definition.
 - Every pose frame MUST fit in a single datagram. Implementations MUST NOT emit a
   pose frame larger than 1100 bytes. v1 frames are ≤ 200 bytes, so fragmentation
   never occurs.
+
+#### WebSocket fallback transport
+
+Where a deployment cannot provide the primary SCTP lane — typically a server-relay
+deployment with no native server-side WebRTC — pose frames MAY instead be carried over a
+reliable WebSocket. The negotiated lane is declared in the `hello`/`session` handshake (§2.1);
+a reliable WebSocket has no `protocol`-string negotiation equivalent to an `RTCDataChannel`,
+so the handshake is the point at which the transport is agreed. The binary packet format (§5)
+is byte-for-byte identical on either lane.
+
+A WebSocket is reliable and ordered, which is at odds with the pose lane's loss-tolerant,
+latest-wins design. "MUST NOT retransmit" (above) is a **Posy-layer** rule: Posy never
+retransmits a pose frame. It does not require the transport to be lossy. The mismatch is
+reconciled as follows:
+
+- **Sender.** On the WebSocket lane the sender SHOULD bound its send buffer and **drop**
+  (not enqueue) a new pose frame while the socket's `bufferedAmount` exceeds a small
+  threshold of roughly one to two frames. This re-creates zero-retransmit semantics at the
+  application layer and keeps TCP from backing up a queue of stale frames.
+- **Receiver.** Stale frames are discarded exactly as on the SCTP lane: a frame older than
+  the newest already released for playout is dropped (§5.7), and the jitter buffer (§8.1)
+  handles the rest. No receiver change is needed.
+- **Cost.** TCP head-of-line blocking can still delay a fresh frame behind an older one in
+  flight; the receiver drops the stale frame but the fresh one may arrive late. This is the
+  accepted cost of the fallback — latency-critical paths SHOULD use the SCTP lane.
+
+The single-datagram / 1100-byte rule above applies on both lanes; the ≤ 200-byte v1 frame
+ceiling still holds. On the WebSocket lane each frame is carried as a single binary WebSocket
+message.
 
 ### 1.2 Topology
 The topology is **client–server**, never peer-to-peer mesh. All pose frames travel
@@ -53,14 +84,19 @@ rate-tiering a pure frame-drop operation).
 
 ### 1.3 Signaling channel
 A separate **reliable, ordered** channel (WebSocket or a reliable data channel) MUST
-exist for session control. All control messages in §2 travel there as UTF-8 JSON.
+exist for session control. All control messages in §2 travel there as UTF-8 JSON. When the
+WebSocket fallback transport (§1.1) is in use, pose frames and this signaling channel MAY
+share the same WebSocket connection — distinguished by frame type (binary pose frames vs.
+UTF-8 JSON control messages) — or use separate WebSocket connections; both are conformant.
 
 ---
 
 ## 2. Session Layer
 
 > **Frozen as of 1.0.0.** The message set and semantics in §2 are stable for the 1.x line;
-> future 1.x revisions may clarify wording but will not change the wire meaning.
+> future 1.x revisions may clarify wording but will not change the wire meaning. The one
+> additive exception is the optional `transport` field (§2.1), introduced in 1.0.5: it is
+> backward-compatible — a message that omits it is interpreted exactly as before.
 
 ### 2.1 Join
 
@@ -70,6 +106,7 @@ Client → Server:
   "uid": "u_8f31",
   "token": "<opaque auth token>",
   "protocol": "posy/1",
+  "transport": "sctp",
   "caps": { "perfect_sync": true, "max_rate_hz": 30, "fingers": true } }
 ```
 
@@ -78,12 +115,24 @@ Server → Client:
 { "t": "session",
   "session_id": "r_412",
   "epoch_unix_ms": 1730900000000,
+  "transport": "sctp",
   "playspace": { "w": 1920, "h": 1080 },
   "allowed": ["bones", "fingers", "expressions", "root", "perfect_sync"],
   "tiers": { "FULL": 30, "NORMAL": 15, "MINIMAL": 5 },
   "default_tier": "NORMAL" }
 ```
 
+- `transport` (optional, added in 1.0.5) is the pose-frame transport lane:
+  `"sctp"` | `"websocket"`. The client states the lane it is using in `hello`; the server
+  confirms the lane it accepted in `session`. Transport is a connection property, kept
+  separate from `caps` (which describes producer capabilities). When absent on a message,
+  that message's lane is `"sctp"` — the 1.0.0 default — so pre-1.0.5 peers interoperate
+  unchanged. Because a WebSocket has no `protocol`-string negotiation, this handshake is where
+  the WebSocket lane is agreed. The `transport` value the server returns in `session` is
+  **authoritative**: the client MUST use the confirmed lane. If the server cannot provide the
+  requested lane, it either confirms a lane it does support in `session` (which the client
+  then uses) or, if none is available, rejects the join with an `UNSUPPORTED_TRANSPORT` error
+  (§2.5).
 - `allowed` is the authoritative list of permitted data types. A client MUST NOT set
   a flag bit for a type not present in `allowed`.
 - The server MAY re-send `session` at any time to change authorization or playspace.
@@ -161,6 +210,7 @@ Senders MUST NOT exceed the granted `hz` (tolerance +10%).
 | `UNAUTHORIZED_TYPE` | Flag set for a type not in `allowed` | Drop frame, count |
 | `MALFORMED_THRESHOLD` | > 30 invalid frames in 10 s | Stop forwarding until reconnect |
 | `RATE_EXCEEDED` | Sender > granted hz for > 5 s | Drop excess frames |
+| `UNSUPPORTED_TRANSPORT` | Requested `transport` lane not available and no alternative offered | Reject at join |
 
 Error handling is **server-enforced, not sender-negotiated**. Receivers MUST NOT
 validate packets beyond a length check — they only ever see server-validated frames.
@@ -435,6 +485,9 @@ expressions          18 B
 ```
 
 Perfect-Sync frame = 152 B. Add ~50 B UDP+DTLS+SCTP overhead ⇒ ~166 B / ~202 B on wire.
+On the WebSocket fallback lane (§1.1) the per-frame overhead differs — a WebSocket binary
+frame adds a small header (2–14 B) over TCP/TLS rather than UDP/DTLS/SCTP — but the figures
+below are the right order of magnitude for either lane.
 
 | Tier | Hz | On-wire per stream |
 |---|---|---|
@@ -507,7 +560,10 @@ track is muted or absent.
 ## 9. Versioning and Extensibility
 
 - The **major** version lives in the channel `protocol` string (`posy/1`). Incompatible
-  versions therefore fail at channel negotiation, not at packet parse time.
+  versions therefore fail at channel negotiation, not at packet parse time. On the WebSocket
+  fallback lane (§1.1), which has no `RTCDataChannel`-style `protocol` string, the major
+  version is carried by `protocol` in the `hello` handshake (§2.1) instead, and a mismatch is
+  answered with a `BAD_VERSION` error.
 - The `version` byte carries the **minor** revision within a major version. Receivers
   MUST accept any minor version with `version >> 4 == 0` for v1.x and MUST ignore
   unknown flag bits and unknown `bone_mask` bits.
@@ -626,4 +682,7 @@ a canned animation) is a valid sender.
 
 **SFU requirements.** Any SFU may be used. It MUST support per-producer data-channel
 forwarding, per-subscriber frame dropping, and the signaling messages of §2. 
-mediasoup satisfies this natively; the protocol does not depend on it.
+mediasoup satisfies this natively; the protocol does not depend on it. A server-relay
+deployment that cannot provide native server-side WebRTC MAY instead relay pose frames over
+the WebSocket fallback lane (§1.1); the same per-producer forwarding and per-subscriber
+dropping rules apply, and the server still MUST NOT modify forwarded frame bytes (§1.2).

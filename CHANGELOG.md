@@ -3,6 +3,30 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
+## [1.0.5] - 2026-10-02
+
+Adds a WebSocket fallback transport. No change to the binary packet format (§5) — pose frames
+are byte-for-byte identical on either lane — so the `posy-protocol` codec is unchanged; the
+version bump signals that the package tracks the spec.
+
+### Added
+- Spec §1.1: a reliable-WebSocket fallback transport for pose frames, for server-relay
+  deployments where native server-side WebRTC is unavailable. The SCTP data channel remains
+  the primary lane (SHOULD); the WebSocket lane is a documented fallback (MAY).
+- Spec §2.1 and `schemas/signaling.schema.json`: an optional `transport` field
+  (`"sctp"` | `"websocket"`) on `hello` and `session`, so the negotiated lane is explicit on
+  both sides. It is backward-compatible — a message that omits it is read as `"sctp"`, the
+  1.0.0 default.
+
+### Changed
+- Spec §1.1 relaxes "pose data MUST use a WebRTC (SCTP) data channel" to SHOULD, with the
+  WebSocket lane as the sanctioned alternative. Reconciles the reliable/ordered WebSocket with
+  the loss-tolerant pose stream: "MUST NOT retransmit" is clarified as a Posy-layer rule, and
+  the sender SHOULD drop (not enqueue) frames while the WebSocket send buffer is backed up.
+- Spec §9 notes that the major version travels in the `hello` handshake on the WebSocket lane,
+  which has no `RTCDataChannel` protocol-string negotiation.
+- README: trimmed one entry from the acknowledgments section.
+
 ## [1.0.0] - 2026-09-30
 
 First released version. Packet format (§5) and signaling (§2) are frozen for the 1.x line.

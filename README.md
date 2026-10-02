@@ -4,12 +4,12 @@
 
 [![CI](https://github.com/Ron81/posy/actions/workflows/ci.yml/badge.svg)](https://github.com/Ron81/posy/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-![Spec: 1.0.0](https://img.shields.io/badge/spec-1.0.0-brightgreen.svg)
+![Spec: 1.0.5](https://img.shields.io/badge/spec-1.0.5-brightgreen.svg)
 
-Posy (**Po**se **Sy**nchronization) is an open, compact protocol for syncing humanoid avatar poses between lots of people in real time. It's built for WebRTC data channels. A typical upper-body frame with fingers and face is ~116 bytes — roughly 70× smaller than VMC — so a whole room can move at once without anybody's upload crying.
+Posy (**Po**se **Sy**nchronization) is an open, compact protocol for syncing humanoid avatar poses between lots of people in real time. It's built for WebRTC data channels, with a reliable-WebSocket fallback for relay setups that can't do server-side WebRTC. A typical upper-body frame with fingers and face is ~116 bytes — roughly 70× smaller than VMC — so a whole room can move at once without anybody's upload crying.
 
 ---> 🧪 **Try out the [interactive site](https://ron81.github.io/posy/)** <---
-It lets you build a frame byte by byte, play with the **[bandwidth calculator](https://ron81.github.io/posy/#bandwidth)** and browse the tables. Or try the **[loopback demo](https://ron81.github.io/posy/demo/)** to watch how a avatar looks on different connections from premium Fibre to the last copper cable, in a cave, at the end of the world.
+It lets you build a frame byte by byte, play with the **[bandwidth calculator](https://ron81.github.io/posy/#bandwidth)** and browse the tables. Or try the **[loopback demo](https://ron81.github.io/posy/demo/)** to watch how an avatar looks on different connections from premium Fibre to the last copper cable, in a cave, at the end of the world.
 
 ## Is this for me?
 
@@ -27,7 +27,7 @@ It lets you build a frame byte by byte, play with the **[bandwidth calculator](h
                                     or a hosted SFU)
 ```
 
-- Pose rides an **unordered, zero-retransmit** data channel — label `avatar-pose`, protocol `posy/1`. A late frame is a useless frame, so nothing is ever resent.
+- Pose rides an **unordered, zero-retransmit** data channel — label `avatar-pose`, protocol `posy/1`. A late frame is a useless frame, so nothing is ever resent. (A reliable WebSocket can stand in where server-side WebRTC isn't available — same frames, same "drop don't resend" rule, see spec §1.1.)
 - Every frame is **self-contained**. Losing one is fine; dropping one to save bandwidth is always safe.
 - Rotations are VRM 1.0 normalized-space quaternions, packed **smallest-three into 4 bytes** each.
 - The routing peer only forwards or drops frames — it never rewrites bytes. That's what keeps the job light enough to run at home.
@@ -118,7 +118,7 @@ If the spec, the reference code and the test vectors ever disagree, **the spec w
 
 ## Status
 
-**1.0.0** — released; packet format (§5) and signaling (§2) are frozen for the 1.x line. 
+**1.0.5** — released; packet format (§5) is frozen for the 1.x line, and signaling (§2) is frozen apart from the optional `transport` field added in 1.0.5 (which older peers can simply ignore). 
 Other-language implementations (Rust, C#, Python, …) are very welcome — please open a PR adding a link here.
 
 ## Thanks — standing on a lot of shoulders
@@ -134,8 +134,6 @@ Huge thank you to:
 - **The folks behind the [VMC protocol](https://protocol.vmc.info/)** — you already nailed local pose streaming. Posy is really just asking "what if we did that VMC thing, but with a bunch of friends over the internet?" Thanks for the blueprint and the inspiration — hope you don't mind me borrowing your idea ;)
 
 - **WebRTC** — for unordered, zero-retransmit data channels. Which turns out to be *exactly* what you want when a late mocap frame is a useless mocap frame. Thanks to everyone who builds and maintains that unglamorous plumbing.
-
-- **[XR Animator](https://github.com/ButzYung/SystemAnimatorOnline) by ButzYung** — Free, open, webcam-only AI mocap for full body, face, and hands, driving VRM/MMD avatars live. And maintained with crazy dedication for years. It's genuinely the gold standard for accessible VTuber mocap. Just awesome!
 
 ## But why?
 

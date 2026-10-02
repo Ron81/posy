@@ -18,6 +18,10 @@
       "description": "Rate tier. Frequencies come from the 'tiers' map of the session message (spec example: FULL 30 Hz, NORMAL 15 Hz, MINIMAL 5 Hz). OFF stops forwarding.",
       "enum": ["FULL", "NORMAL", "MINIMAL", "OFF"]
     },
+    "transport": {
+      "description": "Pose-frame transport lane (spec §1.1, added in 1.0.5). 'sctp' is the primary WebRTC data channel; 'websocket' is the reliable-WebSocket fallback for server-relay deployments without native server-side WebRTC. Optional and backward-compatible: when absent on a message, that message's lane defaults to 'sctp' (the 1.0.0 default). The client states its lane in hello; the server confirms the authoritative accepted lane in session.",
+      "enum": ["sctp", "websocket"]
+    },
     "uid": {
       "description": "Opaque user identifier, e.g. \"u_8f31\".",
       "type": "string",
@@ -33,6 +37,7 @@
         "uid": { "$ref": "#/$defs/uid" },
         "token": { "type": "string", "description": "Authentication token. May be an empty string if the server does not require one." },
         "protocol": { "type": "string", "pattern": "^posy/[0-9]+$", "description": "Channel protocol string, \"posy/1\" for this version. A mismatching major version is answered with a BAD_VERSION error, so the schema only checks the shape." },
+        "transport": { "$ref": "#/$defs/transport" },
         "caps": {
           "type": "object",
           "required": ["perfect_sync", "max_rate_hz", "fingers"],
@@ -45,7 +50,7 @@
         }
       },
       "examples": [
-        { "t": "hello", "uid": "u_8f31", "token": "", "protocol": "posy/1", "caps": { "perfect_sync": true, "max_rate_hz": 30, "fingers": true } }
+        { "t": "hello", "uid": "u_8f31", "token": "", "protocol": "posy/1", "transport": "sctp", "caps": { "perfect_sync": true, "max_rate_hz": 30, "fingers": true } }
       ]
     },
     "session": {
@@ -57,6 +62,7 @@
         "t": { "const": "session" },
         "session_id": { "type": "string", "minLength": 1 },
         "epoch_unix_ms": { "type": "integer", "minimum": 0, "description": "Session epoch; timestamp_ms in pose frames counts from here." },
+        "transport": { "$ref": "#/$defs/transport" },
         "playspace": {
           "type": "object",
           "required": ["w", "h"],
@@ -89,6 +95,7 @@
           "t": "session",
           "session_id": "r_412",
           "epoch_unix_ms": 1730900000000,
+          "transport": "sctp",
           "playspace": { "w": 1920, "h": 1080 },
           "allowed": ["bones", "fingers", "expressions", "root", "perfect_sync"],
           "tiers": { "FULL": 30, "NORMAL": 15, "MINIMAL": 5 },
@@ -175,7 +182,7 @@
       "additionalProperties": false,
       "properties": {
         "t": { "const": "error" },
-        "code": { "enum": ["BAD_VERSION", "UNAUTHORIZED_TYPE", "MALFORMED_THRESHOLD", "RATE_EXCEEDED"] },
+        "code": { "enum": ["BAD_VERSION", "UNAUTHORIZED_TYPE", "MALFORMED_THRESHOLD", "RATE_EXCEEDED", "UNSUPPORTED_TRANSPORT"] },
         "detail": { "type": "string" },
         "action": { "type": "string" }
       },

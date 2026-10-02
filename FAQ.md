@@ -10,6 +10,10 @@ VMC is great, but it's fundamentally a local-machine protocol: one sender, one r
 
 Voice already needs WebRTC for Opus. Reusing the same peer connection for pose means one NAT traversal and one negotiation, plus a data channel you can configure as unordered with zero retransmits — ideal for data where a late frame is worthless.
 
+## What if my relay can't do server-side WebRTC?
+
+Then pose can ride a reliable WebSocket instead (spec §1.1, since 1.0.5). It's a *fallback*, not the preferred path: a WebSocket is reliable and ordered, which is the opposite of what pose streaming wants, so you re-create the "drop, don't resend" behaviour in the sender — stop queueing a frame once the socket is backed up — and you accept that TCP can delay a fresh frame behind an older one. The frames themselves are byte-for-byte identical, and the lane each side is using is stated in the `hello`/`session` handshake. Use it when a server-relay deployment simply can't open a server-side data channel; stick with the SCTP data channel everywhere else.
+
 ## Why drop the largest quaternion component?
 
 A unit quaternion only has 3 degrees of freedom. "Smallest-three" drops the largest component and rebuilds it on the other side with `sqrt(1 − a² − b² − c²)`. That turns 16 bytes (four floats) into 4 bytes (one `u32`) at a worst-case error of roughly a tenth of a degree — far below what any tracker can actually resolve.

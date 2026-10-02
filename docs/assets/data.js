@@ -136,6 +136,8 @@
       a: "VMC is fundamentally a local-machine protocol — one sender, one receiver, same LAN, no real size budget. Posy targets the case VMC was never built for: many participants, ordinary internet connections, one avatar's pose squeezed into a single UDP-sized datagram." },
     { q: 'Why WebRTC data channels specifically?',
       a: 'Voice already needs WebRTC for Opus. Reusing the same peer connection for pose means one NAT traversal, one negotiation, and a data channel that can be configured unordered with zero retransmits — perfect for a payload where a late frame is a useless frame.' },
+    { q: "What if my relay can't do server-side WebRTC?",
+      a: 'Then pose can ride a reliable WebSocket instead (spec §1.1, since 1.0.5) — a fallback, not the preferred path. A WebSocket is reliable and ordered, the opposite of what pose streaming wants, so the sender re-creates "drop, don\'t resend" by not queueing frames once the socket backs up, and you accept that TCP can delay a fresh frame behind an older one. The frames are byte-for-byte identical and the lane each side uses is stated in the hello/session handshake. Use it only where a server-relay deployment can\'t open a server-side data channel.' },
     { q: 'Why drop the largest quaternion component instead of sending all four?',
       a: 'A unit quaternion has 3 degrees of freedom, not 4 — the smallest-three trick reconstructs the dropped component from the other three via sqrt(1 - a² - b² - c²), cutting a quaternion from 16 bytes (four f32) to 4 bytes (one u32) at a worst-case error of ≈ 0.14°, well under tracker noise.' },
     { q: 'Why no delta/keyframe encoding in v1?',
