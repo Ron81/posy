@@ -96,7 +96,7 @@ A stick figure works out of the box; you can also load your own `.vrm`. Nothing 
 
 ## Implement it
 
-1. Read [`spec/Posy-1.0.md`] — §3 (coordinates), §4 (bones) and §5 (packets) are the normative core.
+1. Read [`spec/Posy.md`] — §3 (coordinates), §4 (bones) and §5 (packets) are the normative core.
 2. Validate against [`testvectors/`] — if those pass, you're conformant.
 3. Grab code from [`reference/js/`] freely — or use it as a cross-check for your own.
 

@@ -231,7 +231,7 @@
     <div class="section-head reveal">
       <span class="eyebrow">Packet Lab</span>
       <h2 class="h2">Build a frame, byte by byte</h2>
-      <p class="lead">Everything here runs the real formulas from Posy-1.0.md §5 — toggle flags and bones and watch the frame size, bit layout and bandwidth respond live.</p>
+      <p class="lead">Everything here runs the real formulas from Posy.md §5 — toggle flags and bones and watch the frame size, bit layout and bandwidth respond live.</p>
     </div>
 
     <div class="mt-12" style="display:grid;gap:32px">
@@ -357,7 +357,7 @@
     <div class="section-head reveal">
       <span class="eyebrow">Spec explorer</span>
       <h2 class="h2">The normative core, made browsable</h2>
-      <p class="lead">The full text lives in <code>spec/Posy-1.0.md</code> — this is a navigable view of the tables you'll actually reference while implementing.</p>
+      <p class="lead">The full text lives in <code>spec/Posy.md</code> — this is a navigable view of the tables you'll actually reference while implementing.</p>
     </div>
 
     <div class="tabs mt-10">
@@ -430,11 +430,11 @@ npm install &amp;&amp; npm start</pre>
         </div>
         <div class="row wrap mt-6" style="gap:12px">
           <a class="btn btn-primary btn-sm" href="https://github.com/Ron81/posy" target="_blank" rel="noopener">Open the repo <svg class="ico"><use href="#i-external"/></svg></a>
-          <a class="btn btn-ghost btn-sm" href="https://github.com/Ron81/posy/blob/main/spec/Posy-1.0.md" target="_blank" rel="noopener">Read the spec <svg class="ico"><use href="#i-external"/></svg></a>
+          <a class="btn btn-ghost btn-sm" href="https://github.com/Ron81/posy/blob/main/spec/Posy.md" target="_blank" rel="noopener">Read the spec <svg class="ico"><use href="#i-external"/></svg></a>
         </div>
       </div>
       <div class="stack" style="--sp:20px">
-        <div class="step"><h3>1. Read the normative core</h3><p>Start with §3 (coordinates), §4 (bones) and §5 (packets) of <code>Posy-1.0.md</code> — that's the part every conformant implementation must agree on.</p></div>
+        <div class="step"><h3>1. Read the normative core</h3><p>Start with §3 (coordinates), §4 (bones) and §5 (packets) of <code>Posy.md</code> — that's the part every conformant implementation must agree on.</p></div>
         <div class="step"><h3>2. Try the loopback demo</h3><p>Zero infrastructure: <code>examples/loopback-demo</code> animates a pose, encodes it, runs it through a lossy channel and renders sender vs. receiver side by side. <code>npm install &amp;&amp; npm start</code> and watch it move.</p></div>
         <div class="step"><h3>3. Validate against test vectors</h3><p>Decode each <code>.bin</code> fixture, diff against its <code>.json</code>, reject the ones marked <code>expect: reject</code>. That's conformance.</p></div>
         <div class="step"><h3>4. Grab the reference encoder/decoder</h3><p><code>reference/js</code> is a small, dependency-free TS implementation — read it, fork it, or just use it as a spec cross-check.</p></div>

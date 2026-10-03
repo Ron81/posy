@@ -2,7 +2,7 @@
 
 **How to check an implementation:** decode each `.bin` in `frames/`, compare the result with the matching `.json`, and *reject* the ones marked `"expect": "reject"`. Then check `quaternions.csv`. All green = conformant. That's it.
 
-If a vector ever disagrees with `spec/Posy-1.0.md`, the **spec wins** and the vector gets fixed (open an issue).
+If a vector ever disagrees with `spec/Posy.md`, the **spec wins** and the vector gets fixed (open an issue).
 
 ## `frames/`
 

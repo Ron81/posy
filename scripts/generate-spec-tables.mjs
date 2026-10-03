@@ -13,7 +13,7 @@
  *   node scripts/generate-spec-tables.mjs               write the files
  *   node scripts/generate-spec-tables.mjs --check       exit 1 if any file is out of date (used by CI)
  *   node scripts/generate-spec-tables.mjs --appendix-a  print the Appendix A table (Markdown) to stdout,
- *                                                       ready to paste into spec/Posy-1.0.md
+ *                                                       ready to paste into spec/Posy.md
  *
  * No dependencies. Needs Node 18+.
  */

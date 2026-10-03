@@ -22,4 +22,4 @@ Build and test:
 npm ci && npm test   # builds, then runs the unit tests + test vectors
 ```
 
-The spec is the source of truth: if this code ever disagrees with `spec/Posy-1.0.md`, the spec wins and the code gets fixed.
+The spec is the source of truth: if this code ever disagrees with `spec/Posy.md`, the spec wins and the code gets fixed.

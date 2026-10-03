@@ -164,7 +164,7 @@
   var ROADMAP = [
     { phase: 'Phase 1', title: 'Repo exists publicly', summary: 'The minimum for anyone to read and judge the idea.', items: [
       it('License is Apache-2.0', 'done'),
-      it('Spec lives at spec/Posy-1.0.md', 'done'),
+      it('Spec lives at spec/Posy.md', 'done'),
       it('blendshape-order.json generated programmatically from the sorted ARKit enum', 'done'),
       it('README, FAQ, CONTRIBUTING, issue templates; GitHub topics + Discussions', 'done')
     ] },
@@ -195,7 +195,7 @@
     file('LICENSE', 'live', 'Apache-2.0.'),
     file('CHANGELOG.md', 'live', 'Notable changes to the spec, reference implementation and test vectors.'),
     dir('spec/', 'live', 'The normative spec plus its generated lookup tables.', [
-      file('Posy-1.0.md', 'live', 'The one normative document.'),
+      file('Posy.md', 'live', 'The one normative document.'),
       file('bone-index-table.md', 'live', "§4's table as its own machine-readable file, so tooling doesn't have to scrape prose."),
       file('blendshape-order.json', 'live', 'Appendix A, generated from the sorted ARKit enum — not hand-typed.')
     ]),
