@@ -4,9 +4,9 @@
 
 [![CI](https://github.com/Ron81/posy/actions/workflows/ci.yml/badge.svg)](https://github.com/Ron81/posy/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-![Spec: 1.0.5](https://img.shields.io/badge/spec-1.0.5-brightgreen.svg)
+![Spec: 1.1.0](https://img.shields.io/badge/spec-1.1.0-brightgreen.svg)
 
-Posy (**Po**se **Sy**nchronization) is an open, compact protocol for syncing humanoid avatar poses between lots of people in real time. It's built for WebRTC data channels, with a reliable-WebSocket fallback for relay setups that can't do server-side WebRTC. A typical upper-body frame with fingers and face is ~116 bytes — roughly 70× smaller than VMC — so a whole room can move at once without anybody's upload crying.
+Posy (**Po**se **Sy**nchronization) is an open, compact protocol for syncing humanoid avatar poses between lots of people in real time. It works over WebRTC data channels for direct and browser-to-browser links, and over a reliable WebSocket for server-relay deployments — each transport is the right tool for its deployment context, not a fallback for the other. A typical upper-body frame with fingers and face is ~116 bytes — roughly 70× smaller than VMC — so a whole room can move at once without anybody's upload crying.
 
 ---> 🧪 **Try out the [interactive site](https://ron81.github.io/posy/)** <---
 It lets you build a frame byte by byte, play with the **[bandwidth calculator](https://ron81.github.io/posy/#bandwidth)** and browse the tables. Or try the **[loopback demo](https://ron81.github.io/posy/demo/)** to watch how an avatar looks on different connections from premium Fibre to the last copper cable, in a cave, at the end of the world.
@@ -118,7 +118,7 @@ If the spec, the reference code and the test vectors ever disagree, **the spec w
 
 ## Status
 
-**1.0.5** — released; packet format (§5) is frozen for the 1.x line, and signaling (§2) is frozen apart from the optional `transport` field added in 1.0.5 (which older peers can simply ignore). 
+**1.1.0** — released; packet format (§5) is frozen for the 1.x line, and signaling (§2) is frozen apart from additive fields introduced in 1.0.5–1.1.0 (which older peers can simply ignore). Full-body legs/feet profile, tongue tracking, and receiver-side FK grounding added in 1.1.0.
 Other-language implementations (Rust, C#, Python, …) are very welcome — please open a PR adding a link here.
 
 ## Thanks — standing on a lot of shoulders

@@ -137,9 +137,9 @@
     { q: 'Why WebRTC data channels specifically?',
       a: 'Voice already needs WebRTC for Opus. Reusing the same peer connection for pose means one NAT traversal, one negotiation, and a data channel that can be configured unordered with zero retransmits — perfect for a payload where a late frame is a useless frame.' },
     { q: "What if my relay can't do server-side WebRTC?",
-      a: 'Then pose can ride a reliable WebSocket instead (spec §1.1, since 1.0.5) — a fallback, not the preferred path. A WebSocket is reliable and ordered, the opposite of what pose streaming wants, so the sender re-creates "drop, don\'t resend" by not queueing frames once the socket backs up, and you accept that TCP can delay a fresh frame behind an older one. The frames are byte-for-byte identical and the lane each side uses is stated in the hello/session handshake. Use it only where a server-relay deployment can\'t open a server-side data channel.' },
+      a: 'Pose can ride a reliable WebSocket instead (spec §1.1). WebSocket is the right transport for server-relay deployments — lighter on the server than running a full DTLS/SCTP stack per peer. The trade-off: WebSocket is reliable and ordered, the opposite of what pose streaming wants, so the sender re-creates "drop, don\'t resend" by not queueing frames once the socket backs up. The frames are byte-for-byte identical on either lane; the lane each side uses is declared in the hello/session handshake. WebRTC data channels are the right choice for direct and browser-to-browser links; WebSocket is the right choice when your server is acting as a relay.' },
     { q: 'Why drop the largest quaternion component instead of sending all four?',
-      a: 'A unit quaternion has 3 degrees of freedom, not 4 — the smallest-three trick reconstructs the dropped component from the other three via sqrt(1 - a² - b² - c²), cutting a quaternion from 16 bytes (four f32) to 4 bytes (one u32) at a worst-case error of ≈ 0.14°, well under tracker noise.' },
+      a: 'A unit quaternion has 3 degrees of freedom, not 4 — the smallest-three trick reconstructs the dropped component from the other three via sqrt(1 - a² - b² - c²), cutting a quaternion from 16 bytes (four f32) to 4 bytes (one u32) at a worst-case error of ≈ 0.25°, well under tracker noise.' },
     { q: 'Why no delta/keyframe encoding in v1?',
       a: "It requires reliable resync logic and the bandwidth saving isn't worth it at 116 bytes a frame. It's explicitly deferred to v2 (§11) rather than designed out — v1 just doesn't need it yet." },
     { q: 'Why does everything route through one peer instead of a mesh?',
@@ -179,7 +179,8 @@
       it('Add issue templates + a 15-line CONTRIBUTING.md', 'done')
     ] },
     { phase: 'Phase 4', title: 'Ecosystem', summary: "After 1.0 tags, other people's problems become other people's repos.", items: [
-      it('Tag v1.0.0, freeze §2, add the first real CHANGELOG entry', 'planned'),
+      it('Tag v1.0.0, freeze §2, add the first real CHANGELOG entry', 'done'),
+      it('Tag v1.1.0 — full-body legs/feet profile, tongue tracking, FK grounding, transport reframe', 'done'),
       it('Split out posy-server-example (mediasoup) as its own linked repo', 'planned')
     ] }
   ];

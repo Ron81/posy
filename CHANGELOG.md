@@ -3,6 +3,49 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
+## [1.1.0] - 2026-10-03
+
+Full-body profile (legs/feet), tongue tracking, transport-framing clarification,
+server structural-validation note, handshake-seam note, and housekeeping errata.
+The binary packet format (§5) is unchanged — pose frames are byte-for-byte identical.
+
+### Added
+- Spec §4: Full-body profile definition. When `allowed:["legs"]` is declared, bits
+  9–11 + 13–15 (upper/lower leg + foot) are REQUIRED; bits 12 + 16 (toes) are an
+  OPTIONAL sub-tier. Receivers that do not support the full-body profile MUST still
+  accept frames carrying leg bits.
+- Spec §5.6 Standard-Sync: tongue tracking in the three previously reserved expression
+  slots. Slot 13 = `tongueOut` (0..1), slots 14–15 = `tongueX`/`tongueY` (signed
+  offset binary, −1.0..+127/128). Declared via `allowed:["tongue"]`. Directional
+  tongue is Standard-Sync-only in 1.x.
+- Spec §8.5: normative FK grounding for the full-body profile. Receivers compute heel
+  height from transmitted foot rotations and VRM rig bone lengths, then offset the hips
+  so the lowest heel rests at floor level. Jump/airborne states are out of scope.
+- `schemas/signaling.schema.json`: `"legs"` and `"tongue"` added to the `allowed` enum.
+- Spec §2.1: `"legs"` and `"tongue"` documented in the `allowed` value list; handshake
+  MAY be embedded in an integrator's existing join message.
+- Spec §2.4: a light relay MAY implement only sender-side rate-limiting and whole-frame
+  drop; per-subscriber FULL/NORMAL/MINIMAL/OFF tiering is explicitly OPTIONAL for relays.
+- Spec §3.2: VRM0→VRM1 thumb-remap note (`ThumbMetacarpal`↔`ThumbProximal`) for senders.
+- Spec §5.5: note that per-joint → curl/splay reduction is integration-layer (sender-side)
+  work; per-joint finger bone rotations are intentionally off-wire.
+- Spec §11: `root_height_mm`, profile-conditional `z` semantics, and directional tongue
+  in Perfect-Sync added to the v2 deferred list.
+
+### Changed
+- Spec §1.1: transport framing reworded from "SCTP primary / WebSocket fallback" to
+  role-based language. SCTP = the lane for direct/browser-to-browser links; WebSocket =
+  the lane for server-relay deployments. Neither is described as "the fallback."
+- Spec §1.2: added normative note that a relay MAY structurally validate frames using
+  the §5.1 header (version, length formula, reserved bits, `allowed` subset) without
+  decoding the quaternion payload.
+- Spec §9: removed expression indices 13–15 from the extension-mechanism list; they are
+  now defined (tongue, see §5.6).
+- Spec §11: removed "Leg / full-body tracking as a mandatory profile" from the deferred
+  list; it is now shipped.
+- Spec wording: worst-case quaternion round-trip error corrected to ~0.25° (previously
+  stated as ~0.14°; the lower figure is the identity-tie case only).
+
 ## [1.0.5] - 2026-10-02
 
 Adds a WebSocket fallback transport. No change to the binary packet format (§5) — pose frames

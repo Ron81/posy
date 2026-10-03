@@ -12,7 +12,7 @@ Voice already needs WebRTC for Opus. Reusing the same peer connection for pose m
 
 ## What if my relay can't do server-side WebRTC?
 
-Then pose can ride a reliable WebSocket instead (spec §1.1, since 1.0.5). It's a *fallback*, not the preferred path: a WebSocket is reliable and ordered, which is the opposite of what pose streaming wants, so you re-create the "drop, don't resend" behaviour in the sender — stop queueing a frame once the socket is backed up — and you accept that TCP can delay a fresh frame behind an older one. The frames themselves are byte-for-byte identical, and the lane each side is using is stated in the `hello`/`session` handshake. Use it when a server-relay deployment simply can't open a server-side data channel; stick with the SCTP data channel everywhere else.
+Pose can ride a reliable WebSocket instead (spec §1.1). WebSocket is the right transport for server-relay deployments — it is lighter on the server than running a full DTLS/SCTP stack per peer. The trade-off is that WebSocket is reliable and ordered, which is the opposite of what pose streaming wants, so you re-create the "drop, don't resend" behaviour in the sender: stop queueing a frame once the socket is backed up, so TCP does not delay a fresh frame behind an older one. The frames themselves are byte-for-byte identical on either lane, and the lane each side is using is declared in the `hello`/`session` handshake. WebRTC data channels are the right choice for direct and browser-to-browser links; WebSocket is the right choice when your server is acting as a relay.
 
 ## Why drop the largest quaternion component?
 

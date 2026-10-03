@@ -76,7 +76,7 @@
           "type": "array",
           "uniqueItems": true,
           "description": "Authoritative list of permitted data types. A client MUST NOT set a flag bit for a type not listed here.",
-          "items": { "enum": ["bones", "fingers", "expressions", "root", "perfect_sync"] }
+          "items": { "enum": ["bones", "fingers", "expressions", "root", "perfect_sync", "legs", "tongue"] }
         },
         "tiers": {
           "type": "object",
@@ -97,7 +97,7 @@
           "epoch_unix_ms": 1730900000000,
           "transport": "sctp",
           "playspace": { "w": 1920, "h": 1080 },
-          "allowed": ["bones", "fingers", "expressions", "root", "perfect_sync"],
+          "allowed": ["bones", "fingers", "expressions", "root", "perfect_sync", "legs", "tongue"],
           "tiers": { "FULL": 30, "NORMAL": 15, "MINIMAL": 5 },
           "default_tier": "NORMAL"
         }

@@ -1,6 +1,6 @@
 # POSY — Pose Synchronization
-**Version:** 1.0.5
-**Status:** Released — packet format (§5) frozen for 1.x; signaling (§2) frozen except the additive `transport` field (1.0.5)
+**Version:** 1.1.0
+**Status:** Released — packet format (§5) frozen for 1.x; signaling (§2) frozen except additive fields introduced in 1.0.5–1.1.0
 **Channel label:** `avatar-pose`
 **Channel protocol string:** `posy/1`
 
@@ -30,36 +30,37 @@ physics, props, scene state.
 
 ### 1.1 Media and data
 - Voice MUST use standard WebRTC Opus audio tracks. Posy does not define audio.
-- Pose data SHOULD use a WebRTC (SCTP) data channel configured as:
+- Pose data MAY be carried on either of two transport lanes, depending on deployment:
 
-```js
-pc.createDataChannel("avatar-pose", {
-  ordered: false,
-  maxRetransmits: 0,
-  protocol: "posy/1"
-});
-```
+  **SCTP data channel** — the lane for direct and browser-to-browser links:
+  ```js
+  pc.createDataChannel("avatar-pose", {
+    ordered: false,
+    maxRetransmits: 0,
+    protocol: "posy/1"
+  });
+  ```
+  Its unordered, zero-retransmit delivery matches the protocol's premise that a late
+  pose frame is useless.
 
-  This is the primary transport: its unordered, zero-retransmit delivery matches the
-  protocol's premise that a late pose frame is useless.
+  **WebSocket** — the lane for server-relay deployments. Where a deployment relays pose
+  frames over WebSocket (for example because native server-side WebRTC is unavailable),
+  pose frames MAY be carried over a reliable WebSocket instead. Each frame is carried as
+  a single binary WebSocket message. The negotiated lane is declared in the
+  `hello`/`session` handshake (§2.1).
+
+  Neither lane is a "fallback" for the other — each is primary in its deployment context.
+
 - A lost pose frame MUST NOT be retransmitted. Late frames are useless by definition.
-- Every pose frame MUST fit in a single datagram. Implementations MUST NOT emit a
-  pose frame larger than 1100 bytes. v1 frames are ≤ 200 bytes, so fragmentation
-  never occurs.
+- Every pose frame MUST fit in a single datagram (SCTP) or single WebSocket message (WS).
+  Implementations MUST NOT emit a pose frame larger than 1100 bytes. v1 frames are
+  ≤ 200 bytes, so fragmentation never occurs.
 
-#### WebSocket fallback transport
+#### Reconciling WebSocket with the loss-tolerant design
 
-Where a deployment cannot provide the primary SCTP lane — typically a server-relay
-deployment with no native server-side WebRTC — pose frames MAY instead be carried over a
-reliable WebSocket. The negotiated lane is declared in the `hello`/`session` handshake (§2.1);
-a reliable WebSocket has no `protocol`-string negotiation equivalent to an `RTCDataChannel`,
-so the handshake is the point at which the transport is agreed. The binary packet format (§5)
-is byte-for-byte identical on either lane.
-
-A WebSocket is reliable and ordered, which is at odds with the pose lane's loss-tolerant,
-latest-wins design. "MUST NOT retransmit" (above) is a **Posy-layer** rule: Posy never
-retransmits a pose frame. It does not require the transport to be lossy. The mismatch is
-reconciled as follows:
+A WebSocket is reliable and ordered. "MUST NOT retransmit" (above) is a **Posy-layer**
+rule: Posy never retransmits a pose frame. It does not require the transport to be lossy.
+The mismatch is reconciled as follows:
 
 - **Sender.** On the WebSocket lane the sender SHOULD bound its send buffer and **drop**
   (not enqueue) a new pose frame while the socket's `bufferedAmount` exceeds a small
@@ -70,11 +71,7 @@ reconciled as follows:
   handles the rest. No receiver change is needed.
 - **Cost.** TCP head-of-line blocking can still delay a fresh frame behind an older one in
   flight; the receiver drops the stale frame but the fresh one may arrive late. This is the
-  accepted cost of the fallback — latency-critical paths SHOULD use the SCTP lane.
-
-The single-datagram / 1100-byte rule above applies on both lanes; the ≤ 200-byte v1 frame
-ceiling still holds. On the WebSocket lane each frame is carried as a single binary WebSocket
-message.
+  accepted cost of the WebSocket lane — latency-critical paths SHOULD use the SCTP lane.
 
 ### 1.2 Topology
 The topology is **client–server**, never peer-to-peer mesh. All pose frames travel
@@ -82,11 +79,25 @@ sender → server → receiver. The server MAY drop, filter or refuse frames. Th
 MUST NOT modify the byte content of a forwarded frame in v1 (this is what makes
 rate-tiering a pure frame-drop operation).
 
+A relay MAY validate a frame structurally using only the §5.1 header — without decoding
+the quaternion payload — by checking:
+1. `version` byte: `version >> 4 == 0` (major v1).
+2. `flags` bits 5–7: MUST be 0.
+3. `bone_mask` bits 55–63: MUST be 0. Note: bits 9–16 (leg/toe bones) and bits 0–8,
+   17–54 (body and finger bones) are NOT reserved and MUST NOT be checked for zero.
+4. Frame length exactly equals `16 + 4·popcount(bone_mask) + 6·b1 + 24·b2 + (b3 ? (b0 ? 54 : 18) : 0)`.
+5. Set bits in `bone_mask` correspond only to types present in `allowed` (e.g. finger
+   bits 25–54 require `"fingers"` in `allowed`; bits 9–16 require `"legs"`).
+
+On failure the relay SHOULD emit the appropriate error (`BAD_VERSION`, `MALFORMED_THRESHOLD`,
+or `UNAUTHORIZED_TYPE`) and drop the frame. The relay still MUST NOT modify the byte
+content of frames it does forward.
+
 ### 1.3 Signaling channel
 A separate **reliable, ordered** channel (WebSocket or a reliable data channel) MUST
-exist for session control. All control messages in §2 travel there as UTF-8 JSON. When the
-WebSocket fallback transport (§1.1) is in use, pose frames and this signaling channel MAY
-share the same WebSocket connection — distinguished by frame type (binary pose frames vs.
+exist for session control. All control messages in §2 travel there as UTF-8 JSON. When
+the WebSocket lane (§1.1) is in use, pose frames and this signaling channel MAY share
+the same WebSocket connection — distinguished by frame type (binary pose frames vs.
 UTF-8 JSON control messages) — or use separate WebSocket connections; both are conformant.
 
 ---
@@ -94,9 +105,10 @@ UTF-8 JSON control messages) — or use separate WebSocket connections; both are
 ## 2. Session Layer
 
 > **Frozen as of 1.0.0.** The message set and semantics in §2 are stable for the 1.x line;
-> future 1.x revisions may clarify wording but will not change the wire meaning. The one
-> additive exception is the optional `transport` field (§2.1), introduced in 1.0.5: it is
-> backward-compatible — a message that omits it is interpreted exactly as before.
+> future 1.x revisions may clarify wording but will not change the wire meaning. Additive
+> exceptions introduced since 1.0.0: the optional `transport` field (§2.1, 1.0.5) and the
+> optional `"legs"` / `"tongue"` values in `allowed` (§2.1, 1.1.0). Both are
+> backward-compatible — a message that omits them is interpreted exactly as before.
 
 ### 2.1 Join
 
@@ -117,7 +129,7 @@ Server → Client:
   "epoch_unix_ms": 1730900000000,
   "transport": "sctp",
   "playspace": { "w": 1920, "h": 1080 },
-  "allowed": ["bones", "fingers", "expressions", "root", "perfect_sync"],
+  "allowed": ["bones", "fingers", "expressions", "root", "perfect_sync", "legs", "tongue"],
   "tiers": { "FULL": 30, "NORMAL": 15, "MINIMAL": 5 },
   "default_tier": "NORMAL" }
 ```
@@ -133,11 +145,29 @@ Server → Client:
   requested lane, it either confirms a lane it does support in `session` (which the client
   then uses) or, if none is available, rejects the join with an `UNSUPPORTED_TRANSPORT` error
   (§2.5).
-- `allowed` is the authoritative list of permitted data types. A client MUST NOT set
-  a flag bit for a type not present in `allowed`.
+- `allowed` is the authoritative list of permitted data types. A client MUST NOT set a flag
+  bit for a type not present in `allowed`. Values defined for 1.x:
+  - `"bones"` — body bone quaternions (§5.3)
+  - `"fingers"` — finger block (§5.5)
+  - `"expressions"` — expression block (§5.6)
+  - `"root"` — root position block (§5.4)
+  - `"perfect_sync"` — 52-slot ARKit expression mode (§5.6)
+  - `"legs"` — full-body leg/foot profile (§4, §8.5); added in 1.1.0
+  - `"tongue"` — tongue expression slots 13/14/15 in Standard-Sync (§5.6); added in 1.1.0
+
+  Declaring a capability in `allowed` is a server grant. A session may include `"legs"` in
+  `allowed` even when some participants lack a full-body rig — for example, a mixed room
+  where some senders are upper-body-only. Those senders simply omit the leg bits; receivers
+  MUST handle the absence of any declared type gracefully. A sender whose capture pipeline
+  CAN solve the leg bones MUST send the required bits per §4.
 - The server MAY re-send `session` at any time to change authorization or playspace.
   Clients MUST apply it immediately and SHOULD inform the user when a previously
   active data type is revoked.
+- **Handshake embedding (SHOULD).** The `hello`/`session` exchange MAY be embedded inside
+  an integrator's existing join message rather than sent as a standalone first frame. The
+  `transport` and `allowed` fields carry their Posy semantics regardless of the enclosing
+  envelope. Integrators with a pre-existing join step SHOULD fold these fields into that
+  step rather than adding a redundant standalone handshake.
 
 ### 2.2 Clock synchronisation
 
@@ -197,6 +227,10 @@ its subscribers, so the sender can throttle capture:
 
 Senders MUST NOT exceed the granted `hz` (tolerance +10%).
 
+A light relay MAY implement only sender-side rate-limiting and whole-frame drop without
+per-subscriber FULL/NORMAL/MINIMAL/OFF tiering. Per-subscriber tiering is OPTIONAL for
+relays where the per-pair overhead would conflict with the §3 server-light constraint.
+
 ### 2.5 Errors
 
 ```json
@@ -238,7 +272,7 @@ rig. It MUST NOT need to know the sender's avatar type, skeleton or tracker.
 | Sender avatar | Sender obligation |
 |---|---|
 | **VRM 1.0** | None. Normalized bones are native. Read and send. |
-| **VRM 0.x** | Read from the normalized humanoid rig exposed by the runtime (e.g. three-vrm), which already resolves the 0.x −Z facing to +Z. MUST NOT read the raw glTF node rotations. |
+| **VRM 0.x** | Read from the normalized humanoid rig exposed by the runtime (e.g. three-vrm), which already resolves the 0.x −Z facing to +Z. MUST NOT read the raw glTF node rotations. VRM 0.x names `ThumbProximal` where VRM 1.0 names `ThumbMetacarpal`; the sender MUST map to the VRM 1.0 bone name before packing bone_mask bits 25/40. |
 | **MMD** | Map MMD bones to humanoid semantics, then send `q_wire = inverse(q_rest) · q_current` per bone in the parent-relative frame, where `q_rest` is that bone's rotation in the model's own rest (A- or T-) pose. `inverse(q_rest)` MUST be precomputed once at model load. |
 
 Receiver side:
@@ -249,8 +283,9 @@ Receiver side:
 
 A sender that cannot solve a bone (e.g. an MMD model without `upperChest`) MUST clear
 that bone's bit in `bone_mask` and omit its quaternion. Receivers MUST treat an absent
-bone as "hold identity relative to T-pose", not as "hold last value", except during
-the packet-loss concealment window defined in §8.3.
+bone as "hold identity relative to T-pose" — that is, apply the identity quaternion (no
+rotation delta from T-pose), not "hold last value" — except during the packet-loss
+concealment window defined in §8.3.
 
 ---
 
@@ -293,6 +328,20 @@ Quaternions appear in the payload in **ascending bit order**.
 **v1 constraint:** bits **25–54** (all finger bones) MUST be 0. Fingers are carried by
 the compact finger block (§5.5). Bits 9–16 (legs/feet) MAY be used but are OPTIONAL;
 receivers MUST handle their absence.
+
+**Full-body profile (Normative).** A sender in a session where `allowed` includes
+`"legs"` AND whose capture pipeline can solve the leg bones MUST send the following
+bits in every pose frame:
+
+| Bits | Bones | Requirement |
+|---|---|---|
+| 9, 10, 11, 13, 14, 15 | leftUpperLeg, leftLowerLeg, leftFoot, rightUpperLeg, rightLowerLeg, rightFoot | REQUIRED |
+| 12, 16 | leftToes, rightToes | OPTIONAL sub-tier |
+
+Senders that cannot solve toes (e.g. the rig omits the bone, or the capture pipeline has
+insufficient resolution) MUST omit bits 12 and 16; receivers MUST treat absent toe bits
+as identity. A receiver that does not support the full-body profile MUST still accept and
+decode a frame that carries leg bits — it simply discards those quaternions.
 
 **Typical v1 upper-body mask** = bits 0,1,2,4,5,17,18,19,20,21,22,23,24 → 13 bones.
 
@@ -359,7 +408,9 @@ Receiver:
 3. **The receiver MUST renormalise the reconstructed quaternion.** Quantisation error
    guarantees it is not exactly unit length.
 
-Worst-case angular error of this encoding is ≈ 0.14°, well below tracker noise.
+Worst-case angular error of this encoding is ≈ 0.25°, well below tracker noise.
+(The identity quaternion reconstructs with ~0.14° error; the worst case over a large
+sample is ~0.25°.)
 
 ### 5.4 Root position block (6 B)
 
@@ -423,22 +474,56 @@ why splay and thumb opposition are added rather than more curl bits.
 Receivers MUST synthesise the 30 finger bone rotations from this block. Senders MUST
 NOT also send finger bones via `bone_mask` in v1.
 
+**Integration note.** The reduction from per-joint bone rotations to the curl/splay/
+opposition parameterisation is integration-layer work (sender-side). Posy intentionally
+keeps individual finger joint rotations off-wire; senders that operate on per-joint
+rotations (e.g. a full-skeleton IK solver) reduce them to the five-finger model before
+encoding.
+
 ### 5.6 Expression block
 
 #### Standard-Sync (18 B) — `PERFECT_SYNC` = 0
 
-`u8[16]` expression weights (`0`=0.0, `255`=1.0), then `i8` gaze yaw, `i8` gaze pitch.
+`u8[16]` expression slots, then `i8` gaze yaw, `i8` gaze pitch.
 
-| Idx | Expression | Idx | Expression |
+Slots 0–12 use uniform `u8` encoding: `0`=0.0, `255`=1.0.
+Slots 13–15 are **tongue** and use a **mixed encoding** — see table.
+
+| Slot idx | Name | Encoding | Range |
 |---|---|---|---|
-| 0 | blinkLeft | 8 | angry |
-| 1 | blinkRight | 9 | sad |
-| 2 | aa | 10 | relaxed |
-| 3 | ih | 11 | surprised |
-| 4 | ou | 12 | neutral |
-| 5 | ee | 13 | *reserved (MUST be 0)* |
-| 6 | oh | 14 | *reserved (MUST be 0)* |
-| 7 | happy | 15 | *reserved (MUST be 0)* |
+| 0 | `blinkLeft` | `v/255` | 0.0–1.0 |
+| 1 | `blinkRight` | `v/255` | 0.0–1.0 |
+| 2 | `aa` | `v/255` | 0.0–1.0 |
+| 3 | `ih` | `v/255` | 0.0–1.0 |
+| 4 | `ou` | `v/255` | 0.0–1.0 |
+| 5 | `ee` | `v/255` | 0.0–1.0 |
+| 6 | `oh` | `v/255` | 0.0–1.0 |
+| 7 | `happy` | `v/255` | 0.0–1.0 |
+| 8 | `angry` | `v/255` | 0.0–1.0 |
+| 9 | `sad` | `v/255` | 0.0–1.0 |
+| 10 | `relaxed` | `v/255` | 0.0–1.0 |
+| 11 | `surprised` | `v/255` | 0.0–1.0 |
+| 12 | `neutral` | `v/255` | 0.0–1.0 |
+| 13 | `tongueOut` | `v/255` | 0.0–1.0 |
+| 14 | `tongueX` | `(v−128)/128` | −1.0–+127/128 (**SIGNED**) |
+| 15 | `tongueY` | `(v−128)/128` | −1.0–+127/128 (**SIGNED**) |
+
+**Signed encoding exception.** Slots 14 and 15 use offset binary encoding, not the
+uniform 0..1 convention. Value byte `0` = −1.0, `128` = 0.0, `255` = +127/128.
+Receivers MUST NOT apply the 0..1 mapping to these slots.
+
+**Tongue dual-home.** `tongueOut` (protrusion) has two homes depending on sync mode:
+- Standard-Sync: slot 13 (this table).
+- Perfect-Sync: ARKit canonical index 51 (Appendix A). The receiver already branches
+  on the `PERFECT_SYNC` flag for 18-vs-54-byte parsing — no new mechanism is needed.
+
+`tongueX` and `tongueY` are Standard-Sync-only in 1.x. Perfect-Sync has no spare slots
+for directional tongue; that extension is deferred to a future `Extended-Sync` tier.
+
+**Hierarchical gating.** `tongueX`/`tongueY` are meaningful only when `tongueOut` is
+tracked. If tongue tracking is not active, the sender MUST send 0 for slots 13/14/15.
+The client selects its tongue tier at
+capture initialisation and does not renegotiate per-frame.
 
 #### Perfect-Sync (54 B) — `PERFECT_SYNC` = 1
 
@@ -555,6 +640,36 @@ noise produce wrong mouth shapes. Implementations offering this MUST make it a
 user-visible option and MUST fall back to transmitted weights when the sender's audio
 track is muted or absent.
 
+### 8.5 Full-body grounding (Normative)
+
+When `bone_mask` bits 9, 10, 11, 13, 14, and 15 are all set (the required leg bones of
+the full-body profile, §4), receivers MUST apply the following grounding procedure:
+
+1. **FK computation.** Using the transmitted leg and foot bone rotations together with
+   the receiver's own VRM rig bone lengths, compute each heel's vertical offset below
+   the hips joint in local world-space (Y-up).
+
+2. **Floor placement.** Let `h_min` be the more negative (lower) of the two heel offsets.
+   Set the rendered hips height to `−h_min` so that the lowest heel reaches floor level
+   (Y = 0). This corrects for crouch and asymmetric stances without any new wire bytes.
+
+3. **Lower clamp.** MUST NOT lower the hips below the rig's T-pose baseline hip height.
+   A mis-solved skeleton cannot cause the avatar to sink into the floor.
+
+4. **Upper clamp.** MUST NOT raise the hips above the T-pose baseline hip height plus
+   one rig-height unit. If both heels are above this threshold (airborne heuristic),
+   the grounding procedure SHOULD be skipped or held at the T-pose baseline. Jump and
+   airborne states are out of scope for 1.x; this clamp prevents unbounded upward drift
+   from a mis-solved pose.
+
+5. **Blending.** The grounding offset change MUST be blended using the same interpolation
+   as §8.2 root position — no frame-to-frame snapping.
+
+**Limitation.** The full-body grounding heuristic always plants the avatar. A sender
+whose subject is genuinely airborne will be shown as grounded. This is the accepted cost
+for a zero-byte-overhead approach. Senders MUST NOT encode vertical grounding state in
+the `z` field of the root block (§5.4); `z` retains its depth-mm meaning.
+
 ---
 
 ## 9. Versioning and Extensibility
@@ -567,8 +682,8 @@ track is muted or absent.
 - The `version` byte carries the **minor** revision within a major version. Receivers
   MUST accept any minor version with `version >> 4 == 0` for v1.x and MUST ignore
   unknown flag bits and unknown `bone_mask` bits.
-- Extension mechanism: reserved flag bits 5–7, reserved bone bits 55–63, reserved
-  expression indices 13–15, and the reserved finger byte.
+- Extension mechanism: reserved flag bits 5–7, reserved bone bits 55–63,
+  and the reserved finger byte.
 
 ---
 
@@ -591,8 +706,17 @@ Explicitly out of scope for v1, listed so v1 does not accidentally block them:
   Requires reliable resync logic; the bandwidth saving is not worth it at 116 B.
 - **Server-side field stripping** as a congestion path (drop fingers → hands → body).
   Requires the server to re-encode packets, which v1 forbids. v1 degrades by rate only.
-- **Leg / full-body tracking** as a mandatory profile.
 - **Props, scene state, 3D playspaces.**
+- **`root_height_mm`** — an explicit i16 field carrying hips height above floor in mm,
+  decoupled from the existing depth-mm `z` field. Would unambiguously support jump and
+  airborne states without reinterpreting `z`. Requires 2 new wire bytes → v2.
+- **Profile-conditional `z` semantics** — reinterpreting `z` as a signed vertical root
+  offset when the full-body leg bits are present. The only 1.x path to jump support, but
+  a semantic break of `z`'s current depth-mm meaning. Deferred unless jump is explicitly
+  required in a future 1.x point release.
+- **Directional tongue in Perfect-Sync** — `tongueX`/`tongueY` axes for senders using
+  the 52-slot ARKit mode. Perfect-Sync has no spare slots; clean support requires a new
+  `Extended-Sync` expression tier.
 
 ---
 
