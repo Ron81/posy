@@ -3,6 +3,30 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
+## [Unreleased] - proposed as 1.2.0
+
+Leg rotation conventions. **No change to the packet format or the signaling.**
+
+### Added
+- Spec §3.1 items 5 and 6: rotation composition order (`q_parent · q_bone`) and the local
+  axes of a bone (+X left, +Y up, +Z forward, right-hand rule). Both followed from the
+  existing text but were not written down.
+- Spec §3.4: rotation sense of `upperLeg`, `lowerLeg`, `foot` and `toes`, per motion and
+  per side.
+- Spec §10 item 8: implementations that send or render leg bones reproduce the pose
+  vectors.
+- `testvectors/poses/`: a reference skeleton and nine poses with expected joint
+  positions. Five pin the §3.4 table; four are the seated and kneeling poses a full-body
+  sender must be able to express.
+- `reference/js`: `scripts/pose-fk.mjs` (forward kinematics used by the generator and the
+  tests) and `test/poses.test.mjs`.
+
+### Fixed
+- `docs/DECISIONS.md` 0001: alternative D was described as still listed in §11; it was
+  removed in 1.1.0.
+- Vector 007 generator comment described bit 9 as "turned out"; by §3.4 it swings across
+  the body. Bytes unchanged.
+
 ## [1.1.0] - 2026-10-03
 
 Full-body support: per-sender declaration, legs and toes as declared types, hips height

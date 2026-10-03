@@ -227,6 +227,10 @@
         file('006-reserved-bits.bin / .json', 'live', 'A reserved bone bit is set — must be accepted, the extra quaternion skipped.'),
         file('007-fullbody-legs.bin / .json', 'live', 'Non-identity legs and toes, lowered hips height, signed tongue slots.')
       ]),
+      dir('poses/', 'live', 'Leg poses with the joint positions they must produce — catches a wrong axis, sign or side, which byte vectors cannot.', [
+        file('skeleton.json', 'live', 'Reference skeleton: hips and both leg chains, T-pose offsets in metres.'),
+        file('p01 … p09 .json', 'live', 'One pose per §3.4 table group, plus crossed legs, ankle on knee, kneeling, feet off the floor.')
+      ]),
       file('quaternions.csv', 'live', 'Input quaternion → expected packed u32, for isolated codec testing.')
     ]),
     dir('examples/', 'live', 'Zero-infrastructure proof that the format actually moves an avatar.', [

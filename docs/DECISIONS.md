@@ -62,8 +62,9 @@ Length impact: typical frame 116 → 118 B, Perfect-Sync 152 → 154 B, largest 
   every receiver. Rejected as too heavy for a protocol whose model is "render the sender's
   avatar as the sender grounded it."
 - **D — profile-conditional `z` (z means height only in the full-body profile).** The only
-  in-1.x path that reused a field, but ambiguous and deferred rather than adopted; recorded
-  in §11 as a possible future option, not part of 1.1.0.
+  in-1.x path that reused a field, but ambiguous: the same bytes would mean depth or height
+  depending on session state. Rejected. The 1.1.0 draft listed it in §11 as a future
+  option; it was removed from §11 together with `root_height_mm` when `h` was adopted.
 
 ### Consequences
 
