@@ -30,9 +30,9 @@ test('001-minimal is 20 bytes with exact spec bytes', () => {
   assert.equal(hex, '010001000000000001000000000000000002 08e0'.replaceAll(' ', ''));
 });
 
-test('116 B golden: 13 bones + root + fingers + Standard-Sync', () => {
+test('118 B golden: 13 bones + root + fingers + Standard-Sync', () => {
   const f = baseFrame({
-    root: { x: 0x8000, y: 0x4000, z: -1500 },
+    root: { x: 0x8000, y: 0x4000, z: -1500, h: 0x6000 },
     fingers: {
       left: { curl: [0, 64, 128, 192, 255], splay: [-127, -64, 0, 64, 127], thumbOpposition: 30 },
       right: { curl: [255, 192, 128, 64, 0], splay: [127, 64, 0, -64, -127], thumbOpposition: 60 },
@@ -40,19 +40,20 @@ test('116 B golden: 13 bones + root + fingers + Standard-Sync', () => {
     expressions: { perfectSync: false, weights: new Uint8Array(16), gazeYaw: 0, gazePitch: 0 },
   });
   const bytes = encode(f);
-  // 16 + 4*13 + 6 + 24 + 18 = 116
-  assert.equal(bytes.length, 116);
+  // 16 + 4*13 + 8 + 24 + 18 = 118
+  assert.equal(bytes.length, 118);
   const back = decode(bytes);
   assert.equal(back.bones.size, 13);
   assert.equal(back.root.z, -1500);
+  assert.equal(back.root.h, 0x6000);
   assert.deepEqual([...back.fingers.left.curl], [0, 64, 128, 192, 255]);
   assert.deepEqual([...back.fingers.left.splay], [-127, -64, 0, 64, 127]);
   assert.equal(back.expressions.weights.length, 16);
 });
 
-test('152 B golden: 13 bones + root + fingers + Perfect-Sync', () => {
+test('154 B golden: 13 bones + root + fingers + Perfect-Sync', () => {
   const f = baseFrame({
-    root: { x: 1, y: 2, z: 3 },
+    root: { x: 1, y: 2, z: 3, h: 0x8000 },
     fingers: {
       left: { curl: [0, 0, 0, 0, 0], splay: [0, 0, 0, 0, 0], thumbOpposition: 0 },
       right: { curl: [0, 0, 0, 0, 0], splay: [0, 0, 0, 0, 0], thumbOpposition: 0 },
@@ -60,8 +61,8 @@ test('152 B golden: 13 bones + root + fingers + Perfect-Sync', () => {
     expressions: { perfectSync: true, weights: new Uint8Array(52), gazeYaw: 10, gazePitch: -10 },
   });
   const bytes = encode(f);
-  // 16 + 52 + 6 + 24 + 54 = 152
-  assert.equal(bytes.length, 152);
+  // 16 + 52 + 8 + 24 + 54 = 154
+  assert.equal(bytes.length, 154);
   const back = decode(bytes);
   assert.equal(back.expressions.perfectSync, true);
   assert.equal(back.expressions.weights.length, 52);

@@ -89,10 +89,10 @@
     };
   }
 
-  /** §5.1: 16 + 4*bones + 6*root + 24*fingers + (expr ? (perfectSync ? 54 : 18) : 0). */
+  /** §5.1: 16 + 4*bones + 8*root + 24*fingers + (expr ? (perfectSync ? 54 : 18) : 0). */
   function packetSize(o) {
     var size = 16 + 4 * o.boneCount;
-    if (o.hasRoot) size += 6;
+    if (o.hasRoot) size += 8;
     if (o.hasFingers) size += 24;
     if (o.hasExpressions) size += o.perfectSync ? 54 : 18;
     return size;

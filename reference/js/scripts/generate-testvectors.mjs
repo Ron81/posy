@@ -87,7 +87,7 @@ const v001 = writeAccept(
   { flags: 0 },
 );
 
-/* 002-fullbody-standard: 21 bones, root+fingers+Standard-Sync -> 148 B */
+/* 002-fullbody-standard: 21 bones, root+fingers+Standard-Sync -> 150 B */
 {
   const bits = [0, 1, 2, 3, 4, 5, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23];
   const bones = new Map(bits.map((b) => [b, idQuat]));
@@ -100,7 +100,7 @@ const v001 = writeAccept(
       timestampMs: 33,
       idle: false,
       bones,
-      root: { x: 0x8000, y: 0x4000, z: -1500 },
+      root: { x: 0x8000, y: 0x4000, z: -1500, h: 0x8000 },
       fingers: {
         left: { curl: [0, 64, 128, 192, 255], splay: [-127, -64, 0, 64, 127], thumbOpposition: 30 },
         right: { curl: [0, 64, 128, 192, 255], splay: [-127, -64, 0, 64, 127], thumbOpposition: 30 },
@@ -111,7 +111,7 @@ const v001 = writeAccept(
   );
 }
 
-/* 003-perfectsync: 13 bones, flags 0x0F, weights i*5 mod 256 -> 152 B */
+/* 003-perfectsync: 13 bones, flags 0x0F, weights i*5 mod 256 -> 154 B */
 {
   const bits = [0, 1, 2, 4, 5, 17, 18, 19, 20, 21, 22, 23, 24];
   const bones = new Map(bits.map((b) => [b, idQuat]));
@@ -126,7 +126,7 @@ const v001 = writeAccept(
       timestampMs: 66,
       idle: false,
       bones,
-      root: { x: 100, y: 200, z: 0 },
+      root: { x: 100, y: 200, z: 0, h: 0x8000 },
       fingers: {
         left: { curl: [0, 0, 0, 0, 0], splay: [0, 0, 0, 0, 0], thumbOpposition: 0 },
         right: { curl: [0, 0, 0, 0, 0], splay: [0, 0, 0, 0, 0], thumbOpposition: 0 },

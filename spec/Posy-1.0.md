@@ -60,7 +60,7 @@ physics, props, scene state.
 - A lost pose frame MUST NOT be retransmitted. Late frames are useless by definition.
 - Every pose frame MUST fit in a single datagram (SCTP) or single WebSocket message (WS).
   Implementations MUST NOT emit a pose frame larger than 1100 bytes. v1 frames are
-  ≤ 200 bytes, so fragmentation never occurs.
+  ≤ 202 bytes, so fragmentation never occurs.
 
 #### Reconciling WebSocket with the loss-tolerant design
 
@@ -88,7 +88,7 @@ rate-tiering a pure frame-drop operation).
 A relay MAY validate a frame structurally using only the §5.1 header — without decoding
 the quaternion payload — by checking:
 1. `version` byte: `version >> 4 == 0` (major v1).
-2. Frame length exactly equals `16 + 4·popcount(bone_mask) + 6·b1 + 24·b2 + (b3 ? (b0 ? 54 : 18) : 0)`.
+2. Frame length exactly equals `16 + 4·popcount(bone_mask) + 8·b1 + 24·b2 + (b3 ? (b0 ? 54 : 18) : 0)`.
 3. `bone_mask` bits 25–54 (finger bones) are 0 (§4).
 4. The frame stays within the sender's granted set (§2.1): none of flag bits 0–3 is set
    for a type that was not granted, and `bone_mask & 0x01FFFFFF & ~granted_mask == 0`,
@@ -402,13 +402,13 @@ Offset  Size  Field
   4      4    u32  timestamp_ms     (ms since session epoch)
   8      8    u64  bone_mask
  16     4*N   u32  quaternions[N]   N = popcount(bone_mask)
-  +      6    root block            if flags bit 1
+  +      8    root block            if flags bit 1
   +     24    finger block          if flags bit 2
   +   18|54   expression block      if flags bit 3
 ```
 
 Total length MUST equal:
-`16 + 4*popcount(bone_mask) + 6*b1 + 24*b2 + (b3 ? (b0 ? 54 : 18) : 0)`
+`16 + 4*popcount(bone_mask) + 8*b1 + 24*b2 + (b3 ? (b0 ? 54 : 18) : 0)`
 
 A frame whose actual length differs MUST be treated as malformed.
 
@@ -452,17 +452,27 @@ Worst-case angular error of this encoding is ≈ 0.25°, well below tracker nois
 (The identity quaternion reconstructs with ~0.14° error; the worst case over a large
 sample is ~0.25°.)
 
-### 5.4 Root position block (6 B)
+### 5.4 Root block (8 B)
 
 ```
 0  2  u16  x    playspace-normalised, 0 = left edge, 65535 = right edge
 2  2  u16  y    playspace-normalised, 0 = top edge,  65535 = bottom edge
 4  2  i16  z    depth in millimetres, 0 if unused
+6  2  u16  h    hips height, in units of 1/32768 of the standing hip height
 ```
 
-Coordinates are normalised against the `playspace` announced in `session`, so the
-server can resize the playspace without a format change. Receivers MUST clamp to
-range. If `HAS_ROOT` is clear, the receiver MUST keep the avatar's last known position.
+`x`, `y` and `z` place the avatar in the room. Coordinates are normalised against the
+`playspace` announced in `session`, so the server can resize the playspace without a
+format change. Receivers MUST clamp to range.
+
+`h` places the hips relative to the avatar's own floor line and does not move the avatar
+in the room. `h / 32768` is the height of the hips above the floor as a fraction of the
+**standing hip height** `H`: the height of the hips bone above the lowest point of the
+feet in the avatar's T-pose. `32768` = standing, `0` = hips on the floor, values above
+`32768` (up to ≈ 2.0) = raised, e.g. a jump. Sender rules are in §8.5.
+
+If `HAS_ROOT` is clear, the receiver MUST keep the avatar's last known position and
+hips height.
 
 ### 5.5 Finger block (24 B)
 
@@ -603,13 +613,14 @@ Typical Standard-Sync upper-body frame:
 ```
 header + mask        16 B
 13 quaternions       52 B
-root                  6 B
+root                  8 B
 fingers              24 B
 expressions          18 B
-                 = 116 B payload
+                 = 118 B payload
 ```
 
-Perfect-Sync frame = 152 B. Add ~50 B UDP+DTLS+SCTP overhead ⇒ ~166 B / ~202 B on wire.
+Perfect-Sync frame = 154 B. Add ~50 B UDP+DTLS+SCTP overhead ⇒ ~168 B / ~204 B on wire.
+A full-body sender adds 24 B (`legs`) or 32 B (`legs` + `toes`).
 On the WebSocket lane (§1.1) the per-frame overhead differs — a WebSocket binary
 frame adds a small header (2–14 B) over TCP/TLS rather than UDP/DTLS/SCTP — but the figures
 below are the right order of magnitude for either lane.
@@ -660,8 +671,8 @@ datacentre or fibre-grade uplink, not a home connection.
 ### 8.2 Interpolation
 - Rotations: **slerp** between the two newest buffered frames, parameterised by
   `timestamp_ms`.
-- Blendshapes, finger curls/splays, gaze and root position: **linear interpolation**,
-  same timing.
+- Blendshapes, finger curls/splays, gaze, root position and hips height: **linear
+  interpolation**, same timing.
 - Playout time MUST be derived from the audio clock of the same peer so that lips and
   voice remain aligned.
 
@@ -680,35 +691,32 @@ noise produce wrong mouth shapes. Implementations offering this MUST make it a
 user-visible option and MUST fall back to transmitted weights when the sender's audio
 track is muted or absent.
 
-### 8.5 Full-body grounding (Normative)
+### 8.5 Hips height (Normative)
 
-When `bone_mask` bits 9, 10, 11, 13, 14, and 15 are all set (the required leg bones of
-the full-body profile, §4), receivers MUST apply the following grounding procedure:
+Leg rotations alone do not say where the hips are: a crouch, a seat, a kneel and a jump
+can all carry similar leg angles. The sender therefore transmits the hips height `h`
+(§5.4), and the receiver applies it.
 
-1. **FK computation.** Using the transmitted leg and foot bone rotations together with
-   the receiver's own VRM rig bone lengths, compute each heel's vertical offset below
-   the hips joint in local world-space (Y-up).
+**Sender.**
+1. `h` is the height of the hips above the floor divided by the standing hip height
+   `H` of the sender's avatar, for the pose as the sender's own avatar shows it.
+2. A sender with a floor reference (calibrated trackers) derives `h` from the tracked
+   hips height, scaled by the performer's standing hips height from calibration.
+3. A sender without a floor reference (e.g. a single camera) estimates `h` from the
+   solved pose; Appendix D gives one method.
+4. A sender that was not granted `legs` sends `h = 32768`.
+5. `h` SHOULD be filtered like any other tracked value (§7).
 
-2. **Floor placement.** Let `h_min` be the more negative (lower) of the two heel offsets.
-   Set the rendered hips height to `−h_min` so that the lowest heel reaches floor level
-   (Y = 0). This corrects for crouch and asymmetric stances without any new wire bytes.
+**Receiver.**
+1. Place the hips of the sender's avatar at `h / 32768 × H` above that avatar's floor
+   line, with `H` taken from the receiver's local instance of the avatar.
+2. Interpolate `h` per §8.2.
+3. The receiver performs no forward kinematics, grounding or clamping of its own. The
+   sender renders the same avatar and is responsible for a plausible result.
 
-3. **Lower clamp.** MUST NOT lower the hips below the rig's T-pose baseline hip height.
-   A mis-solved skeleton cannot cause the avatar to sink into the floor.
-
-4. **Upper clamp.** MUST NOT raise the hips above the T-pose baseline hip height plus
-   one rig-height unit. If both heels are above this threshold (airborne heuristic),
-   the grounding procedure SHOULD be skipped or held at the T-pose baseline. Jump and
-   airborne states are out of scope for 1.x; this clamp prevents unbounded upward drift
-   from a mis-solved pose.
-
-5. **Blending.** The grounding offset change MUST be blended using the same interpolation
-   as §8.2 root position — no frame-to-frame snapping.
-
-**Limitation.** The full-body grounding heuristic always plants the avatar. A sender
-whose subject is genuinely airborne will be shown as grounded. This is the accepted cost
-for a zero-byte-overhead approach. Senders MUST NOT encode vertical grounding state in
-the `z` field of the root block (§5.4); `z` retains its depth-mm meaning.
+This covers standing, crouching, sitting with one or both feet off the floor, crossed
+legs, kneeling, lying down and jumping without any pose-specific rule on the receiver.
+`z` keeps its depth meaning; senders MUST NOT encode height in `z`.
 
 ---
 
@@ -747,17 +755,10 @@ An implementation is conformant if it:
 
 Explicitly out of scope for v1, listed so v1 does not accidentally block them:
 - **Keyframe + delta encoding** (full frame every 1 s, changed bones in between).
-  Requires reliable resync logic; the bandwidth saving is not worth it at 116 B.
+  Requires reliable resync logic; the bandwidth saving is not worth it at 118 B.
 - **Server-side field stripping** as a congestion path (drop fingers → hands → body).
   Requires the server to re-encode packets, which v1 forbids. v1 degrades by rate only.
 - **Props, scene state, 3D playspaces.**
-- **`root_height_mm`** — an explicit i16 field carrying hips height above floor in mm,
-  decoupled from the existing depth-mm `z` field. Would unambiguously support jump and
-  airborne states without reinterpreting `z`. Requires 2 new wire bytes → v2.
-- **Profile-conditional `z` semantics** — reinterpreting `z` as a signed vertical root
-  offset when the full-body leg bits are present. The only 1.x path to jump support, but
-  a semantic break of `z`'s current depth-mm meaning. Deferred unless jump is explicitly
-  required in a future 1.x point release.
 - **Directional tongue in Perfect-Sync** — `tongueX`/`tongueY` axes for senders using
   the 52-slot ARKit mode. Perfect-Sync has no spare slots; clean support requires a new
   `Extended-Sync` expression tier.
@@ -806,7 +807,7 @@ bool posy_decode(const uint8_t *p, size_t len, Frame *out) {
     int b0 = out->flags & 1, b1 = (out->flags >> 1) & 1,
         b2 = (out->flags >> 2) & 1, b3 = (out->flags >> 3) & 1;
     int n  = popcount64(out->bone_mask);
-    size_t need = 16 + 4*n + 6*b1 + 24*b2 + (b3 ? (b0 ? 54 : 18) : 0);
+    size_t need = 16 + 4*n + 8*b1 + 24*b2 + (b3 ? (b0 ? 54 : 18) : 0);
     if (len != need) return false;                // malformed
 
     const uint8_t *q = p + 16;
@@ -817,7 +818,8 @@ bool posy_decode(const uint8_t *p, size_t len, Frame *out) {
     q += 4 * n;
 
     if (b1) { out->root_x = rd_u16(q); out->root_y = rd_u16(q+2);
-              out->root_z = (int16_t)rd_u16(q+4); q += 6; }
+              out->root_z = (int16_t)rd_u16(q+4);
+              out->root_h = rd_u16(q+6); q += 8; }
     if (b2) { memcpy(out->fingers, q, 24); q += 24; }
     if (b3) { int m = b0 ? 52 : 16;
               memcpy(out->expr, q, m); q += m;
@@ -854,3 +856,32 @@ for rate tiering, which is optional (§2.4).
 mediasoup satisfies this natively; the protocol does not depend on it. A server-relay
 deployment that cannot provide native server-side WebRTC MAY instead relay pose frames over
 the WebSocket lane (§1.1); the same forwarding and dropping rules apply, and the server still MUST NOT modify forwarded frame bytes (§1.2).
+
+---
+
+## Appendix D — Estimating hips height without a floor reference (Informative)
+
+For senders whose capture gives joint rotations but no height above the floor (§8.5,
+sender rule 3). It assumes that whatever part of the legs is lowest rests on the floor.
+
+Per avatar, once, in the T-pose: for each contact point `c` — both feet (ankle), both
+toes if the avatar has them, both knees — record its clearance `clear[c]`, the height of
+that bone's origin above the floor line. For the knees use the shin radius instead, since
+a knee only touches the floor when kneeling.
+
+Per frame, with the solved rotations applied and the hips at the origin:
+
+```
+h_est = 0
+for c in contacts:
+    y = world_y(c)                 // ≤ 0 when the point is below the hips
+    h_est = max(h_est, clear[c] - y)
+h = round(h_est / H * 32768)       // clamp to 0..65535
+```
+
+In the T-pose this yields exactly `H`, so `h = 32768`.
+
+The estimate is wrong whenever nothing in the contact set touches the floor: both feet
+off the floor on a seat, or a jump. A sender that knows the performer is seated SHOULD
+hold `h` at the seat height instead (a user setting, or the last value before both feet
+lifted) rather than let the avatar drop.

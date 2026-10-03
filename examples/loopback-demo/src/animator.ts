@@ -61,7 +61,7 @@ export function poseAt(tSec: number): Frame {
     timestampMs: Math.floor(tSec * 1000) >>> 0,
     idle: false,
     bones,
-    root: { x: 0x8000, y: 0x8000, z: 0 },
+    root: { x: 0x8000, y: 0x8000, z: 0, h: 0x8000 },
     fingers: { left: hand(), right: hand() },
     expressions: { perfectSync: false, weights, gazeYaw: 0, gazePitch: 0 },
   };

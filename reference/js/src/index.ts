@@ -23,7 +23,8 @@ export interface Frame {
   idle: boolean;
   /** key = bit index; encoded in ascending bit order */
   bones: Map<number, Quat>;
-  root?: { x: number; y: number; z: number };
+  /** x, y: u16 playspace-normalised; z: i16 depth in mm; h: u16 hips height, 32768 = standing (§5.4) */
+  root?: { x: number; y: number; z: number; h: number };
   fingers?: { left: HandFingers; right: HandFingers };
   expressions?: {
     perfectSync: boolean;

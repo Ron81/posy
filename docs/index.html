@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Posy — Open Avatar Pose Protocol for WebRTC</title>
-  <meta name="description" content="Posy is an open, compact protocol for streaming humanoid avatar poses (body, fingers, face) over WebRTC data channels — ~116 bytes/frame, ~70x smaller than VMC." />
+  <meta name="description" content="Posy is an open, compact protocol for streaming humanoid avatar poses (body, fingers, face) over WebRTC data channels — ~118 bytes/frame, ~70x smaller than VMC." />
   <meta name="color-scheme" content="dark" />
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="assets/style.css" />
@@ -94,7 +94,7 @@
           <span class="pill tone-sky">posy/1 channel</span>
         </div>
         <h1>Stream avatar poses over <span class="grad">WebRTC</span>, not a mocap suit's worth of bandwidth.</h1>
-        <p class="sub">Posy is an open, compact protocol for streaming humanoid body, finger and facial pose between many users in real time — <b>~116 bytes per frame</b>, roughly <b>70× smaller than VMC</b>, purpose-built for WebRTC data channels.</p>
+        <p class="sub">Posy is an open, compact protocol for streaming humanoid body, finger and facial pose between many users in real time — <b>~118 bytes per frame</b>, roughly <b>70× smaller than VMC</b>, purpose-built for WebRTC data channels.</p>
         <div class="row wrap mt-8" style="gap:12px">
           <a class="btn btn-primary" href="https://github.com/Ron81/posy" target="_blank" rel="noopener">
             <svg class="ico"><use href="#i-git-fork"/></svg> View the repo <svg class="ico"><use href="#i-arrow-right"/></svg>
@@ -110,12 +110,12 @@
       <div class="card frame-card">
         <div class="row between">
           <span class="label">Standard-Sync frame</span>
-          <span class="pill tone-violet" style="font-size:11px;font-weight:600">116 bytes</span>
+          <span class="pill tone-violet" style="font-size:11px;font-weight:600">118 bytes</span>
         </div>
         <div class="mt-5" style="font-family:var(--mono);font-size:12px">
           <div class="bar-row"><div class="bar-label"><span>header + bone_mask</span><span>16 B</span></div><div class="bar"><i class="c-violet" style="width:28%"></i></div></div>
           <div class="bar-row"><div class="bar-label"><span>13× quaternions (smallest-three)</span><span>52 B</span></div><div class="bar"><i class="c-fuchsia" style="width:90%"></i></div></div>
-          <div class="bar-row"><div class="bar-label"><span>root position</span><span>6 B</span></div><div class="bar"><i class="c-sky" style="width:10%"></i></div></div>
+          <div class="bar-row"><div class="bar-label"><span>root position + hips height</span><span>8 B</span></div><div class="bar"><i class="c-sky" style="width:14%"></i></div></div>
           <div class="bar-row"><div class="bar-label"><span>fingers (both hands)</span><span>24 B</span></div><div class="bar"><i class="c-emerald" style="width:42%"></i></div></div>
           <div class="bar-row"><div class="bar-label"><span>expressions + gaze</span><span>18 B</span></div><div class="bar"><i class="c-amber" style="width:30%"></i></div></div>
         </div>
@@ -320,7 +320,7 @@
         <div class="well row between wrap gap-3">
           <div><div class="label">Room size</div>
             <div style="font-size:18px;font-weight:600;color:#fff"><span id="bw-total">50 people</span> <span class="small dim" style="font-weight:400" id="bw-total-sub">(1 sending, 49 watching)</span></div></div>
-          <button type="button" class="pill-btn" id="bw-perfect" style="font-family:var(--mono)">Standard-Sync (116 B)</button>
+          <button type="button" class="pill-btn" id="bw-perfect" style="font-family:var(--mono)">Standard-Sync (118 B)</button>
         </div>
 
         <div class="callout tone-violet tiny muted leading" style="display:flex;gap:8px;padding:12px;border-radius:10px">

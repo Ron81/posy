@@ -70,7 +70,7 @@ export function encode(frame: Frame): Uint8Array {
     }
   }
 
-  const total = 16 + 4 * bits.length + (frame.root ? 6 : 0) + (frame.fingers ? 24 : 0) + exprLen;
+  const total = 16 + 4 * bits.length + (frame.root ? 8 : 0) + (frame.fingers ? 24 : 0) + exprLen;
   if (total > MAX_FRAME) throw new PosyEncodeError(`frame ${total} B exceeds ${MAX_FRAME} B limit`);
 
   const buf = new Uint8Array(total);
@@ -91,7 +91,8 @@ export function encode(frame: Frame): Uint8Array {
     dv.setUint16(off, u16(frame.root.x, 'root.x'), true);
     dv.setUint16(off + 2, u16(frame.root.y, 'root.y'), true);
     dv.setUint16(off + 4, i16(frame.root.z, 'root.z'), true);
-    off += 6;
+    dv.setUint16(off + 6, u16(frame.root.h, 'root.h'), true);
+    off += 8;
   }
 
   if (frame.fingers) {

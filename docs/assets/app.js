@@ -124,7 +124,7 @@
       var breakdown = [
         { label: 'header + bone_mask', bytes: 16, color: 'c-violet' },
         { label: boneCount + '× quaternion', bytes: boneCount * 4, color: 'c-fuchsia' },
-        { label: 'root', bytes: st.root ? 6 : 0, color: 'c-sky' },
+        { label: 'root', bytes: st.root ? 8 : 0, color: 'c-sky' },
         { label: 'fingers', bytes: st.fingers ? 24 : 0, color: 'c-emerald' },
         { label: 'face: ' + (st.perfect ? '52 ARKit blendshapes' : '16 expressions') + ' + gaze', bytes: st.expr ? (st.perfect ? 54 : 18) : 0, color: 'c-amber' }
       ].filter(function (r) { return r.bytes > 0; });
@@ -300,7 +300,7 @@
 
     function update() {
       var full = Number(sl.full.value), normal = Number(sl.normal.value), minimal = Number(sl.minimal.value), viewers = Number(sl.viewers.value);
-      var frame = perfect ? 152 : 116;
+      var frame = perfect ? 154 : 118;
       var senders = full + normal + minimal;
       var total = senders + viewers;
 
@@ -319,7 +319,7 @@
       setText('bw-total', total + ' people');
       setText('bw-total-sub', '(' + senders + ' sending, ' + viewers + ' watching)');
       if (perfectBtn) {
-        perfectBtn.textContent = perfect ? 'Perfect-Sync (152 B)' : 'Standard-Sync (116 B)';
+        perfectBtn.textContent = perfect ? 'Perfect-Sync (154 B)' : 'Standard-Sync (118 B)';
         perfectBtn.classList.toggle('active', perfect);
         perfectBtn.classList.toggle('amber', perfect);
       }

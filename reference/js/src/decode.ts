@@ -44,7 +44,7 @@ export function decode(bytes: Uint8Array): Frame {
 
   const n = popcount64(mask);
   const exprLen = b3 ? (b0 ? 54 : 18) : 0;
-  const need = 16 + 4 * n + (b1 ? 6 : 0) + (b2 ? 24 : 0) + exprLen;
+  const need = 16 + 4 * n + (b1 ? 8 : 0) + (b2 ? 24 : 0) + exprLen;
   if (len !== need) throw new PosyDecodeError(`length ${len} != required ${need}`);
 
   // Consume a quaternion for every set bit, including reserved/unknown ones (§9),
@@ -71,8 +71,9 @@ export function decode(bytes: Uint8Array): Frame {
       x: dv.getUint16(off, true),
       y: dv.getUint16(off + 2, true),
       z: dv.getInt16(off + 4, true),
+      h: dv.getUint16(off + 6, true),
     };
-    off += 6;
+    off += 8;
   }
 
   if (b2) {

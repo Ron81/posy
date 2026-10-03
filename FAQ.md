@@ -20,7 +20,7 @@ A unit quaternion only has 3 degrees of freedom. "Smallest-three" drops the larg
 
 ## Why no delta / keyframe encoding in v1?
 
-It needs reliable resync logic, and at ~116 bytes a frame the saving isn't worth the complexity. It's parked for v2 (§11), not designed out.
+It needs reliable resync logic, and at ~118 bytes a frame the saving isn't worth the complexity. It's parked for v2 (§11), not designed out.
 
 ## Why does everything go through one peer instead of a mesh?
 

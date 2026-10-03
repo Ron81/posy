@@ -33,7 +33,7 @@ Each vector is a pair: `NNN-name.bin` (the exact bytes) and `NNN-name.json` (wha
     "bones": [
       { "bit": 0, "name": "hips", "u32": "0xE0080200", "quat": [0.0, 0.0, 0.0, 1.0] }
     ],
-    "root": null,                           // or { "x": u16, "y": u16, "z": i16 }
+    "root": null,                           // or { "x": u16, "y": u16, "z": i16, "h": u16 }
     "fingers": null,                        // or { "left": [12 bytes], "right": [12 bytes] } as integers (splay bytes signed)
     "expressions": null                     // or { "perfect_sync": bool, "weights": [...], "gaze_yaw": i8, "gaze_pitch": i8 }
   }

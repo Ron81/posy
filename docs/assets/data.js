@@ -103,7 +103,7 @@
   var FLAG_INFO = {
     HAS_ROOT: {
       title: 'HAS_ROOT — where the avatar stands',
-      body: "Adds 6 bytes of position: X and Y normalised against the room's playspace, plus depth in millimetres. Leave it off and receivers simply keep the avatar where it last was, which is fine for a seated, stationary streamer."
+      body: "Adds 8 bytes: X and Y normalised against the room's playspace, depth in millimetres, and the hips height as a fraction of the avatar's standing hip height (so crouching, sitting, kneeling and jumping work). Leave it off and receivers simply keep the avatar where it last was, which is fine for a seated, stationary streamer."
     },
     HAS_FINGERS: {
       title: 'HAS_FINGERS — 30 finger bones in 24 bytes',
@@ -141,7 +141,7 @@
     { q: 'Why drop the largest quaternion component instead of sending all four?',
       a: 'A unit quaternion has 3 degrees of freedom, not 4 — the smallest-three trick reconstructs the dropped component from the other three via sqrt(1 - a² - b² - c²), cutting a quaternion from 16 bytes (four f32) to 4 bytes (one u32) at a worst-case error of ≈ 0.25°, well under tracker noise.' },
     { q: 'Why no delta/keyframe encoding in v1?',
-      a: "It requires reliable resync logic and the bandwidth saving isn't worth it at 116 bytes a frame. It's explicitly deferred to v2 (§11) rather than designed out — v1 just doesn't need it yet." },
+      a: "It requires reliable resync logic and the bandwidth saving isn't worth it at 118 bytes a frame. It's explicitly deferred to v2 (§11) rather than designed out — v1 just doesn't need it yet." },
     { q: 'Why does everything route through one peer instead of a mesh?',
       a: 'Someone has to own the session clock, authorization and per-subscriber rate tiering, and in a mesh every single peer would have to re-implement all of it — plus upload its own pose separately to everyone else, which is what actually melts a home connection as the room grows. Routing through one peer means each sender uploads exactly one small stream.' },
     { q: 'Do I need to rent a server just to use this with friends?',

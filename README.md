@@ -1,12 +1,12 @@
 # Posy
 
-**Stream avatar poses over WebRTC — body, fingers and face in about 116 bytes per frame.**
+**Stream avatar poses over WebRTC — body, fingers and face in about 118 bytes per frame.**
 
 [![CI](https://github.com/Ron81/posy/actions/workflows/ci.yml/badge.svg)](https://github.com/Ron81/posy/actions/workflows/ci.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 ![Spec: 1.1.0](https://img.shields.io/badge/spec-1.1.0-brightgreen.svg)
 
-Posy (**Po**se **Sy**nchronization) is an open, compact protocol for syncing humanoid avatar poses between lots of people in real time. It works over WebRTC data channels for direct and browser-to-browser links, and over a reliable WebSocket for server-relay deployments — each transport is the right tool for its deployment context, not a fallback for the other. A typical upper-body frame with fingers and face is ~116 bytes — roughly 70× smaller than VMC — so a whole room can move at once without anybody's upload crying.
+Posy (**Po**se **Sy**nchronization) is an open, compact protocol for syncing humanoid avatar poses between lots of people in real time. It works over WebRTC data channels for direct and browser-to-browser links, and over a reliable WebSocket for server-relay deployments — each transport is the right tool for its deployment context, not a fallback for the other. A typical upper-body frame with fingers and face is ~118 bytes — roughly 70× smaller than VMC — so a whole room can move at once without anybody's upload crying.
 
 ---> 🧪 **Try out the [interactive site](https://ron81.github.io/posy/)** <---
 It lets you build a frame byte by byte, play with the **[bandwidth calculator](https://ron81.github.io/posy/#bandwidth)** and browse the tables. Or try the **[loopback demo](https://ron81.github.io/posy/demo/)** to watch how an avatar looks on different connections from premium Fibre to the last copper cable, in a cave, at the end of the world.
@@ -39,10 +39,10 @@ It lets you build a frame byte by byte, play with the **[bandwidth calculator](h
 |---|---|---|
 | Header + `bone_mask` | 16 B | version, flags, sequence number, timestamp, 64-bit bone mask |
 | Bone rotations | 4 B × N | 13 bones for a typical upper body = 52 B |
-| Root position | 6 B | optional (`HAS_ROOT`) |
+| Root position + hips height | 8 B | optional (`HAS_ROOT`) |
 | Fingers | 24 B | optional (`HAS_FINGERS`) — curl + splay per finger, both hands |
 | Face | 18 B / 54 B | optional (`HAS_EXPRESSIONS`) — 16 VRM expressions, or all 52 ARKit blendshapes with `PERFECT_SYNC`; plus 2 gaze bytes |
-| **Typical total** | **116 B** | **152 B** with Perfect-Sync |
+| **Typical total** | **118 B** | **154 B** with Perfect-Sync |
 
 One thing that trips people up: **the face doesn't travel as bones.** Blinks, mouth shapes, emotions and eye direction all live in the expression block (`HAS_EXPRESSIONS`). The eye/jaw bone bits are only a fallback for rigs that are literally bone-driven — and if both are present, the gaze bytes win.
 
