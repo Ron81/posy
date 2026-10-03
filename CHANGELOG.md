@@ -3,7 +3,7 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
-## [1.1.0] - draft, under review
+## [1.1.0] - 2026-10-03
 
 Full-body support: per-sender declaration, legs and toes as declared types, hips height
 on the wire, tongue tracking. Transport wording reframed. The 1.x freeze is replaced by
