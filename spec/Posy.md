@@ -303,6 +303,14 @@ non-conformant regardless of byte-level correctness.
 3. Each transmitted quaternion is the bone's **local (parent-relative) rotation delta
    from the T-pose**.
 4. The hips bone additionally carries the root position block (§5.4).
+5. Rotations compose from the hips outward: a bone's rotation in avatar space is its
+   parent's rotation in avatar space times the bone's own quaternion,
+   `q_avatar(bone) = q_avatar(parent) · q_bone` (Hamilton product; a vector is rotated as
+   `q · v · q⁻¹`).
+6. It follows from 2 and 3 that while a bone's parent chain is in the T-pose, the bone's
+   local axes coincide with the avatar axes: **+X = the avatar's left, +Y = up,
+   +Z = forward**. A positive angle about an axis is counter-clockwise when looking from
+   the tip of that axis toward the origin (right-hand rule).
 
 ### 3.2 Conversion is the sender's job, never the receiver's
 
@@ -327,6 +335,47 @@ A sender that cannot solve a bone, or whose avatar lacks it (e.g. an MMD model w
 bone as "hold identity relative to T-pose" — that is, apply the identity quaternion (no
 rotation delta from T-pose), not "hold last value" — except during the packet-loss
 concealment window defined in §8.3.
+
+### 3.4 Rotation sense of the leg bones (Normative)
+
+§3.1 already determines what every leg quaternion means. This section writes the result
+out, so that it does not have to be derived and so that it can be tested. It adds no rule
+that §3.1 does not imply; if the two ever disagree, §3.1 wins.
+
+**T-pose of the legs.** Legs straight and vertical, feet parallel, toes pointing +Z, soles
+flat on the floor.
+
+Each row is a rotation of that bone alone about one axis, starting from the T-pose:
+
+| Bone | Motion | Left | Right |
+|---|---|---|---|
+| `upperLeg` | flexion — thigh swings forward | −X | −X |
+| `upperLeg` | extension — thigh swings back | +X | +X |
+| `upperLeg` | abduction — leg moves away from the midline | +Z | −Z |
+| `upperLeg` | external rotation — knee and toes turn outward | +Y | −Y |
+| `lowerLeg` | knee flexion — heel moves toward the buttock | +X | +X |
+| `foot` | dorsiflexion — toes lift toward the shin | −X | −X |
+| `foot` | plantarflexion — toes point down | +X | +X |
+| `foot` | toe-out — foot turns outward about the vertical axis | +Y | −Y |
+| `foot` | eversion — outer edge of the foot lifts | +Z | −Z |
+| `toes` | extension — toes bend upward | −X | −X |
+| `toes` | flexion — toes curl downward | +X | +X |
+
+Motions about X have the same sign on both sides. Motions about Y and Z are mirrored,
+because "outward" is +X for the left leg and −X for the right.
+
+- A motion that combines several rows is still **one quaternion per bone**. Posy defines
+  no Euler order. A sender that starts from anatomical angles composes them itself and
+  transmits the result; the receiver applies the quaternion as is (§3.2).
+- The wire does not restrict a bone to anatomically possible rotations. A knee is a hinge
+  on a human; `lowerLeg` may still carry any rotation.
+- The hips quaternion (bit 0) rotates both leg chains with it (§3.1 item 5). Where the
+  hips sit above the floor is carried separately as `h` (§5.4, §8.5).
+
+`testvectors/poses/` holds one pose per table group and the seated and kneeling poses
+that a full-body sender must be able to express, each with the joint positions the
+quaternions produce on a reference skeleton. A wrong axis, sign, side or product order
+moves a joint by tens of centimetres there, which the frame vectors cannot detect.
 
 ---
 
@@ -739,6 +788,8 @@ An implementation is conformant if it:
 5. Never retransmits pose frames.
 6. Declares what it transmits (§2.1) and stays within the granted set.
 7. Honours server `allowed`, `rate` and `error` messages.
+8. If it sends or renders leg bones: reproduces the joint positions of the pose vectors
+   in `testvectors/poses/` within their tolerance (§3.4).
 
 ---
 
