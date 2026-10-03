@@ -1,0 +1,100 @@
+{
+  "name": "p05-ankle-and-toes",
+  "description": "standing on the right tiptoe: rightFoot +X 30 deg (plantarflexion), rightToes -X 30 deg (extension, toes flat on the floor); left foot off the floor, dorsiflexed 20 deg (leftFoot -X) with toes extended 30 deg (leftToes -X)",
+  "bones": [
+    {
+      "bit": 11,
+      "name": "leftFoot",
+      "quat": [
+        -0.173648,
+        0,
+        0,
+        0.984808
+      ]
+    },
+    {
+      "bit": 12,
+      "name": "leftToes",
+      "quat": [
+        -0.258819,
+        0,
+        0,
+        0.965926
+      ]
+    },
+    {
+      "bit": 15,
+      "name": "rightFoot",
+      "quat": [
+        0.258819,
+        0,
+        0,
+        0.965926
+      ]
+    },
+    {
+      "bit": 16,
+      "name": "rightToes",
+      "quat": [
+        -0.258819,
+        0,
+        0,
+        0.965926
+      ]
+    }
+  ],
+  "hips_height": 0.981,
+  "h": 34565,
+  "expect": {
+    "leftUpperLeg": [
+      0.1,
+      -0.05,
+      0
+    ],
+    "leftLowerLeg": [
+      0.1,
+      -0.45,
+      0
+    ],
+    "leftFoot": [
+      0.1,
+      -0.85,
+      0
+    ],
+    "leftToes": [
+      0.1,
+      -0.874736,
+      0.136705
+    ],
+    "leftToeTip": [
+      0.1,
+      -0.828773,
+      0.175272
+    ],
+    "rightUpperLeg": [
+      -0.1,
+      -0.05,
+      0
+    ],
+    "rightLowerLeg": [
+      -0.1,
+      -0.45,
+      0
+    ],
+    "rightFoot": [
+      -0.1,
+      -0.85,
+      0
+    ],
+    "rightToes": [
+      -0.1,
+      -0.970622,
+      0.068923
+    ],
+    "rightToeTip": [
+      -0.1,
+      -0.970622,
+      0.128923
+    ]
+  }
+}

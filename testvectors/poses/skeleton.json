@@ -1,0 +1,105 @@
+{
+  "description": "Reference skeleton for the pose vectors. VRM 1.0 normalized space: right-handed, Y up, facing +Z, left = +X. Offsets are from the parent joint in the T-pose, in metres. ToeTip joints are end points, not bones.",
+  "standing_hip_height": 0.93,
+  "joints": [
+    {
+      "name": "hips",
+      "parent": null,
+      "offset": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "leftUpperLeg",
+      "parent": "hips",
+      "offset": [
+        0.1,
+        -0.05,
+        0
+      ]
+    },
+    {
+      "name": "leftLowerLeg",
+      "parent": "leftUpperLeg",
+      "offset": [
+        0,
+        -0.4,
+        0
+      ]
+    },
+    {
+      "name": "leftFoot",
+      "parent": "leftLowerLeg",
+      "offset": [
+        0,
+        -0.4,
+        0
+      ]
+    },
+    {
+      "name": "leftToes",
+      "parent": "leftFoot",
+      "offset": [
+        0,
+        -0.07,
+        0.12
+      ]
+    },
+    {
+      "name": "leftToeTip",
+      "parent": "leftToes",
+      "offset": [
+        0,
+        0,
+        0.06
+      ]
+    },
+    {
+      "name": "rightUpperLeg",
+      "parent": "hips",
+      "offset": [
+        -0.1,
+        -0.05,
+        0
+      ]
+    },
+    {
+      "name": "rightLowerLeg",
+      "parent": "rightUpperLeg",
+      "offset": [
+        0,
+        -0.4,
+        0
+      ]
+    },
+    {
+      "name": "rightFoot",
+      "parent": "rightLowerLeg",
+      "offset": [
+        0,
+        -0.4,
+        0
+      ]
+    },
+    {
+      "name": "rightToes",
+      "parent": "rightFoot",
+      "offset": [
+        0,
+        -0.07,
+        0.12
+      ]
+    },
+    {
+      "name": "rightToeTip",
+      "parent": "rightToes",
+      "offset": [
+        0,
+        0,
+        0.06
+      ]
+    }
+  ]
+}

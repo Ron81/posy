@@ -9,6 +9,7 @@ The reference implementation generated these vectors, so on its own it proves no
 | `004-malformed-length` | length formula (§5.1) says reject (001 minus its last byte) | by hand | Ron81 | 2026-09-29 | ✅ |
 | `005-quat-edgecases` | 3 quaternions: negated identity, tie `(0,s,0,s)`, 90° about X | independent script from §5.3 | Ron81 | 2026-09-29 | ✅ |
 | `007-fullbody-legs` | every byte: header, mask `0x01fffe37`, 21 quaternions built from the axis-angle values in the generator comment, root block with `h` = 18022, both hands, expression block with signed tongue slots, total length (150 B) | independent script from §5.1 + §5.3–§5.6 | RaelRotschwinge | 2026-10-03 | ✅ |
+| `poses/p01` … `p09` | every joint position of every pose, rebuilt from the axis and angle in the pose description with 3×3 rotation matrices (no quaternion product); the stored `quat` values converted to matrices and checked the same way; `h` against `hips_height` | independent script from §3.1 + §3.4 | RaelRotschwinge | 2026-10-03 | ✅ |
 
 **Rules**
 
@@ -24,3 +25,6 @@ The reference implementation generated these vectors, so on its own it proves no
 - **Disagreement, fixed (1.1.0):** `002-fullbody-standard` is described as spine/head + legs + arms, but its mask was `0x00fffe3f`, which omits bit 24 (`rightHand`) while including bit 20 (`leftHand`). The generator's bit list ended at 23. The vector decoded correctly, so no test caught it; it was a wrong reference for a full-body mask. Fixed to `0x01fffe3f` (22 bones).
 - `002` and `003` changed length in 1.1.0 because the root block grew from 6 B to 8 B (§5.4, hips height `h`): 148 → 154 B (including the added bone) and 152 → 154 B.
 - `007` is the first vector with non-identity leg and toe quaternions; before it, a decoder that swapped or misaligned leg bones would have passed every vector, because 002 carries identity in all of them. Its tongue slots check the `i8` reading of slots 14 and 15: bytes `c8 c0 20` are `tongueOut` = 200, `tongueX` = −64, `tongueY` = 32.
+- The pose vectors (`poses/`) exist because the frame vectors cannot test meaning: until them, an implementation with a mirrored or negated leg axis passed everything. The independent check uses rotation matrices rather than quaternions, so that it does not share the product-order convention it is meant to verify.
+- `007-fullbody-legs`: the generator comment described bit 9 (`leftUpperLeg`, `Y(−60°) · X(−80°)`) as "raised and turned out". By §3.4 a negative Y rotation of the raised left thigh swings it toward −X, across the body. The bytes are unchanged; only the comment was wrong. Found while writing §3.4.
+- `p08-kneeling`: the Appendix D estimate gives 0.53 m, the pose is at 0.50 m. Appendix D takes the ankle's clearance from the T-pose (sole down); with the instep on the floor the ankle sits lower. Informative text, sender-side only, but worth knowing.

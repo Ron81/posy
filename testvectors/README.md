@@ -50,6 +50,43 @@ For `reject` vectors, `frame` is replaced by `"reason"` (a short human-readable 
 - Quaternion floats (`quat`) are the result of dequantising *and renormalising* (spec §5.3) — compare with a tolerance of `1e-5` per component, so float32 and float64 implementations both pass.
 - Round-trip check: encoding `frame` must produce exactly `bytes_hex` (when your encoder follows the tie-break rule in §5.3).
 
+## `poses/`
+
+The frame vectors check bytes. They cannot tell whether a knee bends the right way: a decoder that negates an axis still decodes every frame. The pose vectors check **meaning** (spec §3.1, §3.4).
+
+`skeleton.json` is a small reference skeleton: hips and both leg chains, each joint with its parent and its T-pose offset in metres (left = +X, up = +Y, forward = +Z). Each `pNN-name.json` is one pose:
+
+```jsonc
+{
+  "name": "p02-knee-flexion",
+  "description": "left knee bent 90 deg, shin pointing back (leftLowerLeg +X)",
+  "bones": [                                // parent-relative quaternions [x, y, z, w]; bones not listed are identity
+    { "bit": 10, "name": "leftLowerLeg", "quat": [0.707107, 0, 0, 0.707107] }
+  ],
+  "hips_height": 0.93,                      // hips above the floor, metres
+  "h": 32768,                               // the same as the root-block value: round(hips_height / standing_hip_height * 32768)
+  "expect": {                               // joint positions relative to the hips, metres
+    "leftFoot": [0.1, -0.45, -0.4]
+    // ... every joint of the skeleton
+  }
+}
+```
+
+**How to check:** apply the quaternions to the skeleton by forward kinematics — a joint's position is its parent's position plus the parent's avatar-space rotation applied to the joint's offset; a bone's avatar-space rotation is its parent's times its own quaternion — and compare every joint with `expect`.
+
+- Tolerance **1e-4 m** when the quaternions are used as given.
+- Tolerance **1 cm** when they have been through the wire encoding (§5.3) first.
+
+| Vectors | What they pin |
+|---|---|
+| `p01` … `p05` | one group of the §3.4 table each: hip flexion, knee flexion, hip abduction, hip external rotation, ankle and toes — left and right where the sign is mirrored |
+| `p06-seated-crossed-legs` | one thigh crossed over the other knee |
+| `p07-seated-ankle-on-knee` | ankle resting on the opposite knee; a three-rotation upper leg, so product order matters |
+| `p08-kneeling` | knees, shins and insteps on the floor |
+| `p09-seated-feet-off-floor` | both feet clear of the floor; `h` cannot be derived from the legs here |
+
+`h` is checked against `hips_height` only. For `p01`–`p07` it equals the lowest-contact estimate of spec Appendix D; for `p08` and `p09` it does not, which is the reason `h` is transmitted rather than derived.
+
 ## `quaternions.csv`
 
 ```

@@ -1,0 +1,80 @@
+{
+  "name": "p03-hip-abduction",
+  "description": "both legs spread 30 deg outward (leftUpperLeg +Z, rightUpperLeg -Z)",
+  "bones": [
+    {
+      "bit": 9,
+      "name": "leftUpperLeg",
+      "quat": [
+        0,
+        0,
+        0.258819,
+        0.965926
+      ]
+    },
+    {
+      "bit": 13,
+      "name": "rightUpperLeg",
+      "quat": [
+        0,
+        0,
+        -0.258819,
+        0.965926
+      ]
+    }
+  ],
+  "hips_height": 0.823,
+  "h": 28998,
+  "expect": {
+    "leftUpperLeg": [
+      0.1,
+      -0.05,
+      0
+    ],
+    "leftLowerLeg": [
+      0.3,
+      -0.39641,
+      0
+    ],
+    "leftFoot": [
+      0.5,
+      -0.74282,
+      0
+    ],
+    "leftToes": [
+      0.535,
+      -0.803442,
+      0.12
+    ],
+    "leftToeTip": [
+      0.535,
+      -0.803442,
+      0.18
+    ],
+    "rightUpperLeg": [
+      -0.1,
+      -0.05,
+      0
+    ],
+    "rightLowerLeg": [
+      -0.3,
+      -0.39641,
+      0
+    ],
+    "rightFoot": [
+      -0.5,
+      -0.74282,
+      0
+    ],
+    "rightToes": [
+      -0.535,
+      -0.803442,
+      0.12
+    ],
+    "rightToeTip": [
+      -0.535,
+      -0.803442,
+      0.18
+    ]
+  }
+}
