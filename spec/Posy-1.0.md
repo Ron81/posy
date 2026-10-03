@@ -21,6 +21,12 @@ RFC 2119.
   the playspace, authorization, validation and per-subscriber rate control.
 - **Receiver** — a client consuming pose frames.
 
+**Avatar model.** A sender's stream drives that sender's own avatar, which every
+receiver renders as a local instance. Posy does not retarget one sender's motion onto a
+different avatar. The sender therefore knows the rig its data lands on, and transmits
+only what its capture pipeline delivers **and** its avatar can show (§2.1). How avatars
+are distributed to receivers is out of scope.
+
 **Non-goals for v1:** delta/keyframe encoding, server-side field stripping,
 physics, props, scene state.
 
@@ -84,7 +90,9 @@ the quaternion payload — by checking:
 1. `version` byte: `version >> 4 == 0` (major v1).
 2. Frame length exactly equals `16 + 4·popcount(bone_mask) + 6·b1 + 24·b2 + (b3 ? (b0 ? 54 : 18) : 0)`.
 3. `bone_mask` bits 25–54 (finger bones) are 0 (§4).
-4. No flag bit and no `bone_mask` bit is set for a type absent from `allowed` (§2.1).
+4. The frame stays within the sender's granted set (§2.1): none of flag bits 0–3 is set
+   for a type that was not granted, and `bone_mask & 0x01FFFFFF & ~granted_mask == 0`,
+   where `granted_mask` is the OR of the bone masks of the granted types.
 
 A relay MUST NOT reject a frame because reserved flag bits 5–7 or reserved `bone_mask`
 bits 55–63 are set. Those bits are the extension mechanism (§9) and are ignored on
@@ -120,7 +128,8 @@ Client → Server:
   "token": "<opaque auth token>",
   "protocol": "posy/1",
   "transport": "sctp",
-  "caps": { "perfect_sync": true, "max_rate_hz": 30, "fingers": true } }
+  "caps": { "sends": ["bones", "legs", "root", "fingers", "expressions"],
+            "max_rate_hz": 30 } }
 ```
 
 Server → Client:
@@ -130,7 +139,7 @@ Server → Client:
   "epoch_unix_ms": 1730900000000,
   "transport": "sctp",
   "playspace": { "w": 1920, "h": 1080 },
-  "allowed": ["bones", "fingers", "expressions", "root", "perfect_sync", "legs", "tongue"],
+  "allowed": ["bones", "legs", "root", "fingers", "expressions"],
   "tiers": { "FULL": 30, "NORMAL": 15, "MINIMAL": 5 },
   "default_tier": "NORMAL" }
 ```
@@ -146,24 +155,46 @@ Server → Client:
   requested lane, it either confirms a lane it does support in `session` (which the client
   then uses) or, if none is available, rejects the join with an `UNSUPPORTED_TRANSPORT` error
   (§2.5).
-- `allowed` is the authoritative list of permitted data types. A client MUST NOT set a flag
-  bit for a type not present in `allowed`. Values defined for 1.x:
-  - `"bones"` — body bone quaternions (§5.3)
-  - `"fingers"` — finger block (§5.5)
-  - `"expressions"` — expression block (§5.6)
-  - `"root"` — root position block (§5.4)
-  - `"perfect_sync"` — 52-slot ARKit expression mode (§5.6)
-  - `"legs"` — full-body leg/foot profile (§4, §8.5); added in 1.1.0
-  - `"tongue"` — tongue expression slots 13/14/15 in Standard-Sync (§5.6); added in 1.1.0
+- `caps.sends` is the sender's **declaration**: the complete list of data types it will
+  transmit. It MUST be the intersection of what the sender's capture pipeline delivers and
+  what its current avatar can show. A type the avatar cannot show (no toe bones, no tongue
+  or ARKit blendshapes) MUST NOT be declared even if the tracker delivers it. An empty
+  list declares a watcher: the client transmits no pose frames and the server allocates
+  no pose producer for it.
+- `allowed` is the server's **grant** for this client: `caps.sends` reduced by server
+  policy, so `allowed` ⊆ `caps.sends`. It is authoritative. A client MUST NOT set a flag
+  bit or a `bone_mask` bit that belongs to a type absent from `allowed`.
 
-  Declaring a capability in `allowed` is a server grant. A session may include `"legs"` in
-  `allowed` even when some participants lack a full-body rig — for example, a mixed room
-  where some senders are upper-body-only. Those senders simply omit the leg bits; receivers
-  MUST handle the absence of any declared type gracefully. A sender whose capture pipeline
-  CAN solve the leg bones MUST send the required bits per §4.
+  | Type | Carries | Checked in the frame header as |
+  |---|---|---|
+  | `"bones"` | upper-body bones (§4) | `bone_mask` bits 0–8, 17–24 — mask `0x01FE01FF` |
+  | `"legs"` | upper leg, lower leg, foot, both sides (§4) | `bone_mask` bits 9–11, 13–15 — mask `0x0000EE00` |
+  | `"toes"` | toes, both sides (§4) | `bone_mask` bits 12, 16 — mask `0x00011000` |
+  | `"root"` | root block (§5.4) | flag `HAS_ROOT` |
+  | `"fingers"` | finger block (§5.5) | flag `HAS_FINGERS` |
+  | `"expressions"` | expression block (§5.6) | flag `HAS_EXPRESSIONS` |
+  | `"perfect_sync"` | 52-slot ARKit mode (§5.6) | flag `PERFECT_SYNC` |
+  | `"tongue"` | tongue values (§5.6) | not visible in the header; the sender sends 0 when not granted |
+
+  `"legs"` requires `"bones"`; `"toes"` requires `"legs"`; `"perfect_sync"` and
+  `"tongue"` require `"expressions"`. A declaration that violates this is rejected with
+  `UNAUTHORIZED_TYPE`.
+
+  Leg and toe bits follow the per-side order of §4 (left chain 9–12, right chain 13–16),
+  which is why the two masks interleave.
 - The server MAY re-send `session` at any time to change authorization or playspace.
   Clients MUST apply it immediately and SHOULD inform the user when a previously
   active data type is revoked.
+- **Changing the declaration.** When the avatar or the capture pipeline changes
+  mid-session, the client re-declares:
+
+  ```json
+  { "t": "caps", "sends": ["bones", "root", "expressions"] }
+  ```
+
+  The server answers with a new `session` and re-announces the peer (§2.3). The client
+  MUST NOT transmit a newly declared type before that `session` arrives, and MUST stop
+  transmitting a withdrawn type immediately.
 - **Handshake embedding.** The `hello`/`session` exchange MAY be embedded inside
   an integrator's existing join message rather than sent as a standalone first frame. The
   `transport` and `allowed` fields carry their Posy semantics regardless of the enclosing
@@ -194,9 +225,16 @@ Identity is carried by the **channel**, not by the packet. The server MUST annou
 the mapping once per peer over signaling:
 
 ```json
-{ "t": "peers", "add": [ { "uid": "u_8f31", "consumer_id": "c_77a2" } ],
+{ "t": "peers", "add": [ { "uid": "u_8f31", "consumer_id": "c_77a2",
+                           "sends": ["bones", "legs", "root", "fingers", "expressions"] } ],
                 "remove": [ "u_1100" ] }
 ```
+
+`sends` is that peer's granted set (its `allowed`). Receivers use it to prepare the
+peer's avatar before the first frame arrives; a type absent from it never arrives, and
+the receiver leaves that part of the avatar in its rest state. An `add` for a `uid`
+already known replaces the earlier entry. A peer whose granted set is empty has no pose
+producer and is not listed; if its set becomes empty it is removed.
 
 Receivers MUST associate an inbound data consumer with the `uid` given here. No UID
 bytes appear in the pose frame. Clients MUST send their UID only in `hello`; the
@@ -243,7 +281,7 @@ honour `OFF`, which needs no per-frame state.
 | Code | Meaning | Server action |
 |---|---|---|
 | `BAD_VERSION` | Major version mismatch | Reject at channel open |
-| `UNAUTHORIZED_TYPE` | Flag set for a type not in `allowed` | Drop frame, count |
+| `UNAUTHORIZED_TYPE` | Flag or bone bit set for a type not in `allowed`; invalid declaration | Drop frame, count |
 | `MALFORMED_THRESHOLD` | > 30 invalid frames in 10 s | Stop forwarding until reconnect |
 | `RATE_EXCEEDED` | Sender > granted hz for > 5 s | Drop excess frames |
 | `UNSUPPORTED_TRANSPORT` | Requested `transport` lane not available and no alternative offered | Reject at join |
@@ -268,8 +306,9 @@ non-conformant regardless of byte-level correctness.
 
 ### 3.2 Conversion is the sender's job, never the receiver's
 
-A receiver MUST apply incoming quaternions directly to its own normalized humanoid
-rig. It MUST NOT need to know the sender's avatar type, skeleton or tracker.
+A receiver MUST apply incoming quaternions directly to the normalized humanoid rig of
+its local instance of the sender's avatar (§0). It MUST NOT need to know the sender's
+tracker or how the sender produced the rotations.
 
 | Sender avatar | Sender obligation |
 |---|---|
@@ -283,8 +322,8 @@ Receiver side:
 
 ### 3.3 Missing bones
 
-A sender that cannot solve a bone (e.g. an MMD model without `upperChest`) MUST clear
-that bone's bit in `bone_mask` and omit its quaternion. Receivers MUST treat an absent
+A sender that cannot solve a bone, or whose avatar lacks it (e.g. an MMD model without
+`upperChest`), MUST clear that bone's bit in `bone_mask` and omit its quaternion. Receivers MUST treat an absent
 bone as "hold identity relative to T-pose" — that is, apply the identity quaternion (no
 rotation delta from T-pose), not "hold last value" — except during the packet-loss
 concealment window defined in §8.3.
@@ -328,23 +367,21 @@ Quaternions appear in the payload in **ascending bit order**.
 | 27 | leftThumbDistal | 55–63 | *reserved, MUST be 0* |
 
 **v1 constraint:** bits **25–54** (all finger bones) MUST be 0. Fingers are carried by
-the compact finger block (§5.5). Bits 9–16 (legs/feet) MAY be used but are OPTIONAL;
-receivers MUST handle their absence.
+the compact finger block (§5.5).
 
-**Full-body profile (Normative).** A sender in a session where `allowed` includes
-`"legs"` AND whose capture pipeline can solve the leg bones MUST send the following
-bits. §3.3 still applies per frame: a bone that cannot be solved in a given frame has its
-bit cleared in that frame.
+**Bone bits by declared type (Normative).** A sender sets only bits of types it was
+granted (§2.1):
 
-| Bits | Bones | Requirement |
-|---|---|---|
-| 9, 10, 11, 13, 14, 15 | leftUpperLeg, leftLowerLeg, leftFoot, rightUpperLeg, rightLowerLeg, rightFoot | REQUIRED |
-| 12, 16 | leftToes, rightToes | OPTIONAL sub-tier |
+| Type | Bits | Bones | Mask |
+|---|---|---|---|
+| `bones` | 0–8, 17–24 | spine, head, eyes, jaw, arms | `0x01FE01FF` |
+| `legs` | 9, 10, 11, 13, 14, 15 | leftUpperLeg, leftLowerLeg, leftFoot, rightUpperLeg, rightLowerLeg, rightFoot | `0x0000EE00` |
+| `toes` | 12, 16 | leftToes, rightToes | `0x00011000` |
 
-Senders that cannot solve toes (e.g. the rig omits the bone, or the capture pipeline has
-insufficient resolution) MUST omit bits 12 and 16; receivers MUST treat absent toe bits
-as identity. A receiver that does not support the full-body profile MUST still accept and
-decode a frame that carries leg bits — it simply discards those quaternions.
+A sender granted `legs` sends all six leg bones; one granted `toes` also sends both toe
+bones. §3.3 still applies per frame: a bone that cannot be solved in a given frame has
+its bit cleared in that frame, and the receiver treats it as identity. A receiver MUST
+decode every valid frame, whichever of the peer's types it chooses to render.
 
 **Typical v1 upper-body mask** = bits 0,1,2,4,5,17,18,19,20,21,22,23,24 → 13 bones.
 
@@ -701,7 +738,8 @@ An implementation is conformant if it:
 3. Renormalises reconstructed quaternions.
 4. Uses the bone index table of §4 without modification.
 5. Never retransmits pose frames.
-6. Honours server `allowed`, `rate` and `error` messages.
+6. Declares what it transmits (§2.1) and stays within the granted set.
+7. Honours server `allowed`, `rate` and `error` messages.
 
 ---
 

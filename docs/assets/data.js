@@ -79,7 +79,7 @@
 
   var ERROR_ROWS = [
     ['BAD_VERSION', 'Major version mismatch', 'Reject at channel open'],
-    ['UNAUTHORIZED_TYPE', 'Flag set for a type not in allowed', 'Drop frame, count'],
+    ['UNAUTHORIZED_TYPE', 'Flag or bone bit set for a type not in allowed; invalid declaration', 'Drop frame, count'],
     ['MALFORMED_THRESHOLD', '> 30 invalid frames in 10 s', 'Stop forwarding until reconnect'],
     ['RATE_EXCEEDED', 'Sender > granted hz for > 5 s', 'Drop excess frames']
   ];

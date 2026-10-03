@@ -6,6 +6,7 @@
   "oneOf": [
     { "$ref": "#/$defs/hello" },
     { "$ref": "#/$defs/session" },
+    { "$ref": "#/$defs/caps" },
     { "$ref": "#/$defs/ping" },
     { "$ref": "#/$defs/pong" },
     { "$ref": "#/$defs/peers" },
@@ -21,6 +22,12 @@
     "transport": {
       "description": "Pose-frame transport lane (spec §1.1, added in 1.0.5). 'sctp' is the WebRTC data channel, used for direct and browser-to-browser links; 'websocket' is the reliable WebSocket used by server-relay deployments. Optional and backward-compatible: when absent on a message, that message's lane defaults to 'sctp' (the 1.0.0 default). The client states its lane in hello; the server confirms the authoritative accepted lane in session.",
       "enum": ["sctp", "websocket"]
+    },
+    "dataTypes": {
+      "description": "List of data types (spec §2.1). 'legs' requires 'bones'; 'toes' requires 'legs'; 'perfect_sync' and 'tongue' require 'expressions' — those dependencies are checked by the server, not by this schema.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["bones", "legs", "toes", "root", "fingers", "expressions", "perfect_sync", "tongue"] }
     },
     "uid": {
       "description": "Opaque user identifier, e.g. \"u_8f31\".",
@@ -40,17 +47,16 @@
         "transport": { "$ref": "#/$defs/transport" },
         "caps": {
           "type": "object",
-          "required": ["perfect_sync", "max_rate_hz", "fingers"],
+          "required": ["sends", "max_rate_hz"],
           "additionalProperties": false,
           "properties": {
-            "perfect_sync": { "type": "boolean" },
-            "max_rate_hz": { "type": "integer", "minimum": 1 },
-            "fingers": { "type": "boolean" }
+            "sends": { "$ref": "#/$defs/dataTypes", "description": "The sender's declaration: every data type it will transmit — what its capture pipeline delivers and its avatar can show. Empty for a watcher." },
+            "max_rate_hz": { "type": "integer", "minimum": 1 }
           }
         }
       },
       "examples": [
-        { "t": "hello", "uid": "u_8f31", "token": "", "protocol": "posy/1", "transport": "sctp", "caps": { "perfect_sync": true, "max_rate_hz": 30, "fingers": true } }
+        { "t": "hello", "uid": "u_8f31", "token": "", "protocol": "posy/1", "transport": "sctp", "caps": { "sends": ["bones", "legs", "root", "fingers", "expressions"], "max_rate_hz": 30 } }
       ]
     },
     "session": {
@@ -73,10 +79,8 @@
           }
         },
         "allowed": {
-          "type": "array",
-          "uniqueItems": true,
-          "description": "Authoritative list of permitted data types. A client MUST NOT set a flag bit for a type not listed here.",
-          "items": { "enum": ["bones", "fingers", "expressions", "root", "perfect_sync", "legs", "tongue"] }
+          "$ref": "#/$defs/dataTypes",
+          "description": "The server's grant for this client: caps.sends reduced by server policy. Authoritative. A client MUST NOT set a flag bit or bone_mask bit of a type not listed here."
         },
         "tiers": {
           "type": "object",
@@ -97,11 +101,22 @@
           "epoch_unix_ms": 1730900000000,
           "transport": "sctp",
           "playspace": { "w": 1920, "h": 1080 },
-          "allowed": ["bones", "fingers", "expressions", "root", "perfect_sync", "legs", "tongue"],
+          "allowed": ["bones", "legs", "root", "fingers", "expressions"],
           "tiers": { "FULL": 30, "NORMAL": 15, "MINIMAL": 5 },
           "default_tier": "NORMAL"
         }
       ]
+    },
+    "caps": {
+      "description": "Client → Server (§2.1). Re-declares what the sender transmits after its avatar or capture pipeline changed. Answered with a new session.",
+      "type": "object",
+      "required": ["t", "sends"],
+      "additionalProperties": false,
+      "properties": {
+        "t": { "const": "caps" },
+        "sends": { "$ref": "#/$defs/dataTypes" }
+      },
+      "examples": [{ "t": "caps", "sends": ["bones", "root", "expressions"] }]
     },
     "ping": {
       "description": "Client → Server (§2.2). t1 is the client's monotonic clock in milliseconds at send time.",
@@ -138,18 +153,19 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["uid", "consumer_id"],
+            "required": ["uid", "consumer_id", "sends"],
             "additionalProperties": false,
             "properties": {
               "uid": { "$ref": "#/$defs/uid" },
-              "consumer_id": { "type": "string", "minLength": 1 }
+              "consumer_id": { "type": "string", "minLength": 1 },
+              "sends": { "$ref": "#/$defs/dataTypes", "description": "That peer's granted set. An add for a known uid replaces the earlier entry." }
             }
           }
         },
         "remove": { "type": "array", "items": { "$ref": "#/$defs/uid" } }
       },
       "examples": [
-        { "t": "peers", "add": [{ "uid": "u_8f31", "consumer_id": "c_77a2" }], "remove": ["u_1100"] }
+        { "t": "peers", "add": [{ "uid": "u_8f31", "consumer_id": "c_77a2", "sends": ["bones", "legs", "root", "fingers", "expressions"] }], "remove": ["u_1100"] }
       ]
     },
     "subscribe": {
