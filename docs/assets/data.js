@@ -67,7 +67,7 @@
 
   var STANDARD_EXPRESSIONS = [
     'blinkLeft', 'blinkRight', 'aa', 'ih', 'ou', 'ee', 'oh', 'happy', 'angry', 'sad', 'relaxed', 'surprised', 'neutral',
-    'reserved', 'reserved', 'reserved'
+    'tongueOut', 'tongueX', 'tongueY'
   ].map(function (name, idx) { return { idx: idx, name: name, reserved: name === 'reserved' }; });
 
   /* ---------------------------------------------------------- §5.5 / §2.5 */

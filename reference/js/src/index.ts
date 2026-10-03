@@ -28,7 +28,11 @@ export interface Frame {
   fingers?: { left: HandFingers; right: HandFingers };
   expressions?: {
     perfectSync: boolean;
-    /** 16 weights (Standard-Sync) or 52 (Perfect-Sync), each 0..255 */
+    /**
+     * 16 slots (Standard-Sync) or 52 (Perfect-Sync), raw bytes 0..255.
+     * Standard-Sync slots 14 and 15 (tongueX, tongueY) are i8 on the wire (§5.6):
+     * read with `(b << 24) >> 24`, write with `v & 0xff`.
+     */
     weights: Uint8Array;
     gazeYaw: number;
     gazePitch: number;

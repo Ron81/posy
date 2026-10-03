@@ -534,46 +534,37 @@ encoding.
 
 #### Standard-Sync (18 B) — `PERFECT_SYNC` = 0
 
-`u8[16]` expression slots, then `i8` gaze yaw, `i8` gaze pitch.
+16 one-byte expression slots, then `i8` gaze yaw, `i8` gaze pitch.
 
-Slots 0–12 use uniform `u8` encoding: `0`=0.0, `255`=1.0.
-Slots 13–15 are **tongue** and use a **mixed encoding** — see table.
-
-| Slot idx | Name | Encoding | Range |
+| Slot | Name | Type | Value |
 |---|---|---|---|
-| 0 | `blinkLeft` | `v/255` | 0.0–1.0 |
-| 1 | `blinkRight` | `v/255` | 0.0–1.0 |
-| 2 | `aa` | `v/255` | 0.0–1.0 |
-| 3 | `ih` | `v/255` | 0.0–1.0 |
-| 4 | `ou` | `v/255` | 0.0–1.0 |
-| 5 | `ee` | `v/255` | 0.0–1.0 |
-| 6 | `oh` | `v/255` | 0.0–1.0 |
-| 7 | `happy` | `v/255` | 0.0–1.0 |
-| 8 | `angry` | `v/255` | 0.0–1.0 |
-| 9 | `sad` | `v/255` | 0.0–1.0 |
-| 10 | `relaxed` | `v/255` | 0.0–1.0 |
-| 11 | `surprised` | `v/255` | 0.0–1.0 |
-| 12 | `neutral` | `v/255` | 0.0–1.0 |
-| 13 | `tongueOut` | `v/255` | 0.0–1.0 |
-| 14 | `tongueX` | `(v−128)/128` | −1.0–+127/128 (**SIGNED**) |
-| 15 | `tongueY` | `(v−128)/128` | −1.0–+127/128 (**SIGNED**) |
+| 0 | `blinkLeft` | `u8` | `v / 255` → 0.0 … 1.0 |
+| 1 | `blinkRight` | `u8` | `v / 255` |
+| 2 | `aa` | `u8` | `v / 255` |
+| 3 | `ih` | `u8` | `v / 255` |
+| 4 | `ou` | `u8` | `v / 255` |
+| 5 | `ee` | `u8` | `v / 255` |
+| 6 | `oh` | `u8` | `v / 255` |
+| 7 | `happy` | `u8` | `v / 255` |
+| 8 | `angry` | `u8` | `v / 255` |
+| 9 | `sad` | `u8` | `v / 255` |
+| 10 | `relaxed` | `u8` | `v / 255` |
+| 11 | `surprised` | `u8` | `v / 255` |
+| 12 | `neutral` | `u8` | `v / 255` |
+| 13 | `tongueOut` | `u8` | `v / 255` — protrusion |
+| 14 | `tongueX` | `i8` | `v / 127` → −1.0 … +1.0, positive = toward the avatar's own left |
+| 15 | `tongueY` | `i8` | `v / 127` → −1.0 … +1.0, positive = upward |
 
-**Signed encoding exception.** Slots 14 and 15 use offset binary encoding, not the
-uniform 0..1 convention. Value byte `0` = −1.0, `128` = 0.0, `255` = +127/128.
-Receivers MUST NOT apply the 0..1 mapping to these slots.
+Slots 14 and 15 are two's-complement `i8`, like gaze and finger splay: `0` is the
+centred tongue. `−128` MUST NOT be sent; receivers clamp it to `−127`.
 
-**Tongue dual-home.** `tongueOut` (protrusion) has two homes depending on sync mode:
-- Standard-Sync: slot 13 (this table).
-- Perfect-Sync: ARKit canonical index 51 (Appendix A). The receiver already branches
-  on the `PERFECT_SYNC` flag for 18-vs-54-byte parsing — no new mechanism is needed.
-
-`tongueX` and `tongueY` are Standard-Sync-only in 1.x. Perfect-Sync has no spare slots
-for directional tongue; that extension is deferred to a future `Extended-Sync` tier.
-
-**Hierarchical gating.** `tongueX`/`tongueY` are meaningful only when `tongueOut` is
-tracked. If tongue tracking is not active, the sender MUST send 0 for slots 13/14/15.
-The client selects its tongue tier at
-capture initialisation and does not renegotiate per-frame.
+**Tongue rules.**
+- A sender not granted `"tongue"` (§2.1) MUST send 0 in slots 13–15.
+- `tongueX` / `tongueY` apply only while `tongueOut` > 0; receivers MUST ignore them
+  when `tongueOut` is 0. A sender that tracks protrusion but not direction sends 0 in
+  both.
+- In Perfect-Sync, protrusion is ARKit index 51 (`tongueOut`, Appendix A), likewise 0
+  without the `"tongue"` grant. Perfect-Sync carries no tongue direction (§11).
 
 #### Perfect-Sync (54 B) — `PERFECT_SYNC` = 1
 
@@ -759,9 +750,9 @@ Explicitly out of scope for v1, listed so v1 does not accidentally block them:
 - **Server-side field stripping** as a congestion path (drop fingers → hands → body).
   Requires the server to re-encode packets, which v1 forbids. v1 degrades by rate only.
 - **Props, scene state, 3D playspaces.**
-- **Directional tongue in Perfect-Sync** — `tongueX`/`tongueY` axes for senders using
-  the 52-slot ARKit mode. Perfect-Sync has no spare slots; clean support requires a new
-  `Extended-Sync` expression tier.
+- **Tongue direction in Perfect-Sync.** The 52 ARKit slots have no direction values;
+  adding them means growing the 54 B block by two bytes. Not justified yet: a sender
+  that needs tongue direction can use Standard-Sync.
 
 ---
 
