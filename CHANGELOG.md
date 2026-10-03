@@ -20,10 +20,11 @@ Leg rotation conventions. **No change to the packet format or the signaling.**
   sender must be able to express.
 - `reference/js`: `scripts/pose-fk.mjs` (forward kinematics used by the generator and the
   tests) and `test/poses.test.mjs`.
-- Loopback demo: drives legs, toes and hips height `h`; plays the pose vectors (cycle or
-  hold one); tracker selector with a table of what the tracker delivers, what the avatar
-  can show and what is therefore declared and transmitted (§2.1); the receiving view
-  frames the declared region. `?tracker=&pose=` links.
+- Loopback demo: drives legs, toes and hips height `h`; tracker selector showing what the
+  tracker delivers, what the avatar can show and what is therefore declared and
+  transmitted (§2.1); the receiving view frames the declared region; a dropdown of
+  whole-body poses (standing, moving, seated) plus the pose vectors; `h` estimated with
+  the Appendix D method; all controls visible without scrolling. `?tracker=&pose=` links.
 
 ### Fixed
 - `docs/DECISIONS.md` 0001: alternative D was described as still listed in §11; it was

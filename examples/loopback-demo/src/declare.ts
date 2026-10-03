@@ -6,14 +6,14 @@ import type { Frame } from 'posy';
 export type DataType = 'bones' | 'legs' | 'toes' | 'root' | 'fingers' | 'expressions' | 'tongue';
 
 /** Rows of the on-screen table, in the order `caps.sends` is written. */
-export const FEATURES: Array<{ type: DataType; label: string }> = [
-  { type: 'bones', label: 'Body — spine, head, arms' },
-  { type: 'legs', label: 'Legs and feet' },
-  { type: 'toes', label: 'Toes' },
-  { type: 'root', label: 'Position and hips height' },
-  { type: 'fingers', label: 'Fingers' },
-  { type: 'expressions', label: 'Face' },
-  { type: 'tongue', label: 'Tongue' },
+export const FEATURES: Array<{ type: DataType; label: string; short: string }> = [
+  { type: 'bones', label: 'Body — spine, head, arms', short: 'Body' },
+  { type: 'legs', label: 'Legs and feet', short: 'Legs' },
+  { type: 'toes', label: 'Toes', short: 'Toes' },
+  { type: 'root', label: 'Position and hips height', short: 'Position' },
+  { type: 'fingers', label: 'Fingers', short: 'Fingers' },
+  { type: 'expressions', label: 'Face', short: 'Face' },
+  { type: 'tongue', label: 'Tongue', short: 'Tongue' },
 ];
 
 // bone_mask bits per declared type (spec §4).

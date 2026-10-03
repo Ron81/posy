@@ -9,12 +9,15 @@ right is what the room receives. No server, no signup.
   body, face only. A table shows, per data type, what the tracker delivers, what the
   loaded avatar can show, and what is therefore transmitted (`caps.sends`, spec §2.1).
   The right-hand camera frames the declared region.
-- **Leg poses.** The legs play the conformance pose vectors from `testvectors/poses`
-  (spec §3.4), cycling by default; a button holds any one of them. Hips height `h` is
-  applied to the avatar.
-- **Links.** `?tracker=<id>&pose=<n>` preselects both, e.g. `?tracker=full&pose=7` holds
-  the ankle-on-knee pose. Tracker ids: `full-toes-tongue`, `full-toes`, `full`, `upper`,
-  `face`. Pose 0 is standing, 1–9 are the pose vectors in order.
+- **Poses.** One dropdown of whole-body poses (standing, moving, seated), written as joint
+  angles in `src/poses.ts`; "Auto" cycles through them. The last group holds the
+  conformance pose vectors from `testvectors/poses` (spec §3.4).
+- **Hips height.** The sender estimates `h` from the lowest point of the legs (spec
+  Appendix D); poses where nothing touches the floor supply it. Both avatars apply it.
+- **Links.** `?tracker=<id>&pose=<id>` preselects both, e.g. `?tracker=full&pose=p07`
+  holds the ankle-on-knee vector and `?pose=squat` the squat. A bare number means that
+  vector (`pose=7` = `p07`). Tracker ids: `full-toes-tongue`, `full-toes`, `full`,
+  `upper`, `face`.
 
 ```sh
 npm install

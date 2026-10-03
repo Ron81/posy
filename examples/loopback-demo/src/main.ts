@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { encode, type Frame } from 'posy';
 import { poseAt } from './animator.ts';
-import { POSES, legPoseAt } from './poses.ts';
+import { POSES, bodyPoseAt } from './poses.ts';
 import { TRACKERS, FEATURES, computeSends, crop, region, type DataType, type Tracker } from './declare.ts';
 import { LossyChannel } from './channel.ts';
 import { Receiver } from './receiver.ts';
@@ -167,7 +167,7 @@ const PRESETS: Record<string, Preset> = {
   nosignal: { latency: 180, jitter: 260, loss: 35, mbit: 5, quip: 'Oh, so you live in a cave. Sucks to be you — but it still works at' },
 };
 
-const presetButtons = [...document.querySelectorAll<HTMLButtonElement>('.preset')];
+const presetButtons = [...document.querySelectorAll<HTMLButtonElement>('.preset[data-preset]')];
 for (const btn of presetButtons) {
   btn.addEventListener('click', () => {
     const p = PRESETS[btn.dataset.preset ?? ''];
@@ -197,6 +197,8 @@ let sends: ReadonlySet<DataType> = new Set();
 const trackerRow = document.getElementById('trackers')!;
 const capsBody = document.getElementById('caps-body')!;
 const sendsEl = document.getElementById('sends')!;
+const chipsRow = document.getElementById('chips')!;
+const chipsLabel = document.getElementById('chips-label')!;
 
 function renderDeclaration(): void {
   const avatar = receiverView.avatar.caps;
@@ -223,6 +225,28 @@ function renderDeclaration(): void {
     );
   }).join('');
   sendsEl.textContent = JSON.stringify(list);
+
+  // The same information as one row of chips, with the reason spelled out.
+  chipsRow.querySelectorAll('.chip').forEach((c) => c.remove());
+  for (const { type, short } of FEATURES) {
+    const t = tracker.delivers.includes(type);
+    const a = avatar.has(type);
+    const s = sends.has(type);
+    const chip = document.createElement('span');
+    chip.className = s ? 'chip on' : 'chip';
+    chip.textContent = s
+      ? `${short} ✓${type === 'bones' && tracker.bonesOnly ? ' ' + tracker.bonesOnly.note : ''}`
+      : `${short} ✗${t && !a ? ' avatar' : !t && a ? ' tracker' : ''}`;
+    chip.title = s
+      ? 'transmitted'
+      : t && !a
+        ? 'not transmitted: the avatar cannot show it'
+        : !t && a
+          ? 'not transmitted: the tracker does not deliver it'
+          : 'not transmitted';
+    chipsRow.append(chip);
+  }
+  chipsLabel.title = `caps.sends = ${JSON.stringify(list)}`;
   for (const b of trackerRow.querySelectorAll<HTMLButtonElement>('.preset')) {
     b.classList.toggle('active', b.dataset.tracker === tracker.id);
   }
@@ -242,32 +266,25 @@ for (const t of TRACKERS) {
 }
 renderDeclaration();
 
-// Leg pose: cycle through the pose vectors by default, or hold one.
-let heldPose: number | null = POSES[Number(params.get('pose') ?? NaN)] ? Number(params.get('pose')) : null;
-let shownPose = -1;
-const poseRow = document.getElementById('poses')!;
+// Pose: one dropdown. 'auto' cycles through the whole-body poses.
+const poseSelect = document.getElementById('pose') as HTMLSelectElement;
+const poseNow = document.getElementById('pose-now')!;
+let shownPose = '';
 
-function renderPoseButtons(current: number): void {
-  for (const b of poseRow.querySelectorAll<HTMLButtonElement>('.preset')) {
-    const index = b.dataset.pose === 'cycle' ? null : Number(b.dataset.pose);
-    b.classList.toggle('active', index === heldPose);
-    b.classList.toggle('now', heldPose === null && index === current);
-  }
+poseSelect.append(new Option('Auto — cycle through the poses', 'auto'));
+for (const group of new Set(POSES.map((p) => p.group))) {
+  const og = document.createElement('optgroup');
+  og.label = group;
+  for (const p of POSES.filter((x) => x.group === group)) og.append(new Option(p.label, p.id));
+  poseSelect.append(og);
 }
-
-for (const [label, value] of [['Cycle', 'cycle'], ...POSES.map((p, i) => [p.name.replace(/^p\d+-/, '').replaceAll('-', ' '), String(i)])]) {
-  const b = document.createElement('button');
-  b.type = 'button';
-  b.className = 'preset';
-  b.dataset.pose = value;
-  b.textContent = label;
-  if (value !== 'cycle') b.title = POSES[Number(value)].description;
-  b.addEventListener('click', () => {
-    heldPose = value === 'cycle' ? null : Number(value);
-    renderPoseButtons(shownPose);
-  });
-  poseRow.append(b);
+{
+  // A bare number selects that conformance vector (7 → p07); 0 is the idle stand.
+  const wanted = params.get('pose') ?? 'auto';
+  const id = /^\d+$/.test(wanted) ? (wanted === '0' ? 'idle' : `p${wanted.padStart(2, '0')}`) : wanted;
+  poseSelect.value = POSES.some((p) => p.id === id) ? id : 'auto';
 }
+poseSelect.addEventListener('change', () => (shownPose = ''));
 
 // .vrm picker — swaps both avatars; failures fall back to a fresh stick figure.
 const vrmInput = document.getElementById('vrm') as HTMLInputElement;
@@ -313,10 +330,14 @@ function maybeSend(nowMs: number): void {
   if (nowMs - lastSend < interval) return;
   lastSend = nowMs;
 
-  const legs = legPoseAt(nowMs / 1000, heldPose);
-  if (legs.index !== shownPose) renderPoseButtons((shownPose = legs.index));
+  const body = bodyPoseAt(nowMs / 1000, poseSelect.value);
+  if (body.id !== shownPose) {
+    shownPose = body.id;
+    // In Auto, say which pose is on; a held pose is already named by the dropdown.
+    poseNow.textContent = poseSelect.value === 'auto' ? `now: ${POSES.find((p) => p.id === body.id)?.label ?? ''}` : '';
+  }
 
-  const performance = poseAt(nowMs / 1000, legs);
+  const performance = poseAt(nowMs / 1000, body);
   const bytes = encode(crop(performance, tracker, sends)); // only the declared parts go out
   stats.frame(bytes.length);
   senderView.avatar.applyPose(performance, 0.5); // left: everything the performer does
