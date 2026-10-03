@@ -20,12 +20,18 @@ Leg rotation conventions. **No change to the packet format or the signaling.**
   sender must be able to express.
 - `reference/js`: `scripts/pose-fk.mjs` (forward kinematics used by the generator and the
   tests) and `test/poses.test.mjs`.
+- Loopback demo: drives legs, toes and hips height `h`; plays the pose vectors (cycle or
+  hold one); tracker selector with a table of what the tracker delivers, what the avatar
+  can show and what is therefore declared and transmitted (§2.1); the receiving view
+  frames the declared region. `?tracker=&pose=` links.
 
 ### Fixed
 - `docs/DECISIONS.md` 0001: alternative D was described as still listed in §11; it was
   removed in 1.1.0.
 - Vector 007 generator comment described bit 9 as "turned out"; by §3.4 it swings across
   the body. Bytes unchanged.
+- Loopback demo wrote the blink weight to Standard-Sync slots 8 and 9 (`angry`, `sad`);
+  §5.6 puts `blinkLeft` / `blinkRight` in slots 0 and 1.
 
 ## [1.1.0] - 2026-10-03
 

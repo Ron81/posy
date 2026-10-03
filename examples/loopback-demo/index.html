@@ -58,6 +58,12 @@
       }
       .preset:hover { border-color: var(--accent); }
       .preset.active { border-color: var(--accent); color: var(--accent); }
+      .preset.now { border-style: dashed; border-color: var(--accent); }
+      .caps { border-collapse: collapse; margin: 10px 24px 8px; font-size: 13px; }
+      .caps th, .caps td { text-align: left; padding: 4px 22px 4px 0; border-bottom: 1px solid var(--line); }
+      .caps th { color: var(--muted); font-weight: 600; }
+      .caps td.y { color: #86efac; }
+      .caps td.n, .caps tr.off td:first-child { color: var(--muted); }
       .ctl { display: flex; flex-direction: column; gap: 4px; min-width: 180px; }
       .ctl label { font-size: 13px; color: var(--muted); }
       .ctl output { font: 600 14px var(--mono); color: var(--accent); }
@@ -72,7 +78,7 @@
       }
       .compare b { color: var(--accent); font-weight: 600; }
       .explainer {
-        margin: 0; padding: 0 24px 20px; max-width: 80ch;
+        margin: 0; padding: 0 24px 14px; max-width: 80ch;
         color: var(--muted); font-size: 13px; line-height: 1.6;
       }
       .explainer b { color: var(--ink); font-weight: 600; }
@@ -99,22 +105,48 @@
     <header>
       <h1>Posy transmission quality demo</h1>
       <p>
-        A pose is generated, <code>encode()</code>d to Posy wire bytes, pushed through a
-        simulated lossy channel, then <code>decode()</code>d and rendered. No server, no signup —
-        everything runs in this tab. Turn up loss and jitter and watch the right-hand avatar suffer.
+        A full-body performance is generated, cut down to what the sender declared,
+        <code>encode()</code>d to Posy wire bytes, pushed through a simulated lossy channel, then
+        <code>decode()</code>d and rendered. No server, no signup — everything runs in this tab.
+        Left is what you do; right is what the room sees. Pick a tracker, turn up loss and jitter,
+        and watch the right-hand avatar.
       </p>
     </header>
 
     <div class="stage">
       <div class="panel">
-        <span class="tag">sender · ground truth</span>
+        <span class="tag">you · the full performance</span>
         <canvas id="sender"></canvas>
       </div>
       <div class="panel">
-        <span class="tag">receiver · after the channel</span>
+        <span class="tag">the room · what you declared, after the channel</span>
         <canvas id="receiver"></canvas>
       </div>
     </div>
+
+    <div class="presets" id="trackers">
+      <span class="presets-label">Your tracker delivers:</span>
+    </div>
+    <table class="caps">
+      <thead>
+        <tr><th>Data</th><th>Tracker delivers</th><th>Avatar can show</th><th>Transmitted</th></tr>
+      </thead>
+      <tbody id="caps-body"></tbody>
+    </table>
+    <p class="explainer">
+      A part is transmitted only if the tracker delivers it <b>and</b> the avatar can show it.
+      That set is declared once as <code>caps.sends</code> = <code id="sends"></code>.
+      Everything else stays in its rest pose on the right and costs no bytes.
+      The right-hand camera frames the declared region. Fingers are transmitted when declared,
+      but this demo does not animate them.
+    </p>
+    <div class="presets" id="poses">
+      <span class="presets-label">Leg pose:</span>
+    </div>
+    <p class="explainer">
+      The leg poses are the conformance pose vectors (<code>testvectors/poses</code>). By default
+      they cycle; pick one to hold it. Hover a button for its description.
+    </p>
 
     <div class="stats">
       <span>frame: <b><span id="stat-bytes">–</span> B</b></span>

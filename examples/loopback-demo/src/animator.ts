@@ -1,9 +1,11 @@
-// The "sender": a purely procedural performance. Given a time, it builds a Posy
-// Frame with sine-wave head/arm motion, finger curl and a periodic blink. This is
-// the ground truth we encode and ship down the lossy channel.
+// The performer: a purely procedural full performance. Given a time, it builds a Posy
+// Frame with sine-wave head/arm motion, the current leg pose and hips height, finger
+// curl, a periodic blink and an occasional tongue. The sender cuts this down to what it
+// declared (declare.ts) before encoding.
 import * as THREE from 'three';
 import type { Frame, Quat } from 'posy';
-import { BIT, BLINK_LEFT_INDEX, BLINK_RIGHT_INDEX } from './bones.ts';
+import { BIT, BLINK_LEFT_INDEX, BLINK_RIGHT_INDEX, TONGUE_OUT_INDEX, TONGUE_X_INDEX } from './bones.ts';
+import type { LegPose } from './poses.ts';
 
 const _euler = new THREE.Euler();
 const _quat = new THREE.Quaternion();
@@ -20,10 +22,10 @@ let seq = 0;
 /**
  * Build the pose at time `tSec`. `seq` increments per call; `timestampMs` is the
  * demo clock in ms (kept < 2^32). Finger curl rides a slow wave; blink is a short
- * pulse a few times a minute.
+ * pulse a few times a minute. `legs` supplies bits 9–16 and the hips height.
  */
-export function poseAt(tSec: number): Frame {
-  const bones = new Map<number, Quat>();
+export function poseAt(tSec: number, legs: LegPose): Frame {
+  const bones = new Map<number, Quat>(legs.bones);
 
   // Head: gentle look-around (yaw) + nod (pitch).
   bones.set(BIT.head, quat(Math.sin(tSec * 0.8) * 0.25, Math.sin(tSec * 0.6) * 0.4, 0));
@@ -55,13 +57,19 @@ export function poseAt(tSec: number): Frame {
   weights[BLINK_LEFT_INDEX] = blink;
   weights[BLINK_RIGHT_INDEX] = blink;
 
+  // Tongue: out for a second every 6 s, drifting side to side (slot 14 is i8, §5.6).
+  if (tSec % 6 < 1) {
+    weights[TONGUE_OUT_INDEX] = 255;
+    weights[TONGUE_X_INDEX] = Math.round(Math.sin(tSec * 6) * 100) & 0xff;
+  }
+
   return {
     version: 1,
     seq: seq++ & 0xffff,
     timestampMs: Math.floor(tSec * 1000) >>> 0,
     idle: false,
     bones,
-    root: { x: 0x8000, y: 0x8000, z: 0, h: 0x8000 },
+    root: { x: 0x8000, y: 0x8000, z: 0, h: legs.h },
     fingers: { left: hand(), right: hand() },
     expressions: { perfectSync: false, weights, gazeYaw: 0, gazePitch: 0 },
   };

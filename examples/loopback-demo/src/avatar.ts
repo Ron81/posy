@@ -3,6 +3,9 @@
 //   - StickFigure: built from three primitives, always available, zero assets.
 //   - VrmAvatar:   wraps a user-loaded .vrm via @pixiv/three-vrm.
 //
+// Each avatar reports which data types it can show (`caps`). The sender declares only
+// those (spec §2.1), so a part the avatar lacks is never transmitted.
+//
 // Both smooth incoming rotations by slerping the *rendered* bone toward the
 // decoded target every tick, so a low send rate or a jittery channel still looks
 // continuous rather than steppy.
@@ -10,10 +13,15 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { VRMLoaderPlugin, type VRM, VRMHumanBoneName } from '@pixiv/three-vrm';
 import { unpackQuat, type Frame } from 'posy';
-import { BIT, BLINK_LEFT_INDEX, BLINK_RIGHT_INDEX } from './bones.ts';
+import { BIT, BLINK_LEFT_INDEX, BLINK_RIGHT_INDEX, TONGUE_OUT_INDEX } from './bones.ts';
+import type { DataType } from './declare.ts';
 
 export interface Avatar {
   readonly object: THREE.Object3D;
+  /** Data types this avatar can show. */
+  readonly caps: ReadonlySet<DataType>;
+  /** Top of the head above the floor in metres, for camera framing. */
+  readonly height: number;
   /** Move rendered bones a fraction toward the decoded pose. */
   applyPose(frame: Frame, smoothing: number): void;
   update(deltaSec: number): void;
@@ -21,6 +29,10 @@ export interface Avatar {
 }
 
 const _q = new THREE.Quaternion();
+const _v = new THREE.Vector3();
+
+/** Hips height as a fraction of standing (§5.4). No root block → standing. */
+const hipsRatio = (frame: Frame): number => (frame.root?.h ?? 0x8000) / 0x8000;
 
 function frameQuat(frame: Frame, bit: number, out: THREE.Quaternion): boolean {
   const q = frame.bones.get(bit);
@@ -43,6 +55,14 @@ const VRM_BONE: Array<[number, VRMHumanBoneName]> = [
   [BIT.rightUpperArm, VRMHumanBoneName.RightUpperArm],
   [BIT.rightLowerArm, VRMHumanBoneName.RightLowerArm],
   [BIT.rightHand, VRMHumanBoneName.RightHand],
+  [BIT.leftUpperLeg, VRMHumanBoneName.LeftUpperLeg],
+  [BIT.leftLowerLeg, VRMHumanBoneName.LeftLowerLeg],
+  [BIT.leftFoot, VRMHumanBoneName.LeftFoot],
+  [BIT.leftToes, VRMHumanBoneName.LeftToes],
+  [BIT.rightUpperLeg, VRMHumanBoneName.RightUpperLeg],
+  [BIT.rightLowerLeg, VRMHumanBoneName.RightLowerLeg],
+  [BIT.rightFoot, VRMHumanBoneName.RightFoot],
+  [BIT.rightToes, VRMHumanBoneName.RightToes],
 ];
 
 function blinkWeight(frame: Frame): number {
@@ -58,6 +78,11 @@ function blinkWeight(frame: Frame): number {
 /** A jointed humanoid made of boxes and spheres. Bones map bit → pivot group. */
 export class StickFigure implements Avatar {
   readonly object = new THREE.Group();
+  // No toes, no fingers, no tongue: the figure has nothing to show them with.
+  readonly caps: ReadonlySet<DataType> = new Set<DataType>(['bones', 'legs', 'root', 'expressions']);
+  readonly height = 1.75;
+  private static readonly HIP_HEIGHT = 0.9;
+  private readonly hips = new THREE.Group();
   private readonly pivots = new Map<number, THREE.Object3D>();
   private readonly rest = new Map<number, THREE.Quaternion>();
   private leftEye!: THREE.Object3D;
@@ -82,8 +107,8 @@ export class StickFigure implements Avatar {
     };
 
     // Torso up the spine.
-    const hips = new THREE.Group();
-    hips.position.y = 0.9;
+    const hips = this.hips;
+    hips.position.y = StickFigure.HIP_HEIGHT;
     this.object.add(hips);
 
     const spine = pivot(BIT.spine, hips, 0, 0, 0);
@@ -126,13 +151,24 @@ export class StickFigure implements Avatar {
     arm(BIT.leftShoulder, BIT.leftUpperArm, BIT.leftLowerArm, BIT.leftHand, 1);
     arm(BIT.rightShoulder, BIT.rightUpperArm, BIT.rightLowerArm, BIT.rightHand, -1);
 
-    // Simple static legs so it reads as a person, not a floating torso.
-    const legMat = mat;
-    for (const side of [1, -1]) {
-      const leg = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.75, 4, 8), legMat);
-      leg.position.set(0.09 * side, 0.9 - 0.42, 0);
-      this.object.add(leg);
-    }
+    // Legs hang off the hips: 0.05 + 0.40 + 0.37 + 0.08 (ankle) = the 0.9 m hip height.
+    const boneDown = (len: number, r: number) => {
+      const m = bone(len, r);
+      m.position.y = -len / 2;
+      return m;
+    };
+    const leg = (upperBit: number, lowerBit: number, footBit: number, side: number) => {
+      const upper = pivot(upperBit, hips, 0.09 * side, -0.05, 0);
+      upper.add(boneDown(0.4, 0.055));
+      const lower = pivot(lowerBit, upper, 0, -0.4, 0);
+      lower.add(boneDown(0.37, 0.045));
+      const foot = pivot(footBit, lower, 0, -0.37, 0);
+      const footMesh = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.06, 0.22), mat);
+      footMesh.position.set(0, -0.05, 0.06); // sole 0.08 below the ankle, toes toward +Z
+      foot.add(footMesh);
+    };
+    leg(BIT.leftUpperLeg, BIT.leftLowerLeg, BIT.leftFoot, 1);
+    leg(BIT.rightUpperLeg, BIT.rightLowerLeg, BIT.rightFoot, -1);
   }
 
   applyPose(frame: Frame, smoothing: number): void {
@@ -147,6 +183,9 @@ export class StickFigure implements Avatar {
       }
       pivotNode.quaternion.slerp(_q, smoothing);
     }
+    // Hips height: `h` scales this figure's own standing hip height (§8.5).
+    const hipsY = StickFigure.HIP_HEIGHT * hipsRatio(frame);
+    this.hips.position.y += (hipsY - this.hips.position.y) * smoothing;
     // Blink → squash the eyes vertically.
     const openY = 1 - 0.9 * blinkWeight(frame);
     this.leftEye.scale.y += (openY - this.leftEye.scale.y) * smoothing;
@@ -174,10 +213,33 @@ export class StickFigure implements Avatar {
 
 export class VrmAvatar implements Avatar {
   readonly object: THREE.Object3D;
+  readonly caps: ReadonlySet<DataType>;
+  readonly height: number;
   private readonly rest = new Map<VRMHumanBoneName, THREE.Quaternion>();
+  private readonly hips: THREE.Object3D | null;
+  private readonly hipsRestY: number;
 
   private constructor(private readonly vrm: VRM) {
     this.object = vrm.scene;
+    const node = (name: VRMHumanBoneName) => vrm.humanoid.getNormalizedBoneNode(name);
+
+    // What this model can show. Legs are required VRM bones; toes, fingers, expressions
+    // and a tongue expression are optional and differ from model to model.
+    const caps = new Set<DataType>(['bones', 'legs', 'root']);
+    if (node(VRMHumanBoneName.LeftToes) && node(VRMHumanBoneName.RightToes)) caps.add('toes');
+    if (node(VRMHumanBoneName.LeftIndexProximal)) caps.add('fingers');
+    if (vrm.expressionManager) {
+      caps.add('expressions');
+      if (vrm.expressionManager.getExpression('tongueOut')) caps.add('tongue');
+    }
+    this.caps = caps;
+
+    vrm.scene.updateMatrixWorld(true);
+    this.height = (node(VRMHumanBoneName.Head)?.getWorldPosition(_v).y ?? 1.4) + 0.2;
+    // The model stands on Y = 0 in its T-pose, so the rest height of the hips is its
+    // standing hip height (§5.4).
+    this.hips = node(VRMHumanBoneName.Hips);
+    this.hipsRestY = this.hips?.position.y ?? 0;
     // Record each driven bone's rest rotation once.
     for (const [, name] of VRM_BONE) {
       const node = vrm.humanoid.getNormalizedBoneNode(name);
@@ -205,11 +267,18 @@ export class VrmAvatar implements Avatar {
       else _q.copy(rest);
       node.quaternion.slerp(_q, smoothing);
     }
+    if (this.hips) {
+      const hipsY = this.hipsRestY * hipsRatio(frame);
+      this.hips.position.y += (hipsY - this.hips.position.y) * smoothing;
+    }
     const em = this.vrm.expressionManager;
     if (em) {
       const cur = em.getValue('blink') ?? 0;
       const target = blinkWeight(frame);
       em.setValue('blink', cur + (target - cur) * smoothing);
+      if (this.caps.has('tongue')) {
+        em.setValue('tongueOut', (frame.expressions?.weights[TONGUE_OUT_INDEX] ?? 0) / 255);
+      }
     }
   }
 

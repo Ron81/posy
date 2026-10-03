@@ -1,14 +1,17 @@
 // Wires the whole loopback together:
 //
-//   poseAt(t) ─encode()→ bytes ─LossyChannel→ Receiver.decode()→ jitter buffer
-//        │                                                             │
-//        └───────────→ sender avatar          receiver avatar ←────────┘
+//   poseAt(t) ─crop()→ encode()→ bytes ─LossyChannel→ Receiver.decode()→ jitter buffer
+//        │                                                                    │
+//        └───────────→ sender avatar               receiver avatar ←──────────┘
 //
-// Two three.js scenes render side by side: the left one is fed the ground-truth
-// pose directly; the right one is fed only what survived the channel.
+// Two three.js scenes render side by side: the left one is fed the full performance
+// directly; the right one is fed only what the sender declared (tracker ∩ avatar,
+// spec §2.1) and what then survived the channel.
 import * as THREE from 'three';
 import { encode, type Frame } from 'posy';
 import { poseAt } from './animator.ts';
+import { POSES, legPoseAt } from './poses.ts';
+import { TRACKERS, FEATURES, computeSends, crop, region, type DataType, type Tracker } from './declare.ts';
 import { LossyChannel } from './channel.ts';
 import { Receiver } from './receiver.ts';
 import { StickFigure, VrmAvatar, type Avatar } from './avatar.ts';
@@ -46,6 +49,22 @@ interface View {
   renderer: THREE.WebGLRenderer;
   avatar: Avatar;
   setAvatar(next: Avatar): void;
+  /** Current camera distance and look-at height; eased toward the framing target. */
+  dist: number;
+  lookY: number;
+}
+
+// Camera framing per declared region: [distance, look-at height], in avatar heights.
+const FRAMING = { full: [2.1, 0.5], upper: [1.3, 0.74], face: [0.85, 0.88] } as const;
+
+function frameCamera(view: View, r: keyof typeof FRAMING, ease: number): void {
+  const [dist, at] = FRAMING[r];
+  const height = view.avatar.height;
+  view.dist += (dist * height - view.dist) * ease;
+  view.lookY += (at * height - view.lookY) * ease;
+  // Slightly off-axis, so a leg moving forward or back is visible as such.
+  view.camera.position.set(0.3 * view.dist, view.lookY + 0.08 * view.dist, 0.95 * view.dist);
+  view.camera.lookAt(0, view.lookY, 0);
 }
 
 function makeView(canvas: HTMLCanvasElement, initial: Avatar): View {
@@ -56,8 +75,6 @@ function makeView(canvas: HTMLCanvasElement, initial: Avatar): View {
   scene.background = new THREE.Color(0x1b1d27);
 
   const camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
-  camera.position.set(0, 1.35, 3.2);
-  camera.lookAt(0, 1.1, 0);
 
   scene.add(new THREE.HemisphereLight(0xffffff, 0x333344, 1.4));
   const key = new THREE.DirectionalLight(0xffffff, 1.2);
@@ -73,6 +90,8 @@ function makeView(canvas: HTMLCanvasElement, initial: Avatar): View {
     camera,
     renderer,
     avatar: initial,
+    dist: FRAMING.full[0] * initial.height,
+    lookY: FRAMING.full[1] * initial.height,
     setAvatar(next) {
       scene.remove(this.avatar.object);
       this.avatar.dispose();
@@ -169,6 +188,87 @@ for (const id of ['loss', 'jitter']) {
   });
 }
 
+// Declaration: the tracker the user picks, cut down to what the loaded avatar can show.
+// `?tracker=<id>&pose=<index>` preselects both, so a specific check can be linked to.
+const params = new URLSearchParams(location.search);
+let tracker: Tracker = TRACKERS.find((t) => t.id === params.get('tracker')) ?? TRACKERS[0];
+let sends: ReadonlySet<DataType> = new Set();
+
+const trackerRow = document.getElementById('trackers')!;
+const capsBody = document.getElementById('caps-body')!;
+const sendsEl = document.getElementById('sends')!;
+
+function renderDeclaration(): void {
+  const avatar = receiverView.avatar.caps;
+  const list = computeSends(tracker, avatar);
+  sends = new Set(list);
+  capsBody.innerHTML = FEATURES.map(({ type, label }) => {
+    const t = tracker.delivers.includes(type);
+    const a = avatar.has(type);
+    const s = sends.has(type);
+    const trackerCell = !t ? 'no' : type === 'bones' && tracker.bonesOnly ? tracker.bonesOnly.note : 'yes';
+    const sentCell = s
+      ? 'yes'
+      : t && !a
+        ? 'no — the avatar cannot show it'
+        : !t && a
+          ? 'no — the tracker does not deliver it'
+          : t && a
+            ? 'no — it depends on a type that is not sent'
+            : 'no';
+    const cls = (on: boolean) => (on ? 'y' : 'n');
+    return (
+      `<tr class="${s ? 'on' : 'off'}"><td>${label}</td><td class="${cls(t)}">${trackerCell}</td>` +
+      `<td class="${cls(a)}">${a ? 'yes' : 'no'}</td><td class="${cls(s)}">${sentCell}</td></tr>`
+    );
+  }).join('');
+  sendsEl.textContent = JSON.stringify(list);
+  for (const b of trackerRow.querySelectorAll<HTMLButtonElement>('.preset')) {
+    b.classList.toggle('active', b.dataset.tracker === tracker.id);
+  }
+}
+
+for (const t of TRACKERS) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'preset';
+  b.dataset.tracker = t.id;
+  b.textContent = t.label;
+  b.addEventListener('click', () => {
+    tracker = t;
+    renderDeclaration();
+  });
+  trackerRow.append(b);
+}
+renderDeclaration();
+
+// Leg pose: cycle through the pose vectors by default, or hold one.
+let heldPose: number | null = POSES[Number(params.get('pose') ?? NaN)] ? Number(params.get('pose')) : null;
+let shownPose = -1;
+const poseRow = document.getElementById('poses')!;
+
+function renderPoseButtons(current: number): void {
+  for (const b of poseRow.querySelectorAll<HTMLButtonElement>('.preset')) {
+    const index = b.dataset.pose === 'cycle' ? null : Number(b.dataset.pose);
+    b.classList.toggle('active', index === heldPose);
+    b.classList.toggle('now', heldPose === null && index === current);
+  }
+}
+
+for (const [label, value] of [['Cycle', 'cycle'], ...POSES.map((p, i) => [p.name.replace(/^p\d+-/, '').replaceAll('-', ' '), String(i)])]) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'preset';
+  b.dataset.pose = value;
+  b.textContent = label;
+  if (value !== 'cycle') b.title = POSES[Number(value)].description;
+  b.addEventListener('click', () => {
+    heldPose = value === 'cycle' ? null : Number(value);
+    renderPoseButtons(shownPose);
+  });
+  poseRow.append(b);
+}
+
 // .vrm picker — swaps both avatars; failures fall back to a fresh stick figure.
 const vrmInput = document.getElementById('vrm') as HTMLInputElement;
 const vrmNote = document.getElementById('vrm-note')!;
@@ -180,6 +280,7 @@ function backToStickFigure(): void {
   vrmUnload.hidden = true;
   vrmInput.value = ''; // let the same file be picked again later
   vrmNote.textContent = 'Optional. Built-in stick figure is used by default. Nothing is uploaded.';
+  renderDeclaration();
 }
 
 vrmInput.addEventListener('change', async () => {
@@ -194,6 +295,7 @@ vrmInput.addEventListener('change', async () => {
     receiverView.setAvatar(b);
     vrmUnload.hidden = false;
     vrmNote.textContent = `showing ${file.name}. Nothing was uploaded.`;
+    renderDeclaration();
   } catch (err) {
     backToStickFigure();
     vrmNote.textContent = `couldn't load that file (${(err as Error).message}). Back to the stick figure.`;
@@ -211,10 +313,13 @@ function maybeSend(nowMs: number): void {
   if (nowMs - lastSend < interval) return;
   lastSend = nowMs;
 
-  const frame = poseAt(nowMs / 1000);
-  const bytes = encode(frame);
+  const legs = legPoseAt(nowMs / 1000, heldPose);
+  if (legs.index !== shownPose) renderPoseButtons((shownPose = legs.index));
+
+  const performance = poseAt(nowMs / 1000, legs);
+  const bytes = encode(crop(performance, tracker, sends)); // only the declared parts go out
   stats.frame(bytes.length);
-  senderView.avatar.applyPose(frame, 0.5); // sender tracks truth tightly
+  senderView.avatar.applyPose(performance, 0.5); // left: everything the performer does
   channel.send(bytes);
 }
 
@@ -228,6 +333,10 @@ function tick(nowMs: number): void {
 
   const target: Frame | null = receiver.target(nowMs);
   if (target) receiverView.avatar.applyPose(target, 0.2); // smooth over jitter
+
+  // Left always shows the whole performer; right frames the declared region.
+  frameCamera(senderView, 'full', 0.08);
+  frameCamera(receiverView, region(tracker, sends), 0.08);
 
   senderView.avatar.update(delta);
   receiverView.avatar.update(delta);

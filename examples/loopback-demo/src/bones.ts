@@ -6,6 +6,14 @@ export const BIT = {
   chest: 2,
   neck: 4,
   head: 5,
+  leftUpperLeg: 9,
+  leftLowerLeg: 10,
+  leftFoot: 11,
+  leftToes: 12,
+  rightUpperLeg: 13,
+  rightLowerLeg: 14,
+  rightFoot: 15,
+  rightToes: 16,
   leftShoulder: 17,
   leftUpperArm: 18,
   leftLowerArm: 19,
@@ -16,26 +24,8 @@ export const BIT = {
   rightHand: 24,
 } as const;
 
-// Standard-Sync expression block order (spec Appendix A, first 16 of the sorted
-// ARKit list). We only need the eye-blink pair for this demo.
-export const STANDARD_BLENDSHAPES = [
-  'browDownLeft',
-  'browDownRight',
-  'browInnerUp',
-  'browOuterUpLeft',
-  'browOuterUpRight',
-  'cheekPuff',
-  'cheekSquintLeft',
-  'cheekSquintRight',
-  'eyeBlinkLeft',
-  'eyeBlinkRight',
-  'eyeLookDownLeft',
-  'eyeLookDownRight',
-  'eyeLookInLeft',
-  'eyeLookInRight',
-  'eyeLookOutLeft',
-  'eyeLookOutRight',
-] as const;
-
-export const BLINK_LEFT_INDEX = 8; // eyeBlinkLeft
-export const BLINK_RIGHT_INDEX = 9; // eyeBlinkRight
+// Standard-Sync expression slots this demo uses (spec §5.6).
+export const BLINK_LEFT_INDEX = 0; // blinkLeft
+export const BLINK_RIGHT_INDEX = 1; // blinkRight
+export const TONGUE_OUT_INDEX = 13; // tongueOut, u8
+export const TONGUE_X_INDEX = 14; // tongueX, i8
