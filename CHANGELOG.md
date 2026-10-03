@@ -3,48 +3,63 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
-## [1.1.0] - 2026-10-03
+## [1.1.0] - draft, under review
 
-Full-body profile (legs/feet), tongue tracking, transport-framing clarification,
-server structural-validation note, handshake-seam note, and housekeeping errata.
-The binary packet format (§5) is unchanged — pose frames are byte-for-byte identical.
+Full-body support: per-sender declaration, legs and toes as declared types, hips height
+on the wire, tongue tracking. Transport wording reframed. The 1.x freeze is replaced by
+a soft lock, and this revision **changes the packet format and the signaling**; each
+change is listed with its reason.
 
-### Added
-- Spec §4: Full-body profile definition. When `allowed:["legs"]` is declared, bits
-  9–11 + 13–15 (upper/lower leg + foot) are REQUIRED; bits 12 + 16 (toes) are an
-  OPTIONAL sub-tier. Receivers that do not support the full-body profile MUST still
-  accept frames carrying leg bits.
-- Spec §5.6 Standard-Sync: tongue tracking in the three previously reserved expression
-  slots. Slot 13 = `tongueOut` (0..1), slots 14–15 = `tongueX`/`tongueY` (signed
-  offset binary, −1.0..+127/128). Declared via `allowed:["tongue"]`. Directional
-  tongue is Standard-Sync-only in 1.x.
-- Spec §8.5: normative FK grounding for the full-body profile. Receivers compute heel
-  height from transmitted foot rotations and VRM rig bone lengths, then offset the hips
-  so the lowest heel rests at floor level. Jump/airborne states are out of scope.
-- `schemas/signaling.schema.json`: `"legs"` and `"tongue"` added to the `allowed` enum.
-- Spec §2.1: `"legs"` and `"tongue"` documented in the `allowed` value list; handshake
-  MAY be embedded in an integrator's existing join message.
-- Spec §2.4: a light relay MAY implement only sender-side rate-limiting and whole-frame
-  drop; per-subscriber FULL/NORMAL/MINIMAL/OFF tiering is explicitly OPTIONAL for relays.
-- Spec §3.2: VRM0→VRM1 thumb-remap note (`ThumbMetacarpal`↔`ThumbProximal`) for senders.
-- Spec §5.5: note that per-joint → curl/splay reduction is integration-layer (sender-side)
-  work; per-joint finger bone rotations are intentionally off-wire.
-- Spec §11: `root_height_mm`, profile-conditional `z` semantics, and directional tongue
-  in Perfect-Sync added to the v2 deferred list.
+### Changed — wire format (§5)
+- **Root block 6 B → 8 B.** New `u16 h`: hips height in units of 1/32768 of the avatar's
+  standing hip height (§5.4, §8.5). Length formula uses `8*b1`. Typical frame 116 → 118 B,
+  Perfect-Sync 152 → 154 B, largest v1 frame 200 → 202 B.
+  Reason: leg rotations do not determine hips height. Deriving it on the receiver from
+  the lowest foot fails when both feet are off the floor (seated) and for jumps.
+- **Standard-Sync slots 13–15 are tongue** (previously reserved): `tongueOut` (`u8`),
+  `tongueX`, `tongueY` (`i8`, 0 = centre).
+  Reason for `i8`: a sender without tongue tracking sends 0, which must mean "centred".
 
-### Changed
-- Spec §1.1: transport framing reworded from "SCTP primary / WebSocket fallback" to
-  role-based language. SCTP = the lane for direct/browser-to-browser links; WebSocket =
-  the lane for server-relay deployments. Neither is described as "the fallback."
-- Spec §1.2: added normative note that a relay MAY structurally validate frames using
-  the §5.1 header (version, length formula, reserved bits, `allowed` subset) without
-  decoding the quaternion payload.
-- Spec §9: removed expression indices 13–15 from the extension-mechanism list; they are
-  now defined (tongue, see §5.6).
-- Spec §11: removed "Leg / full-body tracking as a mandatory profile" from the deferred
-  list; it is now shipped.
-- Spec wording: worst-case quaternion round-trip error corrected to ~0.25° (previously
-  stated as ~0.14°; the lower figure is the identity-tie case only).
+### Changed — signaling (§2)
+- **`hello.caps.sends`**: the sender declares every data type it will transmit — what its
+  capture delivers and its avatar can show. Replaces `caps.perfect_sync` and
+  `caps.fingers`. An empty list is a watcher.
+- **`session.allowed`** is the grant for that client, a subset of `caps.sends`.
+- **`peers.add[].sends`**: each peer's granted set.
+- **New message `caps`** to re-declare after an avatar or capture change.
+- **New types** `"legs"` (bits 9–11, 13–15), `"toes"` (bits 12, 16), `"tongue"`.
+  `"bones"` now covers bits 0–8 and 17–24 only.
+  Reason: a room-level grant does not tell relays or receivers what a given sender
+  transmits. With a declaration the relay check is one mask comparison and receivers
+  can prepare the avatar before the first frame.
+
+### Changed — rules and wording
+- The packet format and signaling are **soft-locked**, not frozen: changes are allowed
+  in 1.x with a stated justification. No implementation has shipped yet.
+- §0: avatar model stated — a sender's stream drives that sender's own avatar on every
+  receiver; no retargeting onto another avatar.
+- §1.1: transport wording is role-based. SCTP for direct links, WebSocket for
+  server-relay deployments; neither is called a fallback.
+- §1.2: a relay MAY validate frames from the header alone (version, length, finger bits,
+  granted set). It MUST NOT reject reserved flag or bone bits.
+- §2.1: the handshake MAY be embedded in an integrator's existing join message.
+- §2.4: per-subscriber rate tiering is OPTIONAL for a relay; `OFF` must still be honoured.
+- §3.2: VRM 0.x thumb joint naming noted for senders deriving the finger block.
+- §3.3: a bone the avatar lacks is treated like an unsolved bone.
+- §5.3: worst-case quaternion round-trip error stated as ≈ 0.25° (0.14° is the identity
+  case only).
+- §5.5: note that reducing per-joint finger rotations to curl/splay is sender-side work.
+- §8.5: hips height rules for sender and receiver. Appendix D: an estimate for senders
+  without a floor reference.
+- §9: expression slots 13–15 removed from the extension points.
+- §11: "leg / full-body tracking as a mandatory profile" removed (now specified);
+  tongue direction in Perfect-Sync added.
+
+### Test vectors
+- `002-fullbody-standard`: mask fixed from `0x00fffe3f` to `0x01fffe3f` (bit 24,
+  `rightHand`, was missing); now 154 B.
+- `003-perfectsync`: 154 B (root block).
+- New `007-fullbody-legs`: non-identity leg and toe rotations, lowered `h`, tongue slots.
 
 ## [1.0.5] - 2026-10-02
 

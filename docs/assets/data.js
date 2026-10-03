@@ -81,7 +81,8 @@
     ['BAD_VERSION', 'Major version mismatch', 'Reject at channel open'],
     ['UNAUTHORIZED_TYPE', 'Flag or bone bit set for a type not in allowed; invalid declaration', 'Drop frame, count'],
     ['MALFORMED_THRESHOLD', '> 30 invalid frames in 10 s', 'Stop forwarding until reconnect'],
-    ['RATE_EXCEEDED', 'Sender > granted hz for > 5 s', 'Drop excess frames']
+    ['RATE_EXCEEDED', 'Sender > granted hz for > 5 s', 'Drop excess frames'],
+    ['UNSUPPORTED_TRANSPORT', 'Requested transport lane not available and no alternative offered', 'Reject at join']
   ];
 
   /* ------------------------------------------------------- packet builder */
@@ -180,7 +181,7 @@
     ] },
     { phase: 'Phase 4', title: 'Ecosystem', summary: "After 1.0 tags, other people's problems become other people's repos.", items: [
       it('Tag v1.0.0, freeze §2, add the first real CHANGELOG entry', 'done'),
-      it('Tag v1.1.0 — full-body legs/feet profile, tongue tracking, FK grounding, transport reframe', 'planned'),
+      it('Tag v1.1.0 — per-sender declaration, full-body legs and toes, hips height, tongue tracking, transport reframe', 'planned'),
       it('Split out posy-server-example (mediasoup) as its own linked repo', 'planned')
     ] }
   ];
@@ -222,7 +223,9 @@
         file('002-fullbody-standard.bin / .json', 'live', 'Full body, Standard-Sync expressions, root + fingers present.'),
         file('003-perfectsync.bin / .json', 'live', '52-blendshape Perfect-Sync face block.'),
         file('004-malformed-length.bin / .json', 'live', 'Deliberately wrong length — expected outcome is reject.'),
-        file('005-quat-edgecases.bin / .json', 'live', 'Near-1/√2 components and sign flips, the cases that break naive codecs.')
+        file('005-quat-edgecases.bin / .json', 'live', 'Near-1/√2 components and sign flips, the cases that break naive codecs.'),
+        file('006-reserved-bits.bin / .json', 'live', 'A reserved bone bit is set — must be accepted, the extra quaternion skipped.'),
+        file('007-fullbody-legs.bin / .json', 'live', 'Non-identity legs and toes, lowered hips height, signed tongue slots.')
       ]),
       file('quaternions.csv', 'live', 'Input quaternion → expected packed u32, for isolated codec testing.')
     ]),

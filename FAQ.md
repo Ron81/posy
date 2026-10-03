@@ -16,7 +16,7 @@ Pose can ride a reliable WebSocket instead (spec §1.1). WebSocket is the right 
 
 ## Why drop the largest quaternion component?
 
-A unit quaternion only has 3 degrees of freedom. "Smallest-three" drops the largest component and rebuilds it on the other side with `sqrt(1 − a² − b² − c²)`. That turns 16 bytes (four floats) into 4 bytes (one `u32`) at a worst-case error of roughly a tenth of a degree — far below what any tracker can actually resolve.
+A unit quaternion only has 3 degrees of freedom. "Smallest-three" drops the largest component and rebuilds it on the other side with `sqrt(1 − a² − b² − c²)`. That turns 16 bytes (four floats) into 4 bytes (one `u32`) at a worst-case error of roughly a quarter of a degree — far below what any tracker can actually resolve.
 
 ## Why no delta / keyframe encoding in v1?
 
