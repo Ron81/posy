@@ -15,6 +15,8 @@ Each vector is a pair: `NNN-name.bin` (the exact bytes) and `NNN-name.json` (wha
 | `003-perfectsync` | 52-blendshape face block (`PERFECT_SYNC`) |
 | `004-malformed-length` | Length doesn't match the flags → **must be rejected** |
 | `005-quat-edgecases` | Components near ±1/√2, sign flips, ties between equally large components |
+| `006-reserved-bits` | A reserved bone bit is set — the frame **must be accepted** and the extra quaternion skipped |
+| `007-fullbody-legs` | Distinct non-identity leg and toe rotations, lowered hips height `h`, signed tongue slots |
 
 ### JSON format
 
@@ -35,7 +37,7 @@ Each vector is a pair: `NNN-name.bin` (the exact bytes) and `NNN-name.json` (wha
     ],
     "root": null,                           // or { "x": u16, "y": u16, "z": i16, "h": u16 }
     "fingers": null,                        // or { "left": [12 bytes], "right": [12 bytes] } as integers (splay bytes signed)
-    "expressions": null                     // or { "perfect_sync": bool, "weights": [...], "gaze_yaw": i8, "gaze_pitch": i8 }
+    "expressions": null                     // or { "perfect_sync": bool, "weights": [raw bytes 0..255], "gaze_yaw": i8, "gaze_pitch": i8 }
   }
 }
 ```

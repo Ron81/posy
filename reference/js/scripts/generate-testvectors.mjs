@@ -87,13 +87,13 @@ const v001 = writeAccept(
   { flags: 0 },
 );
 
-/* 002-fullbody-standard: 21 bones, root+fingers+Standard-Sync -> 150 B */
+/* 002-fullbody-standard: 22 bones, root+fingers+Standard-Sync -> 154 B */
 {
-  const bits = [0, 1, 2, 3, 4, 5, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23];
+  const bits = [0, 1, 2, 3, 4, 5, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24];
   const bones = new Map(bits.map((b) => [b, idQuat]));
   writeAccept(
     '002-fullbody-standard',
-    '21 bones (spine/head + legs + arms), root + fingers + Standard-Sync face',
+    '22 bones (spine/head + legs + toes + both arms), root + fingers + Standard-Sync face',
     {
       version: 1,
       seq: 2,
@@ -214,6 +214,72 @@ writeReject('004d-length-too-short', 'a 15-byte buffer (< 16)', new Uint8Array(1
   writeFileSync(join(TV, 'frames', '006-reserved-bits.bin'), buf);
   writeFileSync(join(TV, 'frames', '006-reserved-bits.json'), JSON.stringify(json, null, 2) + '\n');
   console.log('wrote  frames/006-reserved-bits.{bin,json}  (24 B)');
+}
+
+/* 007-fullbody-legs: 21 bones with distinct non-identity leg and toe rotations, root with a
+   lowered hips height, fingers, Standard-Sync with tongue -> 150 B.
+   Every leg bone carries a different quaternion so that a wrong bone order or offset
+   shows up. Rotations are given as axis-angle in degrees; 90 deg is avoided on purpose
+   (exact tie, see 005). */
+{
+  const rot = (axis, deg) => {
+    const h = (deg * Math.PI) / 360;
+    const q = { x: 0, y: 0, z: 0, w: Math.cos(h) };
+    q[axis] = Math.sin(h);
+    return q;
+  };
+  const mul = (a, b) => ({
+    x: a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
+    y: a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
+    z: a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w,
+    w: a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z,
+  });
+  const bones = new Map([
+    [0, rot('x', -10)], // hips
+    [1, rot('x', 5)], // spine
+    [2, idQuat], // chest
+    [4, idQuat], // neck
+    [5, rot('y', 15)], // head
+    [9, mul(rot('y', -60), rot('x', -80))], // leftUpperLeg: raised and turned out
+    [10, rot('x', 95)], // leftLowerLeg
+    [11, rot('x', -10)], // leftFoot
+    [12, rot('x', 20)], // leftToes
+    [13, rot('x', -75)], // rightUpperLeg
+    [14, rot('x', 100)], // rightLowerLeg
+    [15, rot('z', 12)], // rightFoot
+    [16, rot('x', -15)], // rightToes
+    [17, idQuat], // leftShoulder
+    [18, rot('z', -70)], // leftUpperArm
+    [19, idQuat], // leftLowerArm
+    [20, idQuat], // leftHand
+    [21, idQuat], // rightShoulder
+    [22, rot('z', 70)], // rightUpperArm
+    [23, idQuat], // rightLowerArm
+    [24, idQuat], // rightHand
+  ]);
+  const weights = new Uint8Array(16);
+  weights[2] = 128; // aa
+  weights[13] = 200; // tongueOut
+  weights[14] = -64 & 0xff; // tongueX, i8
+  weights[15] = 32; // tongueY, i8
+  writeAccept(
+    '007-fullbody-legs',
+    '21 bones with non-identity legs and toes, root with h = 0.55 (seated), fingers, Standard-Sync with tongue',
+    {
+      version: 1,
+      seq: 7,
+      timestampMs: 100,
+      idle: false,
+      bones,
+      root: { x: 0x8000, y: 0xc000, z: 250, h: 18022 },
+      fingers: {
+        left: { curl: [40, 40, 40, 40, 40], splay: [0, 0, 0, 0, 0], thumbOpposition: 20 },
+        right: { curl: [40, 40, 40, 40, 40], splay: [0, 0, 0, 0, 0], thumbOpposition: 20 },
+      },
+      expressions: { perfectSync: false, weights, gazeYaw: 5, gazePitch: -3 },
+    },
+    { flags: 0x0e },
+  );
 }
 
 /* quaternions.csv */

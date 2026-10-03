@@ -1,33 +1,28 @@
 {
-  "name": "002-fullbody-standard",
-  "description": "22 bones (spine/head + legs + toes + both arms), root + fingers + Standard-Sync face",
+  "name": "007-fullbody-legs",
+  "description": "21 bones with non-identity legs and toes, root with h = 0.55 (seated), fingers, Standard-Sync with tongue",
   "expect": "accept",
-  "bytes_hex": "01 0e 02 00 21 00 00 00 3f fe ff 01 00 00 00 00 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 00 80 00 40 24 fa 00 80 00 81 40 c0 80 00 c0 40 ff 7f 1e 00 00 81 40 c0 80 00 c0 40 ff 7f 1e 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 0c f8",
+  "bytes_hex": "01 0e 07 00 64 00 00 00 37 fe ff 01 00 00 00 00 00 02 08 dc 00 02 f8 e1 00 02 08 e0 00 02 08 e0 00 7a 09 e0 17 a9 d3 c6 e8 03 08 20 00 02 08 dc 00 02 d8 e7 00 02 78 c4 d0 03 08 20 4b 02 08 e0 00 02 18 da 00 02 08 e0 61 00 08 e0 00 02 08 e0 00 02 08 e0 00 02 08 e0 9e 03 08 e0 00 02 08 e0 00 02 08 e0 00 80 00 c0 fa 00 66 46 28 00 28 00 28 00 28 00 28 00 14 00 28 00 28 00 28 00 28 00 28 00 14 00 00 00 80 00 00 00 00 00 00 00 00 00 00 c8 c0 20 05 fd",
   "frame": {
     "version": 1,
     "flags": 14,
-    "seq": 2,
-    "timestamp_ms": 33,
-    "bone_mask": "0x0000000001fffe3f",
+    "seq": 7,
+    "timestamp_ms": 100,
+    "bone_mask": "0x0000000001fffe37",
     "bones": [
       {
         "bit": 0,
         "name": "hips",
-        "u32": "0xE0080200"
+        "u32": "0xDC080200"
       },
       {
         "bit": 1,
         "name": "spine",
-        "u32": "0xE0080200"
+        "u32": "0xE1F80200"
       },
       {
         "bit": 2,
         "name": "chest",
-        "u32": "0xE0080200"
-      },
-      {
-        "bit": 3,
-        "name": "upperChest",
         "u32": "0xE0080200"
       },
       {
@@ -38,47 +33,47 @@
       {
         "bit": 5,
         "name": "head",
-        "u32": "0xE0080200"
+        "u32": "0xE0097A00"
       },
       {
         "bit": 9,
         "name": "leftUpperLeg",
-        "u32": "0xE0080200"
+        "u32": "0xC6D3A917"
       },
       {
         "bit": 10,
         "name": "leftLowerLeg",
-        "u32": "0xE0080200"
+        "u32": "0x200803E8"
       },
       {
         "bit": 11,
         "name": "leftFoot",
-        "u32": "0xE0080200"
+        "u32": "0xDC080200"
       },
       {
         "bit": 12,
         "name": "leftToes",
-        "u32": "0xE0080200"
+        "u32": "0xE7D80200"
       },
       {
         "bit": 13,
         "name": "rightUpperLeg",
-        "u32": "0xE0080200"
+        "u32": "0xC4780200"
       },
       {
         "bit": 14,
         "name": "rightLowerLeg",
-        "u32": "0xE0080200"
+        "u32": "0x200803D0"
       },
       {
         "bit": 15,
         "name": "rightFoot",
-        "u32": "0xE0080200"
+        "u32": "0xE008024B"
       },
       {
         "bit": 16,
         "name": "rightToes",
-        "u32": "0xE0080200"
+        "u32": "0xDA180200"
       },
       {
         "bit": 17,
@@ -88,7 +83,7 @@
       {
         "bit": 18,
         "name": "leftUpperArm",
-        "u32": "0xE0080200"
+        "u32": "0xE0080061"
       },
       {
         "bit": 19,
@@ -108,7 +103,7 @@
       {
         "bit": 22,
         "name": "rightUpperArm",
-        "u32": "0xE0080200"
+        "u32": "0xE008039E"
       },
       {
         "bit": 23,
@@ -123,37 +118,37 @@
     ],
     "root": {
       "x": 32768,
-      "y": 16384,
-      "z": -1500,
-      "h": 32768
+      "y": 49152,
+      "z": 250,
+      "h": 18022
     },
     "fingers": {
       "left": [
+        40,
         0,
-        -127,
-        64,
-        -64,
-        128,
+        40,
         0,
-        192,
-        64,
-        255,
-        127,
-        30,
+        40,
+        0,
+        40,
+        0,
+        40,
+        0,
+        20,
         0
       ],
       "right": [
+        40,
         0,
-        -127,
-        64,
-        -64,
-        128,
+        40,
         0,
-        192,
-        64,
-        255,
-        127,
-        30,
+        40,
+        0,
+        40,
+        0,
+        40,
+        0,
+        20,
         0
       ]
     },
@@ -162,6 +157,7 @@
       "weights": [
         0,
         0,
+        128,
         0,
         0,
         0,
@@ -172,13 +168,12 @@
         0,
         0,
         0,
-        0,
-        0,
-        0,
-        0
+        200,
+        192,
+        32
       ],
-      "gaze_yaw": 12,
-      "gaze_pitch": -8
+      "gaze_yaw": 5,
+      "gaze_pitch": -3
     }
   }
 }
