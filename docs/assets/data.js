@@ -180,7 +180,7 @@
     ] },
     { phase: 'Phase 4', title: 'Ecosystem', summary: "After 1.0 tags, other people's problems become other people's repos.", items: [
       it('Tag v1.0.0, freeze §2, add the first real CHANGELOG entry', 'done'),
-      it('Tag v1.1.0 — full-body legs/feet profile, tongue tracking, FK grounding, transport reframe', 'done'),
+      it('Tag v1.1.0 — full-body legs/feet profile, tongue tracking, FK grounding, transport reframe', 'planned'),
       it('Split out posy-server-example (mediasoup) as its own linked repo', 'planned')
     ] }
   ];

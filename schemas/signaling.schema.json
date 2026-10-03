@@ -19,7 +19,7 @@
       "enum": ["FULL", "NORMAL", "MINIMAL", "OFF"]
     },
     "transport": {
-      "description": "Pose-frame transport lane (spec §1.1, added in 1.0.5). 'sctp' is the primary WebRTC data channel; 'websocket' is the reliable-WebSocket fallback for server-relay deployments without native server-side WebRTC. Optional and backward-compatible: when absent on a message, that message's lane defaults to 'sctp' (the 1.0.0 default). The client states its lane in hello; the server confirms the authoritative accepted lane in session.",
+      "description": "Pose-frame transport lane (spec §1.1, added in 1.0.5). 'sctp' is the WebRTC data channel, used for direct and browser-to-browser links; 'websocket' is the reliable WebSocket used by server-relay deployments. Optional and backward-compatible: when absent on a message, that message's lane defaults to 'sctp' (the 1.0.0 default). The client states its lane in hello; the server confirms the authoritative accepted lane in session.",
       "enum": ["sctp", "websocket"]
     },
     "uid": {

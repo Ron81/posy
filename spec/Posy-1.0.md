@@ -82,16 +82,18 @@ rate-tiering a pure frame-drop operation).
 A relay MAY validate a frame structurally using only the §5.1 header — without decoding
 the quaternion payload — by checking:
 1. `version` byte: `version >> 4 == 0` (major v1).
-2. `flags` bits 5–7: MUST be 0.
-3. `bone_mask` bits 55–63: MUST be 0. Note: bits 9–16 (leg/toe bones) and bits 0–8,
-   17–54 (body and finger bones) are NOT reserved and MUST NOT be checked for zero.
-4. Frame length exactly equals `16 + 4·popcount(bone_mask) + 6·b1 + 24·b2 + (b3 ? (b0 ? 54 : 18) : 0)`.
-5. Set bits in `bone_mask` correspond only to types present in `allowed` (e.g. finger
-   bits 25–54 require `"fingers"` in `allowed`; bits 9–16 require `"legs"`).
+2. Frame length exactly equals `16 + 4·popcount(bone_mask) + 6·b1 + 24·b2 + (b3 ? (b0 ? 54 : 18) : 0)`.
+3. `bone_mask` bits 25–54 (finger bones) are 0 (§4).
+4. No flag bit and no `bone_mask` bit is set for a type absent from `allowed` (§2.1).
 
-On failure the relay SHOULD emit the appropriate error (`BAD_VERSION`, `MALFORMED_THRESHOLD`,
-or `UNAUTHORIZED_TYPE`) and drop the frame. The relay still MUST NOT modify the byte
-content of frames it does forward.
+A relay MUST NOT reject a frame because reserved flag bits 5–7 or reserved `bone_mask`
+bits 55–63 are set. Those bits are the extension mechanism (§9) and are ignored on
+receive (§5.2); the length check already accounts for a quaternion per set mask bit.
+
+A frame failing check 1, 2 or 3 is invalid: the relay drops it and counts it toward
+`MALFORMED_THRESHOLD` (§2.5), which is reported once the threshold is crossed, not per
+frame. A frame failing check 4 is dropped and counted as `UNAUTHORIZED_TYPE`. The relay
+still MUST NOT modify the byte content of frames it does forward.
 
 ### 1.3 Signaling channel
 A separate **reliable, ordered** channel (WebSocket or a reliable data channel) MUST
@@ -163,7 +165,7 @@ Server → Client:
 - The server MAY re-send `session` at any time to change authorization or playspace.
   Clients MUST apply it immediately and SHOULD inform the user when a previously
   active data type is revoked.
-- **Handshake embedding (SHOULD).** The `hello`/`session` exchange MAY be embedded inside
+- **Handshake embedding.** The `hello`/`session` exchange MAY be embedded inside
   an integrator's existing join message rather than sent as a standalone first frame. The
   `transport` and `allowed` fields carry their Posy semantics regardless of the enclosing
   envelope. Integrators with a pre-existing join step SHOULD fold these fields into that
@@ -227,9 +229,10 @@ its subscribers, so the sender can throttle capture:
 
 Senders MUST NOT exceed the granted `hz` (tolerance +10%).
 
-A light relay MAY implement only sender-side rate-limiting and whole-frame drop without
-per-subscriber FULL/NORMAL/MINIMAL/OFF tiering. Per-subscriber tiering is OPTIONAL for
-relays where the per-pair overhead would conflict with the §3 server-light constraint.
+Per-subscriber rate tiering is OPTIONAL for a relay. A relay without it forwards every
+accepted frame to every subscriber whose tier is not `OFF`, treats `FULL`, `NORMAL` and
+`MINIMAL` alike, and bounds load through the sender `rate` grant alone. It MUST still
+honour `OFF`, which needs no per-frame state.
 
 ### 2.5 Errors
 
@@ -272,7 +275,7 @@ rig. It MUST NOT need to know the sender's avatar type, skeleton or tracker.
 | Sender avatar | Sender obligation |
 |---|---|
 | **VRM 1.0** | None. Normalized bones are native. Read and send. |
-| **VRM 0.x** | Read from the normalized humanoid rig exposed by the runtime (e.g. three-vrm), which already resolves the 0.x −Z facing to +Z. MUST NOT read the raw glTF node rotations. VRM 0.x names `ThumbProximal` where VRM 1.0 names `ThumbMetacarpal`; the sender MUST map to the VRM 1.0 bone name before packing bone_mask bits 25/40. |
+| **VRM 0.x** | Read from the normalized humanoid rig exposed by the runtime (e.g. three-vrm), which already resolves the 0.x −Z facing to +Z. MUST NOT read the raw glTF node rotations. VRM 0.x names the thumb joints one step further out: 0.x `ThumbProximal` / `ThumbIntermediate` are 1.0 `ThumbMetacarpal` / `ThumbProximal`. §5.5 uses the 1.0 names; a sender that derives the finger block from 0.x bone names MUST apply this mapping. |
 | **MMD** | Map MMD bones to humanoid semantics, then send `q_wire = inverse(q_rest) · q_current` per bone in the parent-relative frame, where `q_rest` is that bone's rotation in the model's own rest (A- or T-) pose. `inverse(q_rest)` MUST be precomputed once at model load. |
 
 Receiver side:
@@ -331,7 +334,8 @@ receivers MUST handle their absence.
 
 **Full-body profile (Normative).** A sender in a session where `allowed` includes
 `"legs"` AND whose capture pipeline can solve the leg bones MUST send the following
-bits in every pose frame:
+bits. §3.3 still applies per frame: a bone that cannot be solved in a given frame has its
+bit cleared in that frame.
 
 | Bits | Bones | Requirement |
 |---|---|---|
@@ -570,7 +574,7 @@ expressions          18 B
 ```
 
 Perfect-Sync frame = 152 B. Add ~50 B UDP+DTLS+SCTP overhead ⇒ ~166 B / ~202 B on wire.
-On the WebSocket fallback lane (§1.1) the per-frame overhead differs — a WebSocket binary
+On the WebSocket lane (§1.1) the per-frame overhead differs — a WebSocket binary
 frame adds a small header (2–14 B) over TCP/TLS rather than UDP/DTLS/SCTP — but the figures
 below are the right order of magnitude for either lane.
 
@@ -676,7 +680,7 @@ the `z` field of the root block (§5.4); `z` retains its depth-mm meaning.
 
 - The **major** version lives in the channel `protocol` string (`posy/1`). Incompatible
   versions therefore fail at channel negotiation, not at packet parse time. On the WebSocket
-  fallback lane (§1.1), which has no `RTCDataChannel`-style `protocol` string, the major
+  lane (§1.1), which has no `RTCDataChannel`-style `protocol` string, the major
   version is carried by `protocol` in the `hello` handshake (§2.1) instead, and a mismatch is
   answered with a `BAD_VERSION` error.
 - The `version` byte carries the **minor** revision within a major version. Receivers
@@ -805,8 +809,8 @@ normalized rotations (OpenXR body tracking, VMC bridge, IK from controllers,
 a canned animation) is a valid sender.
 
 **SFU requirements.** Any SFU may be used. It MUST support per-producer data-channel
-forwarding, per-subscriber frame dropping, and the signaling messages of §2. 
+forwarding and the signaling messages of §2; per-subscriber frame dropping is needed only
+for rate tiering, which is optional (§2.4).
 mediasoup satisfies this natively; the protocol does not depend on it. A server-relay
 deployment that cannot provide native server-side WebRTC MAY instead relay pose frames over
-the WebSocket fallback lane (§1.1); the same per-producer forwarding and per-subscriber
-dropping rules apply, and the server still MUST NOT modify forwarded frame bytes (§1.2).
+the WebSocket lane (§1.1); the same forwarding and dropping rules apply, and the server still MUST NOT modify forwarded frame bytes (§1.2).
