@@ -1,6 +1,6 @@
 # POSY — Pose Synchronization
 **Version:** 1.1.0
-**Status:** Released — packet format (§5) frozen for 1.x; signaling (§2) frozen except additive fields introduced in 1.0.5–1.1.0
+**Status:** Draft, under review — packet format (§5) and signaling (§2) are soft-locked: they may change, and every change needs a stated justification
 **Channel label:** `avatar-pose`
 **Channel protocol string:** `posy/1`
 
@@ -106,11 +106,10 @@ UTF-8 JSON control messages) — or use separate WebSocket connections; both are
 
 ## 2. Session Layer
 
-> **Frozen as of 1.0.0.** The message set and semantics in §2 are stable for the 1.x line;
-> future 1.x revisions may clarify wording but will not change the wire meaning. Additive
-> exceptions introduced since 1.0.0: the optional `transport` field (§2.1, 1.0.5) and the
-> optional `"legs"` / `"tongue"` values in `allowed` (§2.1, 1.1.0). Both are
-> backward-compatible — a message that omits them is interpreted exactly as before.
+> **Soft-locked.** §2 was frozen at 1.0.0. The freeze is lifted until the full-body
+> work is settled: no implementation has shipped, so there is nothing to stay compatible
+> with. Messages and fields may change in a 1.x revision; each change needs a stated
+> justification in the changelog.
 
 ### 2.1 Join
 
@@ -686,6 +685,9 @@ the `z` field of the root block (§5.4); `z` retains its depth-mm meaning.
 - The `version` byte carries the **minor** revision within a major version. Receivers
   MUST accept any minor version with `version >> 4 == 0` for v1.x and MUST ignore
   unknown flag bits and unknown `bone_mask` bits.
+- **Soft lock.** While the format is soft-locked (see Status), a justified layout or
+  signaling change ships as a 1.x revision under `posy/1`. Once the maintainers declare
+  the format frozen, any such change requires `posy/2`.
 - Extension mechanism: reserved flag bits 5–7, reserved bone bits 55–63,
   and the reserved finger byte.
 

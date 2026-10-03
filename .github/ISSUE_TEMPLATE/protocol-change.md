@@ -11,13 +11,13 @@ labels: proposal
 
 **Does it change the packet layout, bit meanings, or the bone/blendshape tables?**
 - [ ] No — additive, fits the existing extension points (reserved flag bits 5–7, reserved bone bits, reserved expression indices, the reserved finger byte)
-- [ ] Yes — this is a breaking change and would need a new major version (`posy/2`)
+- [ ] Yes — this changes the wire format or signaling. Allowed while the format is soft-locked, but state the justification below
 
 **Cost** — extra bytes per frame, extra work for the routing peer, extra work for receivers:
 
 **Alternatives you considered:**
 
 <!--
-Packet-format changes need a major version (posy/2). v1 frames are meant to stay boring and stable.
+The packet format is soft-locked: changes are possible but need a justification (what it solves, cost, rejected alternatives).
 If your idea is already listed in spec §11 (deferred to v2), please add to that discussion instead of opening a duplicate.
 -->

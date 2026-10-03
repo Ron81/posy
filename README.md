@@ -118,7 +118,7 @@ If the spec, the reference code and the test vectors ever disagree, **the spec w
 
 ## Status
 
-**1.1.0** — released; packet format (§5) is frozen for the 1.x line, and signaling (§2) is frozen apart from additive fields introduced in 1.0.5–1.1.0 (which older peers can simply ignore). Full-body legs/feet profile, tongue tracking, and receiver-side FK grounding added in 1.1.0.
+**1.1.0 — draft, under review.** The packet format (§5) and signaling (§2) are soft-locked rather than frozen: no implementation has shipped yet, so they can still change, but every change needs a stated justification. 1.1.0 adds the full-body profile, a per-sender declaration of what is transmitted, hips height and tongue tracking.
 Other-language implementations (Rust, C#, Python, …) are very welcome — please open a PR adding a link here.
 
 ## Thanks — standing on a lot of shoulders
