@@ -25,6 +25,8 @@ Leg rotation conventions. **No change to the packet format or the signaling.**
   transmitted (§2.1); the receiving view frames the declared region; a dropdown of
   whole-body poses (standing, moving, seated) plus the pose vectors; `h` estimated with
   the Appendix D method; all controls visible without scrolling. `?tracker=&pose=` links.
+  A loaded model shows the fingers, synthesised from the finger block as §5.5 requires
+  of a receiver.
 - `reference/js`: `estimateHipsHeight` in `scripts/pose-fk.mjs`, and a test that the
   Appendix D estimate gives the stated hips height for `p01`–`p08` and misses it for `p09`.
 

@@ -65,6 +65,14 @@ const VRM_BONE: Array<[number, VRMHumanBoneName]> = [
   [BIT.rightToes, VRMHumanBoneName.RightToes],
 ];
 
+// Finger joints a receiver synthesises from the finger block, with the flexion in degrees
+// at curl 255 (§5.5). Order of FINGERS is the order of the block.
+const FINGERS = ['Thumb', 'Index', 'Middle', 'Ring', 'Little'] as const;
+const FLEXION = { Proximal: 90, Intermediate: 110, Distal: 70 };
+const THUMB_FLEXION = { Proximal: 60, Distal: 80 };
+const DEG = Math.PI / 180;
+const _e = new THREE.Euler();
+
 function blinkWeight(frame: Frame): number {
   const w = frame.expressions?.weights;
   if (!w) return 0;
@@ -271,6 +279,7 @@ export class VrmAvatar implements Avatar {
       const hipsY = this.hipsRestY * hipsRatio(frame);
       this.hips.position.y += (hipsY - this.hips.position.y) * smoothing;
     }
+    if (this.caps.has('fingers')) this.applyFingers(frame, smoothing);
     const em = this.vrm.expressionManager;
     if (em) {
       const cur = em.getValue('blink') ?? 0;
@@ -279,6 +288,29 @@ export class VrmAvatar implements Avatar {
       if (this.caps.has('tongue')) {
         em.setValue('tongueOut', (frame.expressions?.weights[TONGUE_OUT_INDEX] ?? 0) / 255);
       }
+    }
+  }
+
+  // §5.5. Normalized finger bones rest at identity with their axes on the avatar's, so
+  // the block's angles are set directly. No finger block → fingers extended.
+  private applyFingers(frame: Frame, smoothing: number): void {
+    const turn = (bone: string, x: number, y: number, z: number) => {
+      const node = this.vrm.humanoid.getNormalizedBoneNode(bone as VRMHumanBoneName);
+      // Euler XYZ with x = 0 is Ry · Rz: the finger curls in the plane it was splayed into.
+      node?.quaternion.slerp(_q.setFromEuler(_e.set(x * DEG, y * DEG, z * DEG)), smoothing);
+    };
+    for (const side of ['left', 'right'] as const) {
+      const hand = frame.fingers?.[side];
+      // Toward −Y (curl) and toward the thumb (splay) is −Z / −Y on the left hand, + on the right.
+      const sign = side === 'left' ? -1 : 1;
+      FINGERS.forEach((finger, i) => {
+        const curl = (hand?.curl[i] ?? 0) / 255;
+        const splay = ((hand?.splay[i] ?? 0) / 127) * 15;
+        for (const [joint, max] of Object.entries(finger === 'Thumb' ? THUMB_FLEXION : FLEXION)) {
+          turn(`${side}${finger}${joint}`, 0, joint === 'Proximal' ? sign * splay : 0, sign * curl * max);
+        }
+      });
+      turn(`${side}ThumbMetacarpal`, ((hand?.thumbOpposition ?? 0) / 255) * 60, 0, 0);
     }
   }
 
