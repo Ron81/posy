@@ -9,8 +9,8 @@ let seq = 0;
 
 /**
  * Build the frame at time `tSec`. `seq` increments per call; `timestampMs` is the
- * demo clock in ms (kept < 2^32). Finger curl rides a slow wave; blink is a short
- * pulse a few times a minute.
+ * demo clock in ms (kept < 2^32). Finger curl rides a slow wave unless the pose sets
+ * the hands itself; blink is a short pulse a few times a minute.
  */
 export function poseAt(tSec: number, body: BodyPose): Frame {
   // Fingers: curl oscillates 0..255 together (thumb..little), gentle splay.
@@ -41,7 +41,7 @@ export function poseAt(tSec: number, body: BodyPose): Frame {
     idle: false,
     bones: body.bones,
     root: { x: 0x8000, y: 0x8000, z: 0, h: body.h },
-    fingers: { left: hand(), right: hand() },
+    fingers: body.fingers ?? { left: hand(), right: hand() },
     expressions: { perfectSync: false, weights, gazeYaw: 0, gazePitch: 0 },
   };
 }

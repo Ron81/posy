@@ -12,11 +12,15 @@ right is what the room receives. No server, no signup.
 - **Poses.** One dropdown of whole-body poses (standing, moving, seated), written as joint
   angles in `src/poses.ts`; "Auto" cycles through them. The last group holds the
   conformance pose vectors from `testvectors/poses` (spec §3.4).
+- **Hands and feet.** Two poses outside the Auto cycle: "Count to ten on the fingers" (one
+  hand opens finger by finger, thumb first, then the other) and "Toes up" (each foot, then
+  both on tiptoe). They need a loaded model. A view selector next to the pose moves both
+  cameras to the hands or the feet; on "auto" these two poses do it themselves.
 - **Hips height.** The sender estimates `h` from the lowest point of the legs (spec
   Appendix D); poses where nothing touches the floor supply it. Both avatars apply it.
 - **Links.** `?tracker=<id>&pose=<id>` preselects both, e.g. `?tracker=full&pose=p07`
   holds the ankle-on-knee vector and `?pose=squat` the squat. A bare number means that
-  vector (`pose=7` = `p07`). Tracker ids: `full-toes-tongue`, `full-toes`, `full`,
+  vector (`pose=7` = `p07`). `&look=hands` or `&look=feet` holds a close-up. Tracker ids: `full-toes-tongue`, `full-toes`, `full`,
   `upper`, `face`.
 
 ```sh

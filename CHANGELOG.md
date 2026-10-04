@@ -27,7 +27,8 @@ format or the signaling.** The meaning of `thumb_curl` changes (see Changed).
   whole-body poses (standing, moving, seated) plus the pose vectors; `h` estimated with
   the Appendix D method; all controls visible without scrolling. `?tracker=&pose=` links.
   A loaded model shows the fingers, synthesised from the finger block as §5.5 requires
-  of a receiver.
+  of a receiver. Two poses for the small parts, counting on the fingers and lifting the
+  toes, with a close-up view of hands or feet on both sides.
 - `reference/js`: `estimateHipsHeight` in `scripts/pose-fk.mjs`, and a test that the
   Appendix D estimate gives the stated hips height for `p01`–`p08` and misses it for `p09`.
 

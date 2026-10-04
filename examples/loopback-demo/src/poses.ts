@@ -6,7 +6,7 @@
 // from the solved legs with the lowest-contact method of spec Appendix D, and only the
 // poses where that method is known to fail carry an explicit height.
 import * as THREE from 'three';
-import type { Quat } from 'posy';
+import type { Frame, Quat } from 'posy';
 import { BIT } from './bones.ts';
 
 type BoneName = keyof typeof BIT;
@@ -17,17 +17,25 @@ type Quat4 = [number, number, number, number];
 /** Per bone: rotations composed left to right (leftmost is outermost), or a ready quaternion. */
 type Bones = Partial<Record<BoneName, Rot[] | Quat4>>;
 
+type Fingers = NonNullable<Frame['fingers']>;
+type Hand = Fingers['left'];
+
 interface Shape {
   bones: Bones;
   /** Hips above the floor in metres on the reference skeleton; omit to estimate it. */
   hips?: number;
+  /** Finger block (§5.5); omit to leave the hands to the animator. */
+  fingers?: Fingers;
 }
 
 export interface Pose {
   id: string;
   label: string;
   group: string;
-  at(tSec: number): Shape;
+  /** Where the cameras should look while this pose is on; omit for the usual framing. */
+  look?: 'hands' | 'feet';
+  /** `since` is the time in seconds since the pose was selected. */
+  at(tSec: number, since: number): Shape;
 }
 
 interface Joint {
@@ -277,6 +285,86 @@ const BODY: Pose[] = [
   },
 ];
 
+// Poses for the small parts. Not in the Auto cycle: they run longer than one slot of it.
+const smooth = (x: number) => {
+  const k = Math.min(1, Math.max(0, x));
+  return k * k * (3 - 2 * k);
+};
+const mix = (a: number, b: number, k: number) => a + (b - a) * k;
+
+const COUNT_HALF = 7.5; // seconds per hand
+const COUNT_SWAP = 1.2; // one arm comes down while the other goes up
+const COUNT_START = 1.8; // fist held until here, then one finger every COUNT_STEP
+const COUNT_STEP = 0.7;
+const RELAXED = 60; // curl of a hand that hangs at the side
+const FIST = 235;
+
+/** `raised` 0..1: hanging at the side .. forearm up, palm to the camera. `v`: seconds into this hand's turn. */
+function countingHand(raised: number, v: number): Hand {
+  // Thumb first, then index to little; each finger opens over half a step.
+  const open = [0, 1, 2, 3, 4].map((i) => smooth((v - COUNT_START - COUNT_STEP * i) / (COUNT_STEP / 2)));
+  const curl = open.map((o) => Math.round(mix(RELAXED, FIST * (1 - o), raised)));
+  return {
+    curl: curl as Hand['curl'],
+    splay: [0, 0, 0, 0, 0],
+    // The thumb lies across the fist until it is counted.
+    thumbOpposition: Math.round(mix(40, 170 * (1 - open[0]), raised)),
+  };
+}
+
+const DETAIL: Pose[] = [
+  {
+    id: 'count',
+    label: 'Count to ten on the fingers',
+    group: 'Hands and feet',
+    look: 'hands',
+    at: (t, since) => {
+      const u = since % (2 * COUNT_HALF);
+      const leftTurn = u < COUNT_HALF;
+      const k = smooth((leftTurn ? u : u - COUNT_HALF) / COUNT_SWAP);
+      const left = leftTurn ? k : 1 - k;
+      // The right arm starts at the side; after that the two arms swap at every half.
+      const right = since < COUNT_HALF ? 0 : 1 - left;
+      const turn = left - right; // +1: left shoulder forward, −1: right shoulder forward
+      return {
+        bones: merge(
+          // Upper arm a little forward and out, forearm up. The forearm twist is what is left
+          // of a quarter turn once the torso and upper arm have turned: the palm faces +Z.
+          { leftUpperArm: [['y', -14 * left], ['z', mix(-76, -58, left)]], leftLowerArm: [['z', 142 * left], ['x', -50 * left]] },
+          { rightUpperArm: [['y', 14 * right], ['z', mix(76, 58, right)]], rightLowerArm: [['z', -142 * right], ['x', -50 * right]] },
+          // The counting side comes forward; the head stays on the viewer.
+          { leftShoulder: [['y', -8 * left]], rightShoulder: [['y', 8 * right]] },
+          { spine: [['y', -6 * turn]], chest: [['y', -9 * turn]], head: [['y', 11 * turn]] },
+          alive(t),
+        ),
+        fingers: {
+          left: countingHand(left, leftTurn ? u : 2 * COUNT_HALF),
+          right: countingHand(right, leftTurn ? 2 * COUNT_HALF : u - COUNT_HALF),
+        },
+      };
+    },
+  },
+  {
+    id: 'toes',
+    label: 'Toes up: left, right, then both on tiptoe',
+    group: 'Hands and feet',
+    look: 'feet',
+    at: (t, since) => {
+      const u = since % 6;
+      const lift = (from: number) => Math.max(0, Math.sin(Math.PI * (u - from))) * (u >= from && u < from + 2 ? 1 : 0);
+      const tip = lift(4); // heels up, weight on the toes
+      return {
+        bones: merge(
+          armsDown(),
+          { leftToes: [['x', -38 * lift(0) - 34 * tip]], rightToes: [['x', -38 * lift(2) - 34 * tip]] },
+          { leftFoot: [['x', 34 * tip]], rightFoot: [['x', 34 * tip]] },
+          alive(t),
+        ),
+      };
+    },
+  },
+];
+
 // The conformance vectors, shown with the arms down. Their height comes with the vector.
 const TEST: Pose[] = Object.keys(vectors)
   .sort()
@@ -287,11 +375,11 @@ const TEST: Pose[] = Object.keys(vectors)
       id: v.name.slice(0, 3),
       label: v.name.replace(/^(p\d+)-/, '$1 ').replaceAll('-', ' '),
       group: 'Test vectors (legs only)',
-      at: () => ({ bones: { ...armsDown(), ...legs }, hips: v.hips_height }),
+      at: (): Shape => ({ bones: { ...armsDown(), ...legs }, hips: v.hips_height }),
     };
   });
 
-export const POSES: Pose[] = [...BODY, ...TEST];
+export const POSES: Pose[] = [...BODY, ...DETAIL, ...TEST];
 
 // ---------------------------------------------------------------------------
 // Sampling
@@ -345,8 +433,11 @@ export interface BodyPose {
   bones: Map<number, Quat>;
   /** Root-block hips height (§5.4). */
   h: number;
+  /** Finger block, when the pose sets the hands itself. */
+  fingers?: Fingers;
   /** The pose being performed. */
   id: string;
+  look?: Pose['look'];
 }
 
 const HOLD_SEC = 5; // per pose in Auto
@@ -369,7 +460,7 @@ export function bodyPoseAt(tSec: number, selected: string): BodyPose {
     currentId = pose.id;
   }
 
-  const shape = pose.at(tSec);
+  const shape = pose.at(tSec, tSec - changedAt);
   const quats = new Map<BoneName, THREE.Quaternion>(DRIVEN.map((name) => [name, toQuat(shape.bones[name])]));
   let hips = shape.hips ?? estimateHips(quats);
 
@@ -384,5 +475,5 @@ export function bodyPoseAt(tSec: number, selected: string): BodyPose {
   const bones = new Map<number, Quat>();
   for (const [name, q] of quats) bones.set(BIT[name], { x: q.x, y: q.y, z: q.z, w: q.w });
   const h = Math.round((hips / skeleton.standing_hip_height) * 32768);
-  return { bones, h: Math.min(65535, Math.max(0, h)), id: pose.id };
+  return { bones, h: Math.min(65535, Math.max(0, h)), fingers: shape.fingers, id: pose.id, look: pose.look };
 }

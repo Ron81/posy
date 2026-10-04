@@ -122,6 +122,7 @@
         background: #242736; color: var(--ink); border: 1px solid var(--line);
         border-radius: 8px; padding: 5px 8px; font-size: 13px; max-width: 100%;
       }
+      .row #pose { flex: 1 1 0; min-width: 0; }
       .row .now { color: var(--accent); font-size: 12px; }
       .chip {
         font-size: 11.5px; line-height: 1; padding: 4px 8px; border-radius: 999px;
@@ -164,6 +165,12 @@
         <div class="row">
           <label class="lbl" for="pose">Pose</label>
           <select id="pose"></select>
+          <select id="look" title="Camera close-up, both views" aria-label="Camera close-up">
+            <option value="auto">View: auto</option>
+            <option value="full">Whole body</option>
+            <option value="hands">Hands</option>
+            <option value="feet">Feet</option>
+          </select>
           <span class="now" id="pose-now"></span>
         </div>
         <div class="row" id="chips"><span class="lbl" id="chips-label">Sent</span></div>
@@ -234,6 +241,13 @@
         <b>Poses.</b> Whole-body poses written as joint angles in the spec's conventions (§3.4).
         "Auto" cycles through them. The last group holds the conformance pose vectors from
         <code>testvectors/poses</code>, legs only.
+      </p>
+      <p>
+        <b>Hands and feet.</b> "Count to ten" raises one hand and opens it finger by finger, thumb
+        first, then the other hand. "Toes" lifts the toes of each foot, then stands on tiptoe.
+        Both need a loaded model; the toes are easiest to see on a barefoot one. The view
+        selector next to the pose moves both cameras close to the hands or the feet; on "auto"
+        these two poses do that themselves.
       </p>
       <p>
         <b>Hips height.</b> The sender estimates how high the hips are from the lowest point of the

@@ -55,7 +55,8 @@ interface View {
 }
 
 // Camera framing per declared region: [distance, look-at height], in avatar heights.
-const FRAMING = { full: [2.1, 0.5], upper: [1.3, 0.74], face: [0.85, 0.88] } as const;
+// `hands` and `feet` are close-ups for the poses that exist to show those parts.
+const FRAMING = { full: [2.1, 0.5], upper: [1.3, 0.74], face: [0.85, 0.88], hands: [0.95, 0.8], feet: [0.6, 0.07] } as const;
 
 function frameCamera(view: View, r: keyof typeof FRAMING, ease: number): void {
   const [dist, at] = FRAMING[r];
@@ -286,6 +287,11 @@ for (const group of new Set(POSES.map((p) => p.group))) {
 }
 poseSelect.addEventListener('change', () => (shownPose = ''));
 
+// Close-up: 'auto' follows the pose (most poses ask for none), or hold one by hand.
+const lookSelect = document.getElementById('look') as HTMLSelectElement;
+if ([...lookSelect.options].some((o) => o.value === params.get('look'))) lookSelect.value = params.get('look')!;
+let poseLook: 'hands' | 'feet' | undefined;
+
 // .vrm picker — swaps both avatars; failures fall back to a fresh stick figure.
 const vrmInput = document.getElementById('vrm') as HTMLInputElement;
 const vrmNote = document.getElementById('vrm-note')!;
@@ -331,6 +337,7 @@ function maybeSend(nowMs: number): void {
   lastSend = nowMs;
 
   const body = bodyPoseAt(nowMs / 1000, poseSelect.value);
+  poseLook = body.look;
   if (body.id !== shownPose) {
     shownPose = body.id;
     // In Auto, say which pose is on; a held pose is already named by the dropdown.
@@ -355,9 +362,11 @@ function tick(nowMs: number): void {
   const target: Frame | null = receiver.target(nowMs);
   if (target) receiverView.avatar.applyPose(target, 0.2); // smooth over jitter
 
-  // Left always shows the whole performer; right frames the declared region.
-  frameCamera(senderView, 'full', 0.08);
-  frameCamera(receiverView, region(tracker, sends), 0.08);
+  // Left always shows the whole performer; right frames the declared region. A close-up
+  // applies to both, so the two sides can be compared.
+  const look = lookSelect.value === 'auto' ? poseLook : (lookSelect.value as keyof typeof FRAMING);
+  frameCamera(senderView, look ?? 'full', 0.08);
+  frameCamera(receiverView, look ?? region(tracker, sends), 0.08);
 
   senderView.avatar.update(delta);
   receiverView.avatar.update(delta);
