@@ -312,17 +312,56 @@ non-conformant regardless of byte-level correctness.
    +Z = forward**. A positive angle about an axis is counter-clockwise when looking from
    the tip of that axis toward the origin (right-hand rule).
 
-### 3.2 Conversion is the sender's job, never the receiver's
+### 3.2 Conversion from the capture is the sender's job, never the receiver's
 
 A receiver MUST apply incoming quaternions directly to the normalized humanoid rig of
-its local instance of the sender's avatar (§0). It MUST NOT need to know the sender's
-tracker or how the sender produced the rotations.
+its local instance of the sender's avatar (§0), taken in the avatar space of §3.1. It
+MUST NOT need to know the sender's tracker or how the sender produced the rotations.
 
 | Sender avatar | Sender obligation |
 |---|---|
 | **VRM 1.0** | None. Normalized bones are native. Read and send. |
-| **VRM 0.x** | Read from the normalized humanoid rig exposed by the runtime (e.g. three-vrm), which already resolves the 0.x −Z facing to +Z. MUST NOT read the raw glTF node rotations. VRM 0.x names the thumb joints one step further out: 0.x `ThumbProximal` / `ThumbIntermediate` are 1.0 `ThumbMetacarpal` / `ThumbProximal`. §5.5 uses the 1.0 names; a sender that derives the finger block from 0.x bone names MUST apply this mapping. |
+| **VRM 0.x** | Send rotations in the avatar space of §3.1, exactly as for a VRM 1.0 avatar. If they are read from the runtime's normalized humanoid rig, convert them where that rig is not in avatar space (see below). MUST NOT read the raw glTF node rotations. VRM 0.x names the thumb joints one step further out: 0.x `ThumbProximal` / `ThumbIntermediate` are 1.0 `ThumbMetacarpal` / `ThumbProximal`. §5.5 uses the 1.0 names; a sender that derives the finger block from 0.x bone names MUST apply this mapping. |
 | **MMD** | Map MMD bones to humanoid semantics, then send `q_wire = inverse(q_rest) · q_current` per bone in the parent-relative frame, where `q_rest` is that bone's rotation in the model's own rest (A- or T-) pose. `inverse(q_rest)` MUST be precomputed once at model load. |
+
+**The wire is always in avatar space; the avatar driver adapts the rig.** Rotations on
+the wire are in the avatar space of §3.1 for every avatar, whatever its file format. A
+sender MUST NOT transmit rotations in the space of its own rig when that differs, and a
+receiver MUST NOT expect them so.
+
+The *avatar driver* is the code that sets rotations on a loaded model's rig, or reads
+them from it. Both ends have one, since both display the sender's avatar. Where the
+runtime exposes a rig that is not in avatar space, converting between the two is the
+driver's job, on both ends alike:
+
+```
+sender:    capture → avatar-space rotation ─┬→ encode → wire
+                                            └→ avatar driver → rig
+receiver:  wire → decode → avatar-space rotation → avatar driver → rig
+```
+
+A sender that takes its rotations before the driver step needs no conversion for Posy.
+A sender that reads them back from the rig MUST apply the driver's conversion in reverse
+before encoding.
+
+**VRM 0.x rigs that face −Z.** This is the known case. A VRM 0.x model faces −Z, and a
+runtime may expose its normalized rig in that space without turning it; three-vrm does
+(checked with 3.5.5). On such a rig the avatar's left is −X and its forward is −Z: the
+rig's axes are the avatar axes turned half a turn about Y. A rotation converts between
+the two by negating two components, the same in both directions:
+
+```
+q_rig = (−x, y, −z, w)   for   q_avatar = (x, y, z, w)
+```
+
+The driver for such a rig MUST apply this to every bone rotation, including the finger
+rotations a receiver synthesises (§5.5), and turns the model half a turn about Y so that
+it faces +Z (three-vrm: `VRMUtils.rotateVRM0`). Without it every X and Z rotation is
+inverted: lowered arms are raised, knees bend forward, fingers curl upward.
+
+Whether a driver needs the conversion depends only on the avatar file and the runtime
+and is known at load. It can be checked with pose vector `p02` (§10 item 8): the shin
+must point toward the avatar's back.
 
 Receiver side:
 - VRM 0.x / 1.0: apply `q_wire` to the normalized rig directly.

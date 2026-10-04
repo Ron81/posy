@@ -31,6 +31,12 @@ Leg rotation conventions. **No change to the packet format or the signaling.**
   Appendix D estimate gives the stated hips height for `p01`–`p08` and misses it for `p09`.
 
 ### Fixed
+- §3.2 said a runtime's normalized rig of a VRM 0.x model already faces +Z. three-vrm
+  leaves it facing −Z, where X and Z rotations are inverted. §3.2 now says: the wire is
+  in avatar space for every avatar; adapting to a rig that is not is the job of the
+  avatar driver on both ends; for a −Z-facing VRM 0.x rig that is `(−x, y, −z, w)`.
+- Loopback demo showed VRM 0.x models from behind and applied X and Z rotations to them
+  inverted. It now turns them and converts.
 - Appendix D put the hips 3 cm too high when kneeling with the insteps on the floor: it
   used the ankle's T-pose clearance, which holds only with the sole down. A foot whose
   sole faces up now gets the shin radius. Informative text; no change on the wire.

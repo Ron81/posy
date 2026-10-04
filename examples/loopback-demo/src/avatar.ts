@@ -11,7 +11,7 @@
 // continuous rather than steppy.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { VRMLoaderPlugin, type VRM, VRMHumanBoneName } from '@pixiv/three-vrm';
+import { VRMLoaderPlugin, VRMUtils, type VRM, VRMHumanBoneName } from '@pixiv/three-vrm';
 import { unpackQuat, type Frame } from 'posy';
 import { BIT, BLINK_LEFT_INDEX, BLINK_RIGHT_INDEX, TONGUE_OUT_INDEX } from './bones.ts';
 import type { DataType } from './declare.ts';
@@ -226,8 +226,14 @@ export class VrmAvatar implements Avatar {
   private readonly rest = new Map<VRMHumanBoneName, THREE.Quaternion>();
   private readonly hips: THREE.Object3D | null;
   private readonly hipsRestY: number;
+  // A VRM 0.x model faces −Z, and three-vrm leaves its normalized rig in that space. The
+  // model is turned half a turn about Y to face +Z (§3.2); a rotation given in avatar
+  // space (§3.1) then has its X and Z components negated in the rig's space.
+  private readonly xz: 1 | -1;
 
   private constructor(private readonly vrm: VRM) {
+    this.xz = vrm.meta.metaVersion === '0' ? -1 : 1;
+    VRMUtils.rotateVRM0(vrm); // no effect on a VRM 1.0 model
     this.object = vrm.scene;
     const node = (name: VRMHumanBoneName) => vrm.humanoid.getNormalizedBoneNode(name);
 
@@ -261,8 +267,6 @@ export class VrmAvatar implements Avatar {
     const gltf = await loader.parseAsync(buffer, '');
     const vrm = gltf.userData.vrm as VRM | undefined;
     if (!vrm) throw new Error('file is not a VRM');
-    // three-vrm already normalises orientation to face +Z (toward our camera);
-    // don't add another flip or the model turns its back to the viewer.
     return new VrmAvatar(vrm);
   }
 
@@ -271,7 +275,7 @@ export class VrmAvatar implements Avatar {
       const node = this.vrm.humanoid.getNormalizedBoneNode(name);
       if (!node) continue;
       const rest = this.rest.get(name)!;
-      if (frameQuat(frame, bit, _q)) _q.premultiply(rest);
+      if (frameQuat(frame, bit, _q)) _q.set(this.xz * _q.x, _q.y, this.xz * _q.z, _q.w).premultiply(rest);
       else _q.copy(rest);
       node.quaternion.slerp(_q, smoothing);
     }
@@ -297,7 +301,7 @@ export class VrmAvatar implements Avatar {
     const turn = (bone: string, x: number, y: number, z: number) => {
       const node = this.vrm.humanoid.getNormalizedBoneNode(bone as VRMHumanBoneName);
       // Euler XYZ with x = 0 is Ry · Rz: the finger curls in the plane it was splayed into.
-      node?.quaternion.slerp(_q.setFromEuler(_e.set(x * DEG, y * DEG, z * DEG)), smoothing);
+      node?.quaternion.slerp(_q.setFromEuler(_e.set(this.xz * x * DEG, y * DEG, this.xz * z * DEG)), smoothing);
     };
     for (const side of ['left', 'right'] as const) {
       const hand = frame.fingers?.[side];

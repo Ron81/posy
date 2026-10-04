@@ -209,7 +209,7 @@
           <li>Each quaternion is the bone's local, parent-relative delta from T-pose.</li>
           <li>The hips bone additionally carries the root position block.</li>
         </ul>
-        <p class="tiny dim leading mt-4">Conversion is always the <b style="color:#d4d4d8;font-weight:500">sender's</b> job. VRM 1.0 needs none; VRM 0.x reads the already-resolved normalized rig; MMD precomputes <code>inverse(q_rest) · q_current</code> once at load.</p>
+        <p class="tiny dim leading mt-4">Conversion is always the <b style="color:#d4d4d8;font-weight:500">sender's</b> job. VRM 1.0 needs none; VRM 0.x sends the same avatar-space rotations, converting if its runtime leaves the rig facing −Z; MMD precomputes <code>inverse(q_rest) · q_current</code> once at load.</p>
       </div>
       <div class="card reveal">
         <h3 class="card-title" style="color:var(--muted)">Explicitly out of scope for v1</h3>
