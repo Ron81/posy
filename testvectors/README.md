@@ -85,7 +85,7 @@ The frame vectors check bytes. They cannot tell whether a knee bends the right w
 | `p08-kneeling` | knees, shins and insteps on the floor |
 | `p09-seated-feet-off-floor` | both feet clear of the floor; `h` cannot be derived from the legs here |
 
-`h` is checked against `hips_height` only. For `p01`–`p07` it equals the lowest-contact estimate of spec Appendix D; for `p08` and `p09` it does not, which is the reason `h` is transmitted rather than derived.
+`h` is checked against `hips_height` only. For `p01`–`p08` it equals the lowest-contact estimate of spec Appendix D to within 1 mm (ankle 0.08 m and toes 0.01 m above the floor in the T-pose, shin radius 0.05 m); for `p09` it does not, which is the reason `h` is transmitted rather than derived.
 
 ## `quaternions.csv`
 

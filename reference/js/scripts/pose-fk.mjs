@@ -22,6 +22,11 @@ const ID = { x: 0, y: 0, z: 0, w: 1 };
  * Returns { name: [x, y, z] } relative to the root joint.
  */
 export function fk(joints, pose) {
+  return fkWorld(joints, pose).pos;
+}
+
+/** As fk, and also each joint's avatar-space rotation: { pos, world }. */
+export function fkWorld(joints, pose) {
   const world = {};
   const pos = {};
   for (const j of joints) {
@@ -35,5 +40,23 @@ export function fk(joints, pose) {
     pos[j.name] = pos[j.parent].map((v, i) => v + o[i]);
     world[j.name] = mul(world[j.parent], local);
   }
-  return pos;
+  return { pos, world };
+}
+
+/**
+ * Hips height above the floor by the lowest-contact method of spec Appendix D, metres.
+ * clear: { foot, toes } T-pose clearances of those joints, and shin, the shin radius.
+ */
+export function estimateHipsHeight(joints, pose, clear) {
+  const { pos, world } = fkWorld(joints, pose);
+  let height = 0;
+  for (const j of joints) {
+    let k;
+    if (j.name.endsWith('Foot')) k = rotate(world[j.name], [0, 1, 0])[1] < 0 ? clear.shin : clear.foot;
+    else if (j.name.endsWith('Toes')) k = clear.toes;
+    else if (j.name.endsWith('LowerLeg')) k = clear.shin;
+    else continue;
+    height = Math.max(height, k - pos[j.name][1]);
+  }
+  return height;
 }

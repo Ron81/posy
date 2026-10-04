@@ -260,7 +260,6 @@ const BODY: Pose[] = [
         handsOnLap,
         alive(t),
       ),
-      hips: 0.5, // insteps down: the estimate assumes the sole is down and lands 3 cm high
     }),
   },
   {
@@ -311,8 +310,10 @@ function toQuat(spec: Rot[] | Quat4 | undefined): THREE.Quaternion {
 }
 
 // Appendix D: whatever part of the legs is lowest rests on the floor. Clearance is the
-// height of that joint above the floor in the T-pose; for the knee, the shin radius.
-const CLEARANCE: Array<[suffix: string, metres: number]> = [['Foot', 0.08], ['Toes', 0.01], ['LowerLeg', 0.05]];
+// height of that joint above the floor in the T-pose; for the knee, the shin radius. A
+// foot whose sole faces up rests on its instep, so it gets the shin radius as well.
+const SHIN_RADIUS = 0.05;
+const CLEARANCE: Array<[suffix: string, metres: number]> = [['Foot', 0.08], ['Toes', 0.01], ['LowerLeg', SHIN_RADIUS]];
 const _o = new THREE.Vector3();
 
 function estimateHips(quats: Map<BoneName, THREE.Quaternion>): number {
@@ -328,8 +329,13 @@ function estimateHips(quats: Map<BoneName, THREE.Quaternion>): number {
     }
     const p = pos.get(j.parent)!.clone().add(_o.set(...j.offset).applyQuaternion(world.get(j.parent)!));
     pos.set(j.name, p);
-    world.set(j.name, world.get(j.parent)!.clone().multiply(local));
-    for (const [suffix, clear] of CLEARANCE) if (j.name.endsWith(suffix)) height = Math.max(height, clear - p.y);
+    const w = world.get(j.parent)!.clone().multiply(local);
+    world.set(j.name, w);
+    for (const [suffix, clear] of CLEARANCE) {
+      if (!j.name.endsWith(suffix)) continue;
+      const soleUp = suffix === 'Foot' && _o.set(0, 1, 0).applyQuaternion(w).y < 0;
+      height = Math.max(height, (soleUp ? SHIN_RADIUS : clear) - p.y);
+    }
   }
   return height;
 }

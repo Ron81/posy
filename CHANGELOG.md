@@ -25,8 +25,13 @@ Leg rotation conventions. **No change to the packet format or the signaling.**
   transmitted (§2.1); the receiving view frames the declared region; a dropdown of
   whole-body poses (standing, moving, seated) plus the pose vectors; `h` estimated with
   the Appendix D method; all controls visible without scrolling. `?tracker=&pose=` links.
+- `reference/js`: `estimateHipsHeight` in `scripts/pose-fk.mjs`, and a test that the
+  Appendix D estimate gives the stated hips height for `p01`–`p08` and misses it for `p09`.
 
 ### Fixed
+- Appendix D put the hips 3 cm too high when kneeling with the insteps on the floor: it
+  used the ankle's T-pose clearance, which holds only with the sole down. A foot whose
+  sole faces up now gets the shin radius. Informative text; no change on the wire.
 - `docs/DECISIONS.md` 0001: alternative D was described as still listed in §11; it was
   removed in 1.1.0.
 - Vector 007 generator comment described bit 9 as "turned out"; by §3.4 it swings across

@@ -4,7 +4,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { packQuat, unpackQuat } from '../dist/index.js';
-import { fk } from '../scripts/pose-fk.mjs';
+import { estimateHipsHeight, fk } from '../scripts/pose-fk.mjs';
 
 const POSES = join(dirname(fileURLToPath(import.meta.url)), '../../../testvectors/poses');
 const skeleton = JSON.parse(readFileSync(join(POSES, 'skeleton.json'), 'utf8'));
@@ -30,6 +30,15 @@ for (const file of files) {
 
   test(`pose ${vec.name}: h matches hips_height`, () => {
     assert.equal(vec.h, Math.round((vec.hips_height / skeleton.standing_hip_height) * 32768));
+  });
+
+  // Appendix D on the reference skeleton: ankle 0.08 m and toes 0.01 m above the floor in
+  // the T-pose, shin radius 0.05 m. p09 is its documented failure: nothing touches the floor.
+  test(`pose ${vec.name}: Appendix D estimate ${vec.name.startsWith('p09') ? 'fails' : 'gives hips_height'}`, () => {
+    const pose = Object.fromEntries(vec.bones.map((b) => [b.name, toQuat(b.quat)]));
+    const error = Math.abs(estimateHipsHeight(skeleton.joints, pose, { foot: 0.08, toes: 0.01, shin: 0.05 }) - vec.hips_height);
+    if (vec.name.startsWith('p09')) assert.ok(error > 0.1);
+    else assert.ok(error < 1e-3);
   });
 }
 

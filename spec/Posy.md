@@ -908,8 +908,8 @@ sender rule 3). It assumes that whatever part of the legs is lowest rests on the
 
 Per avatar, once, in the T-pose: for each contact point `c` — both feet (ankle), both
 toes if the avatar has them, both knees — record its clearance `clear[c]`, the height of
-that bone's origin above the floor line. For the knees use the shin radius instead, since
-a knee only touches the floor when kneeling.
+that bone's origin above the floor line. For the knees use the shin radius `r_shin`
+instead, since a knee only touches the floor when kneeling.
 
 Per frame, with the solved rotations applied and the hips at the origin:
 
@@ -917,11 +917,16 @@ Per frame, with the solved rotations applied and the hips at the origin:
 h_est = 0
 for c in contacts:
     y = world_y(c)                 // ≤ 0 when the point is below the hips
-    h_est = max(h_est, clear[c] - y)
+    k = clear[c]
+    if c is a foot and its local +Y axis points below the horizontal:
+        k = r_shin                 // sole up: the foot rests on its instep
+    h_est = max(h_est, k - y)
 h = round(h_est / H * 32768)       // clamp to 0..65535
 ```
 
-In the T-pose this yields exactly `H`, so `h = 32768`.
+In the T-pose this yields exactly `H`, so `h = 32768`. The sole-up case is the kneeling
+pose with the insteps on the floor: the ankle then lies as low as the shin, and its T-pose
+clearance would put the hips too high by the difference.
 
 The estimate is wrong whenever nothing in the contact set touches the floor: both feet
 off the floor on a seat, or a jump. A sender that knows the performer is seated SHOULD
