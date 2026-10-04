@@ -6,6 +6,60 @@ that commit messages and the spec text do not keep in one place.
 
 ---
 
+## 0002 — Thumb flexion axis, and stated signs for splay and opposition
+
+**Date:** 2026-10-04 · **Status:** Proposed · **Affects:** §5.5 (finger block)
+
+### Context
+
+§5.5 gave one flexion axis for all five fingers: Z, fingertips toward −Y. For splay and
+thumb opposition it gave an axis and a description ("toward the thumb side", "across the
+palm") but no sign per hand, and it did not say in which order curl and splay combine on
+the proximal joint.
+
+The first receiver written from that text (loopback demo, on VRM 1.0 and VRM 0.x models
+through three-vrm 3.5.5) showed two things:
+
+- The four fingers curl into the palm as described.
+- The thumb does not. In the T-pose the thumb lies in the plane of the palm and points
+  forward and outward. A rotation about Z bends it down and, at full curl, back toward
+  the wrist. Measured on one model: the thumb tip moves from 7.2 cm to 9.4 cm from the
+  base of the index finger. A closing hand showed the thumb sticking out.
+
+### Decision
+
+- Thumb flexion (`thumbProximal`, `thumbDistal`) is about Y: positive on the left hand,
+  negative on the right. Same model, same curl: the thumb tip ends 2.6 cm from the base
+  of the index finger, and a full curl with half opposition gives a closed fist.
+- Splay sign: negative Y on the left hand, positive on the right.
+- Opposition sign: positive X on both hands.
+- Proximal joint: `q = q_splay · q_curl`.
+
+No byte changes. The meaning of `thumb_curl` changes.
+
+### Alternatives rejected
+
+- **Leave the thumb on Z.** One rule for five fingers is simpler to state, but no hand
+  closes that way, and every sender would have to distort its thumb values to
+  compensate.
+- **Leave the signs as prose.** Two receivers can read "toward the thumb side"
+  differently and both conform; the frame vectors compare bytes and cannot tell.
+- **A per-avatar thumb axis taken from the model's rest pose.** More faithful on models
+  whose thumb is not in the palm plane, but the receiver would have to derive an axis per
+  model, and sender and receiver would have to derive the same one.
+
+### Consequences
+
+- A fist, a pinch and a thumbs-up can be expressed with curl and opposition alone.
+- Thumb splay and thumb curl share an axis on `thumbProximal`, in opposite senses. They
+  stay distinguishable: curl also drives `thumbDistal`, splay does not.
+- On a model whose T-pose thumb is rotated out of the palm plane (seen on one VRM 0.x
+  model) the thumb closes less cleanly. Accepted.
+- Not yet pinned by a test vector. A finger pose vector in the manner of
+  `testvectors/poses/` is the open follow-up.
+
+---
+
 ## 0001 — Hips height on the wire (full-body grounding)
 
 **Date:** 2026-10-03 · **Status:** Accepted · **Affects:** §5.4 (root block), §8.5

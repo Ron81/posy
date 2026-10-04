@@ -396,9 +396,9 @@
             <div class="table-wrap"><table><thead><tr><th>Offset</th><th>Type</th><th>Field</th></tr></thead><tbody id="finger-body"></tbody></table></div>
           </div>
           <div class="stack small muted leading" style="--sp:12px">
-            <p><b class="strong" style="color:#e4e4e7;font-weight:600">Curl</b> (0 = extended … 255 = fully curled) drives all three joints with a fixed distribution — proximal 90°, intermediate 110°, distal 70° (thumb: proximal 60°, distal 80° only). Linear in the curl byte.</p>
-            <p><b class="strong" style="color:#e4e4e7;font-weight:600">Splay</b> (−127…+127 → −15°…+15°) applies to the proximal joint only, positive = abduction toward the thumb side.</p>
-            <p><b class="strong" style="color:#e4e4e7;font-weight:600">Thumb opposition</b> (0…255 → 0°…60°) rotates the thumb metacarpal across the palm.</p>
+            <p><b class="strong" style="color:#e4e4e7;font-weight:600">Curl</b> (0 = extended … 255 = fully curled) drives all three joints with a fixed distribution — proximal 90°, intermediate 110°, distal 70° (thumb: proximal 60°, distal 80° only). Linear in the curl byte. Fingers flex about Z, into the palm; the thumb flexes about Y, toward the fingers.</p>
+            <p><b class="strong" style="color:#e4e4e7;font-weight:600">Splay</b> (−127…+127 → −15°…+15°) applies to the proximal joint only, about Y, positive = abduction toward the thumb side.</p>
+            <p><b class="strong" style="color:#e4e4e7;font-weight:600">Thumb opposition</b> (0…255 → 0°…60°) rotates the thumb metacarpal about X, under the palm.</p>
             <p class="tiny dim">Senders MUST NOT also set finger bone bits in <code>bone_mask</code> — one byte per axis is enough because hand tracking rarely delivers more precision than 256 levels anyway.</p>
           </div>
         </div>

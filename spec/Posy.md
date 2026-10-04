@@ -597,17 +597,27 @@ why splay and thumb opposition are added rather than more curl bits.
   For the thumb, curl drives `thumbProximal` (60°) and `thumbDistal` (80°) only.
   Flexion is linear in the curl byte.
 
-- **Flexion axis:** in the VRM 1.0 normalized T-pose, rotation about the bone's local
-  axis aligned with **world +Z**, signed so that fingertips move toward **−Y** (into
-  the palm) on both hands. (Concretely: negative Z-rotation on the left hand, positive
-  on the right.)
+All axes below are the bone's local axes in the VRM 1.0 normalized T-pose, where they
+coincide with the avatar axes (§3.1 item 6). Angles follow the right-hand rule.
+
+- **Flexion axis, index to little finger:** **Z**, signed so that fingertips move toward
+  **−Y** (into the palm): negative Z-rotation on the left hand, positive on the right.
+
+- **Flexion axis, thumb:** **Y**, signed so that the thumb tip moves toward the fingers,
+  across the palm: positive Y-rotation on the left hand, negative on the right. The thumb
+  lies in the plane of the palm in the T-pose and points forward and outward; about Z it
+  would bend down and back toward the wrist, away from the palm.
 
 - **Splay** (`−127` … `+127` → `−15°` … `+15°`) is applied to the **proximal joint
-  only**, about the bone's local axis aligned with world **+Y** in T-pose. Positive =
-  abduction toward the thumb side.
+  only**, about **Y**. Positive = abduction toward the thumb side: negative Y-rotation
+  on the left hand, positive on the right. For the thumb this is the axis of its flexion,
+  in the opposite sense: positive thumb splay opens the thumb away from the fingers.
 
-- **Thumb opposition** (`0` … `255` → `0°` … `60°`) rotates `thumbMetacarpal` about the
-  world-**X**-aligned axis, bringing the thumb across the palm.
+- **Order on the proximal joint**, which carries both: `q = q_splay · q_curl` (§3.1
+  item 5: the finger curls in the plane it was splayed into).
+
+- **Thumb opposition** (`0` … `255` → `0°` … `60°`) rotates `thumbMetacarpal` about
+  **X**, positive on both hands: the thumb moves toward −Y and under the palm.
 
 Receivers MUST synthesise the 30 finger bone rotations from this block. Senders MUST
 NOT also send finger bones via `bone_mask` in v1.

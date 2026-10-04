@@ -5,7 +5,8 @@ The spec follows the versioning rules in §9 (major version = channel protocol s
 
 ## [Unreleased] - proposed as 1.2.0
 
-Leg rotation conventions. **No change to the packet format or the signaling.**
+Leg rotation conventions, VRM 0.x conversion, finger signs. **No change to the packet
+format or the signaling.** The meaning of `thumb_curl` changes (see Changed).
 
 ### Added
 - Spec §3.1 items 5 and 6: rotation composition order (`q_parent · q_bone`) and the local
@@ -29,6 +30,14 @@ Leg rotation conventions. **No change to the packet format or the signaling.**
   of a receiver.
 - `reference/js`: `estimateHipsHeight` in `scripts/pose-fk.mjs`, and a test that the
   Appendix D estimate gives the stated hips height for `p01`–`p08` and misses it for `p09`.
+
+### Changed
+- §5.5: the thumb flexes about **Y**, toward the fingers (positive on the left hand,
+  negative on the right). It was about Z like the other fingers, which bends the thumb
+  away from the palm. `docs/DECISIONS.md` 0002.
+- §5.5: signs stated per hand for splay (−Y left, +Y right) and for thumb opposition
+  (+X on both hands), and the order on the proximal joint (`q_splay · q_curl`). These
+  were prose only.
 
 ### Fixed
 - §3.2 said a runtime's normalized rig of a VRM 0.x model already faces +Z. three-vrm

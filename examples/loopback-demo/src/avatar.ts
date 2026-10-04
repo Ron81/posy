@@ -300,7 +300,7 @@ export class VrmAvatar implements Avatar {
   private applyFingers(frame: Frame, smoothing: number): void {
     const turn = (bone: string, x: number, y: number, z: number) => {
       const node = this.vrm.humanoid.getNormalizedBoneNode(bone as VRMHumanBoneName);
-      // Euler XYZ with x = 0 is Ry · Rz: the finger curls in the plane it was splayed into.
+      // Euler XYZ with x = 0 is Ry · Rz: splay outside curl, as §5.5 orders them.
       node?.quaternion.slerp(_q.setFromEuler(_e.set(this.xz * x * DEG, y * DEG, this.xz * z * DEG)), smoothing);
     };
     for (const side of ['left', 'right'] as const) {
@@ -311,7 +311,10 @@ export class VrmAvatar implements Avatar {
         const curl = (hand?.curl[i] ?? 0) / 255;
         const splay = ((hand?.splay[i] ?? 0) / 127) * 15;
         for (const [joint, max] of Object.entries(finger === 'Thumb' ? THUMB_FLEXION : FLEXION)) {
-          turn(`${side}${finger}${joint}`, 0, joint === 'Proximal' ? sign * splay : 0, sign * curl * max);
+          const y = joint === 'Proximal' ? sign * splay : 0;
+          // The thumb lies in the palm plane, so it flexes about Y, toward the fingers.
+          if (finger === 'Thumb') turn(`${side}${finger}${joint}`, 0, y - sign * curl * max, 0);
+          else turn(`${side}${finger}${joint}`, 0, y, sign * curl * max);
         }
       });
       turn(`${side}ThumbMetacarpal`, ((hand?.thumbOpposition ?? 0) / 255) * 60, 0, 0);
