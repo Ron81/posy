@@ -170,6 +170,7 @@
             <option value="full">Whole body</option>
             <option value="hands">Hands</option>
             <option value="feet">Feet</option>
+            <option value="head">Face</option>
           </select>
           <span class="now" id="pose-now"></span>
         </div>
@@ -230,9 +231,10 @@
         A part is transmitted only if the tracker delivers it <b>and</b> the avatar can show it
         (spec §2.1). That set is declared once as <code>caps.sends</code> = <code id="sends"></code>.
         Everything else stays in its rest pose on the right and costs no bytes. The right-hand
-        camera frames the declared region. What the avatar can show is read from the loaded model.
-        Fingers are transmitted when declared; a loaded model shows them, with the joint
-        rotations worked out on the receiving side from the finger block (spec §5.5).
+        camera frames the declared region. The stick figure has a part for every data type:
+        fingers, one toe piece per foot, lids, mouth, tongue and pupils. What a loaded model
+        can show is read from the model. Finger joints are worked out on the receiving side
+        from the finger block (spec §5.5); the face comes from the expression block (§5.6).
       </p>
     </details>
     <details>
@@ -243,11 +245,18 @@
         <code>testvectors/poses</code>, legs only.
       </p>
       <p>
-        <b>Hands and feet.</b> "Count to ten" raises one hand and opens it finger by finger, thumb
-        first, then the other hand. "Toes" lifts the toes of each foot, then stands on tiptoe.
-        Both need a loaded model; the toes are easiest to see on a barefoot one. The view
-        selector next to the pose moves both cameras close to the hands or the feet; on "auto"
-        these two poses do that themselves.
+        <b>Hands, feet and face.</b> "Count to ten" raises one hand and opens it finger by
+        finger, thumb first, then the other hand. "Toes" lifts the toes of each foot, then
+        stands on tiptoe. "Face" goes through the lids, the mouth shapes, the tongue and the
+        gaze one at a time; the step that is on is named next to the selector. The view
+        selector moves both cameras close to the hands, the feet or the face; on "auto" these
+        three poses do that themselves. On a model, the toes are easiest to see barefoot, and
+        the tongue direction has nothing to drive: only the stick figure shows it.
+      </p>
+      <p>
+        <b>What moves.</b> In every pose the hands and the face do what fits it: hands hang
+        relaxed, lie flat on the lap, grip the hips or open for a wave; the mouth moves when
+        the pose speaks or shouts. Otherwise only the lids blink and the eyes follow the head.
       </p>
       <p>
         <b>Hips height.</b> The sender estimates how high the hips are from the lowest point of the

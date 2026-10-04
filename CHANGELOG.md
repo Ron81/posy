@@ -26,9 +26,12 @@ format or the signaling.** The meaning of `thumb_curl` changes (see Changed).
   transmitted (§2.1); the receiving view frames the declared region; a dropdown of
   whole-body poses (standing, moving, seated) plus the pose vectors; `h` estimated with
   the Appendix D method; all controls visible without scrolling. `?tracker=&pose=` links.
-  A loaded model shows the fingers, synthesised from the finger block as §5.5 requires
-  of a receiver. Two poses for the small parts, counting on the fingers and lifting the
-  toes, with a close-up view of hands or feet on both sides.
+  Fingers are synthesised from the finger block as §5.5 requires of a receiver, and the
+  face is driven from the expression block (§5.6): lids, mouth shapes, moods, gaze. The
+  stick figure has a part for every data type, including one toe piece per foot and a
+  tongue that shows direction. Hands and face fit each pose instead of running a fixed
+  wave. Three poses for the small parts (counting on the fingers, toes, face) with a
+  close-up view of hands, feet or face on both sides.
 - `reference/js`: `estimateHipsHeight` in `scripts/pose-fk.mjs`, and a test that the
   Appendix D estimate gives the stated hips height for `p01`–`p08` and misses it for `p09`.
 

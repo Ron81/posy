@@ -2,12 +2,15 @@
 // in the conventions of spec §3.1 / §3.4, plus the conformance pose vectors
 // (testvectors/poses) so those stay one click away.
 //
+// A pose also says what the hands and the face do in it. A part that a person would
+// keep still in that situation stays still: the hands hang relaxed, the mouth is shut.
+//
 // Hips height is not authored per pose. Like a webcam sender, the demo estimates it
 // from the solved legs with the lowest-contact method of spec Appendix D, and only the
 // poses where that method is known to fail carry an explicit height.
 import * as THREE from 'three';
 import type { Frame, Quat } from 'posy';
-import { BIT } from './bones.ts';
+import { BIT, SLOT } from './bones.ts';
 
 type BoneName = keyof typeof BIT;
 type Axis = 'x' | 'y' | 'z';
@@ -24,8 +27,24 @@ interface Shape {
   bones: Bones;
   /** Hips above the floor in metres on the reference skeleton; omit to estimate it. */
   hips?: number;
-  /** Finger block (§5.5); omit to leave the hands to the animator. */
+  /** Finger block (§5.5); omit for relaxed hands. */
   fingers?: Fingers;
+  /** Omit for a still face that only blinks. */
+  face?: Face;
+  /** Shown next to the pose selector: what is on right now. */
+  note?: string;
+}
+
+/** What the face does, in the terms of the expression block (§5.6). */
+export interface Face {
+  /** Eyelids left and right, 0 open … 1 shut. Omit for ordinary blinking. */
+  blink?: [number, number];
+  /** Mouth shapes and moods by Standard-Sync slot name, 0 … 1. */
+  shape?: Partial<Record<Exclude<keyof typeof SLOT, 'blinkLeft' | 'blinkRight' | `tongue${string}`>, number>>;
+  /** Tongue: out 0 … 1, then toward the avatar's left and upward, −1 … 1. */
+  tongue?: [number, number, number];
+  /** Gaze in degrees, left and up positive. Omit to let the eyes follow the head. */
+  gaze?: [number, number];
 }
 
 export interface Pose {
@@ -33,7 +52,7 @@ export interface Pose {
   label: string;
   group: string;
   /** Where the cameras should look while this pose is on; omit for the usual framing. */
-  look?: 'hands' | 'feet';
+  look?: 'hands' | 'feet' | 'head';
   /** `since` is the time in seconds since the pose was selected. */
   at(tSec: number, since: number): Shape;
 }
@@ -64,6 +83,13 @@ const vectors = import.meta.glob<PoseVector>('../../../testvectors/poses/p*.json
 // ---------------------------------------------------------------------------
 
 const wave = (tSec: number, hz: number) => Math.sin(tSec * hz * 2 * Math.PI);
+const smooth = (x: number) => {
+  const k = Math.min(1, Math.max(0, x));
+  return k * k * (3 - 2 * k);
+};
+const mix = (a: number, b: number, k: number) => a + (b - a) * k;
+/** 0 → 1 → 0 over x in 0 … 1, flat in the middle. */
+const bump = (x: number) => smooth(x * 4) * smooth((1 - x) * 4);
 
 /** Later arguments are applied inside earlier ones (appended to the rotation list). */
 function merge(...parts: Bones[]): Bones {
@@ -95,6 +121,33 @@ const alive = (t: number): Bones => ({
   head: [['y', 9 * wave(t, 0.1)], ['x', 4 * wave(t, 0.17)]],
 });
 
+// Hands. Curl runs thumb to little finger, 0 straight … 255 closed; splay is positive
+// toward the thumb side (§5.5).
+const hand = (curl: number[], splay = [0, 0, 0, 0, 0], thumbOpposition = 40): Hand => ({
+  curl: curl as Hand['curl'],
+  splay: splay as Hand['splay'],
+  thumbOpposition,
+});
+const both = (h: Hand): Fingers => ({ left: h, right: h });
+const mixHand = (a: Hand, b: Hand, k: number): Hand =>
+  hand(
+    a.curl.map((v, i) => Math.round(v + (b.curl[i] - v) * k)),
+    a.splay.map((v, i) => Math.round(v + (b.splay[i] - v) * k)),
+    Math.round(a.thumbOpposition + (b.thumbOpposition - a.thumbOpposition) * k),
+  );
+
+/** Hanging at the side: fingers a little bent, more so toward the little finger. */
+const RELAXED = hand([40, 50, 60, 70, 80]);
+/** Fingers straight and spread, thumb out. */
+const OPEN = hand([0, 0, 0, 0, 0], [100, 70, 10, -50, -100], 0);
+/** Lying on a thigh or held out flat. */
+const FLAT = hand([20, 12, 12, 15, 20], [30, 15, 0, -15, -30], 20);
+/** Resting on the hip: fingers wrapped forward, thumb behind. */
+const ON_HIP = hand([30, 95, 100, 105, 110], [60, 10, 0, -10, -20], 0);
+const FIST = hand([235, 235, 235, 235, 235], [0, 0, 0, 0, 0], 170);
+
+export const RELAXED_HANDS = both(RELAXED);
+
 const seatedLeft: Bones = { leftUpperLeg: [['x', -90]], leftLowerLeg: [['x', 90]] };
 const seatedRight: Bones = { rightUpperLeg: [['x', -90]], rightLowerLeg: [['x', 90]] };
 
@@ -115,6 +168,8 @@ const BODY: Pose[] = [
         { leftUpperArm: [['z', 76 + 12]], leftLowerArm: [['z', 78 + 22 * wave(t, 1.6)], ['x', -90]] },
         alive(t),
       ),
+      fingers: { left: OPEN, right: RELAXED },
+      face: { shape: { happy: 0.8 } },
     }),
   },
   {
@@ -128,6 +183,7 @@ const BODY: Pose[] = [
         { leftUpperLeg: [['z', 10]], spine: [['z', -3]] },
         alive(t),
       ),
+      fingers: both(ON_HIP),
     }),
   },
   {
@@ -142,6 +198,9 @@ const BODY: Pose[] = [
           { leftFoot: [['x', 32 * up]], rightFoot: [['x', 32 * up]], leftToes: [['x', -32 * up]], rightToes: [['x', -32 * up]] },
           alive(t),
         ),
+        fingers: both(OPEN),
+        // Shouting on the way up.
+        face: { shape: { happy: 1, aa: 0.2 + 0.6 * up } },
       };
     },
   },
@@ -153,6 +212,8 @@ const BODY: Pose[] = [
       const k = 0.5 - 0.5 * Math.cos(t * 1.6); // 0..1, slow down and up
       return {
         bones: merge(armsDown(80), { spine: [['x', 28 * k]], chest: [['x', 22 * k]], neck: [['x', 8 * k]] }),
+        // Eyes go down with the bow and close at the bottom of it.
+        face: { gaze: [0, -25 * k], blink: [smooth((k - 0.55) / 0.3), smooth((k - 0.55) / 0.3)] },
       };
     },
   },
@@ -193,6 +254,9 @@ const BODY: Pose[] = [
           { spine: [['x', 16 * k]] },
           alive(t),
         ),
+        // Hands open out as the arms come forward; breath goes out on the way down.
+        fingers: both(mixHand(RELAXED, FLAT, k)),
+        face: { shape: { ou: 0.35 * k } },
       };
     },
   },
@@ -212,6 +276,8 @@ const BODY: Pose[] = [
           { leftUpperArm: [['z', -76 + 130 * air]], rightUpperArm: [['z', 76 - 130 * air]] },
           alive(t),
         ),
+        fingers: both(mixHand(RELAXED, OPEN, air)),
+        face: { shape: { happy: 0.5 + 0.5 * air, aa: 0.6 * air } },
         // In the air nothing touches the floor, so the estimate cannot know the height.
         hips: air > 0 ? skeleton.standing_hip_height + 0.28 * air : undefined,
       };
@@ -228,6 +294,7 @@ const BODY: Pose[] = [
         handsOnLap,
         alive(t),
       ),
+      fingers: both(FLAT),
     }),
   },
   {
@@ -242,6 +309,7 @@ const BODY: Pose[] = [
         { spine: [['x', -6]] },
         alive(t),
       ),
+      fingers: both(FLAT),
     }),
   },
   {
@@ -268,6 +336,7 @@ const BODY: Pose[] = [
         handsOnLap,
         alive(t),
       ),
+      fingers: both(FLAT),
     }),
   },
   {
@@ -281,36 +350,56 @@ const BODY: Pose[] = [
         handsOnLap,
         alive(t),
       ),
+      fingers: both(FLAT),
     }),
   },
 ];
 
 // Poses for the small parts. Not in the Auto cycle: they run longer than one slot of it.
-const smooth = (x: number) => {
-  const k = Math.min(1, Math.max(0, x));
-  return k * k * (3 - 2 * k);
-};
-const mix = (a: number, b: number, k: number) => a + (b - a) * k;
 
 const COUNT_HALF = 7.5; // seconds per hand
 const COUNT_SWAP = 1.2; // one arm comes down while the other goes up
 const COUNT_START = 1.8; // fist held until here, then one finger every COUNT_STEP
 const COUNT_STEP = 0.7;
-const RELAXED = 60; // curl of a hand that hangs at the side
-const FIST = 235;
 
 /** `raised` 0..1: hanging at the side .. forearm up, palm to the camera. `v`: seconds into this hand's turn. */
 function countingHand(raised: number, v: number): Hand {
   // Thumb first, then index to little; each finger opens over half a step.
   const open = [0, 1, 2, 3, 4].map((i) => smooth((v - COUNT_START - COUNT_STEP * i) / (COUNT_STEP / 2)));
-  const curl = open.map((o) => Math.round(mix(RELAXED, FIST * (1 - o), raised)));
-  return {
-    curl: curl as Hand['curl'],
-    splay: [0, 0, 0, 0, 0],
-    // The thumb lies across the fist until it is counted.
-    thumbOpposition: Math.round(mix(40, 170 * (1 - open[0]), raised)),
-  };
+  const counting = hand(
+    open.map((o) => FIST.curl[0] * (1 - o)),
+    [0, 0, 0, 0, 0],
+    FIST.thumbOpposition * (1 - open[0]), // the thumb lies across the fist until it is counted
+  );
+  return mixHand(RELAXED, counting, raised);
 }
+
+// One part of the face at a time, each for FACE_STEP seconds. `k` rises to 1 and falls.
+const FACE_STEP = 1.3;
+const FACE: Array<[note: string, face: (k: number) => Face]> = [
+  ['blink', (k) => ({ blink: [k, k] })],
+  ['left lid', (k) => ({ blink: [k, 0] })],
+  ['right lid', (k) => ({ blink: [0, k] })],
+  ['aa', (k) => ({ shape: { aa: k } })],
+  ['ih', (k) => ({ shape: { ih: k } })],
+  ['ou', (k) => ({ shape: { ou: k } })],
+  ['ee', (k) => ({ shape: { ee: k } })],
+  ['oh', (k) => ({ shape: { oh: k } })],
+  ['happy', (k) => ({ shape: { happy: k } })],
+  ['surprised', (k) => ({ shape: { surprised: k } })],
+  ['tongue out', () => ({ tongue: [1, 0, 0] })],
+  ['tongue left', (k) => ({ tongue: [1, k, 0] })],
+  ['tongue right', (k) => ({ tongue: [1, -k, 0] })],
+  ['tongue up', (k) => ({ tongue: [1, 0, k] })],
+  ['tongue down', (k) => ({ tongue: [1, 0, -k] })],
+  ['gaze left', (k) => ({ gaze: [35 * k, 0] })],
+  ['gaze right', (k) => ({ gaze: [-35 * k, 0] })],
+  ['gaze up', (k) => ({ gaze: [0, 30 * k] })],
+  ['gaze down', (k) => ({ gaze: [0, -30 * k] })],
+];
+
+const TONGUE_FROM = FACE.findIndex(([note]) => note.startsWith('tongue'));
+const TONGUE_TO = TONGUE_FROM + FACE.filter(([note]) => note.startsWith('tongue')).length;
 
 const DETAIL: Pose[] = [
   {
@@ -326,7 +415,13 @@ const DETAIL: Pose[] = [
       // The right arm starts at the side; after that the two arms swap at every half.
       const right = since < COUNT_HALF ? 0 : 1 - left;
       const turn = left - right; // +1: left shoulder forward, −1: right shoulder forward
+      // The count is spoken: the mouth opens briefly as each finger comes up.
+      const v = leftTurn ? u : u - COUNT_HALF;
+      const n = Math.min(5, Math.max(0, Math.floor((v - COUNT_START) / COUNT_STEP) + 1));
+      const said = n > 0 ? bump(Math.min(1, (v - COUNT_START - COUNT_STEP * (n - 1)) / (COUNT_STEP * 0.8))) : 0;
       return {
+        note: n > 0 ? String(leftTurn ? n : n + 5) : '',
+        face: { shape: { aa: 0.7 * said }, gaze: [14 * turn, 4] },
         bones: merge(
           // Upper arm a little forward and out, forearm up. The forearm twist is what is left
           // of a quarter turn once the torso and upper arm have turned: the palm faces +Z.
@@ -358,8 +453,30 @@ const DETAIL: Pose[] = [
           armsDown(),
           { leftToes: [['x', -38 * lift(0) - 34 * tip]], rightToes: [['x', -38 * lift(2) - 34 * tip]] },
           { leftFoot: [['x', 34 * tip]], rightFoot: [['x', 34 * tip]] },
-          alive(t),
+          // Looking down at the feet.
+          { neck: [['x', 12]], head: [['x', 22]] },
         ),
+        face: { gaze: [0, -18] },
+        note: u < 2 ? 'left toes' : u < 4 ? 'right toes' : 'tiptoe',
+      };
+    },
+  },
+  {
+    id: 'face',
+    label: 'Face: lids, mouth, tongue, gaze',
+    group: 'Hands and feet',
+    look: 'head',
+    at: (_t, since) => {
+      const u = since % (FACE_STEP * FACE.length);
+      const i = Math.floor(u / FACE_STEP);
+      const [note, face] = FACE[i];
+      const shown = face(bump((u % FACE_STEP) / FACE_STEP));
+      // The tongue comes out once and stays out through all of its steps.
+      const out = smooth((u - TONGUE_FROM * FACE_STEP) / 0.3) * smooth((TONGUE_TO * FACE_STEP - u) / 0.3);
+      return {
+        bones: armsDown(), // head and body still, so that only the face moves
+        face: { blink: [0, 0], gaze: [0, 0], ...shown, tongue: [out, shown.tongue?.[1] ?? 0, shown.tongue?.[2] ?? 0] },
+        note,
       };
     },
   },
@@ -435,6 +552,8 @@ export interface BodyPose {
   h: number;
   /** Finger block, when the pose sets the hands itself. */
   fingers?: Fingers;
+  face?: Face;
+  note?: string;
   /** The pose being performed. */
   id: string;
   look?: Pose['look'];
@@ -475,5 +594,5 @@ export function bodyPoseAt(tSec: number, selected: string): BodyPose {
   const bones = new Map<number, Quat>();
   for (const [name, q] of quats) bones.set(BIT[name], { x: q.x, y: q.y, z: q.z, w: q.w });
   const h = Math.round((hips / skeleton.standing_hip_height) * 32768);
-  return { bones, h: Math.min(65535, Math.max(0, h)), fingers: shape.fingers, id: pose.id, look: pose.look };
+  return { bones, h: Math.min(65535, Math.max(0, h)), fingers: shape.fingers, face: shape.face, note: shape.note, id: pose.id, look: pose.look };
 }

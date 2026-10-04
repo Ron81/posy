@@ -56,7 +56,14 @@ interface View {
 
 // Camera framing per declared region: [distance, look-at height], in avatar heights.
 // `hands` and `feet` are close-ups for the poses that exist to show those parts.
-const FRAMING = { full: [2.1, 0.5], upper: [1.3, 0.74], face: [0.85, 0.88], hands: [0.95, 0.8], feet: [0.6, 0.07] } as const;
+const FRAMING = {
+  full: [2.1, 0.5],
+  upper: [1.3, 0.74],
+  face: [0.85, 0.88],
+  hands: [0.95, 0.8],
+  feet: [0.6, 0.07],
+  head: [0.42, 0.915],
+} as const;
 
 function frameCamera(view: View, r: keyof typeof FRAMING, ease: number): void {
   const [dist, at] = FRAMING[r];
@@ -290,7 +297,7 @@ poseSelect.addEventListener('change', () => (shownPose = ''));
 // Close-up: 'auto' follows the pose (most poses ask for none), or hold one by hand.
 const lookSelect = document.getElementById('look') as HTMLSelectElement;
 if ([...lookSelect.options].some((o) => o.value === params.get('look'))) lookSelect.value = params.get('look')!;
-let poseLook: 'hands' | 'feet' | undefined;
+let poseLook: 'hands' | 'feet' | 'head' | undefined;
 
 // .vrm picker — swaps both avatars; failures fall back to a fresh stick figure.
 const vrmInput = document.getElementById('vrm') as HTMLInputElement;
@@ -338,11 +345,10 @@ function maybeSend(nowMs: number): void {
 
   const body = bodyPoseAt(nowMs / 1000, poseSelect.value);
   poseLook = body.look;
-  if (body.id !== shownPose) {
-    shownPose = body.id;
-    // In Auto, say which pose is on; a held pose is already named by the dropdown.
-    poseNow.textContent = poseSelect.value === 'auto' ? `now: ${POSES.find((p) => p.id === body.id)?.label ?? ''}` : '';
-  }
+  // In Auto, say which pose is on; a held pose is already named by the dropdown, so it
+  // shows the step the pose is at, if it has steps.
+  const now = poseSelect.value === 'auto' ? `now: ${POSES.find((p) => p.id === body.id)?.label ?? ''}` : (body.note ?? '');
+  if (now !== shownPose) poseNow.textContent = shownPose = now;
 
   const performance = poseAt(nowMs / 1000, body);
   const bytes = encode(crop(performance, tracker, sends)); // only the declared parts go out

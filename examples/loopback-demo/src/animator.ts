@@ -1,38 +1,46 @@
-// The performer's full performance as a Posy Frame: the whole-body pose from poses.ts
-// plus finger curl, a periodic blink and an occasional tongue. The sender cuts this
-// down to what it declared (declare.ts) before encoding.
+// The performer's full performance as a Posy Frame: body, hands and face of the pose
+// from poses.ts. The sender cuts this down to what it declared (declare.ts) before
+// encoding.
+//
+// Nothing moves here on its own account except what a person does without meaning to:
+// the eyes blink, and they follow the head when it looks around.
 import type { Frame } from 'posy';
-import { BLINK_LEFT_INDEX, BLINK_RIGHT_INDEX, TONGUE_OUT_INDEX, TONGUE_X_INDEX } from './bones.ts';
-import type { BodyPose } from './poses.ts';
+import { SLOT } from './bones.ts';
+import { RELAXED_HANDS, type BodyPose } from './poses.ts';
 
 let seq = 0;
 
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+const u8 = (v: number) => Math.round(clamp(v, 0, 1) * 255);
+const i8 = (v: number) => Math.round(clamp(v, -1, 1) * 127);
+
 /**
  * Build the frame at time `tSec`. `seq` increments per call; `timestampMs` is the
- * demo clock in ms (kept < 2^32). Finger curl rides a slow wave unless the pose sets
- * the hands itself; blink is a short pulse a few times a minute.
+ * demo clock in ms (kept < 2^32).
  */
 export function poseAt(tSec: number, body: BodyPose): Frame {
-  // Fingers: curl oscillates 0..255 together (thumb..little), gentle splay.
-  const curlWave = Math.round(((Math.sin(tSec * 2) + 1) / 2) * 255);
-  const curl: [number, number, number, number, number] = [
-    curlWave, curlWave, curlWave, curlWave, curlWave,
-  ];
-  const splay: [number, number, number, number, number] = [-20, -10, 0, 10, 20];
-  const hand = () => ({ curl: [...curl] as typeof curl, splay: [...splay] as typeof splay, thumbOpposition: 128 });
-
-  // Blink: full-shut for a short window roughly every 4 s.
-  const blinkPhase = tSec % 4;
-  const blink = blinkPhase < 0.15 ? 255 : 0;
+  const face = body.face ?? {};
   const weights = new Uint8Array(16);
-  weights[BLINK_LEFT_INDEX] = blink;
-  weights[BLINK_RIGHT_INDEX] = blink;
 
-  // Tongue: out for a second every 6 s, drifting side to side (slot 14 is i8, §5.6).
-  if (tSec % 6 < 1) {
-    weights[TONGUE_OUT_INDEX] = 255;
-    weights[TONGUE_X_INDEX] = Math.round(Math.sin(tSec * 6) * 100) & 0xff;
+  // Blink: shut for a short window roughly every 4 s, unless the pose holds the lids.
+  const natural = tSec % 4 < 0.15 ? 1 : 0;
+  const [blinkLeft, blinkRight] = face.blink ?? [natural, natural];
+  weights[SLOT.blinkLeft] = u8(blinkLeft);
+  weights[SLOT.blinkRight] = u8(blinkRight);
+
+  for (const [name, value] of Object.entries(face.shape ?? {})) weights[SLOT[name as keyof typeof SLOT]] = u8(value);
+
+  // Tongue direction counts only while the tongue is out (§5.6). Slots 14 and 15 are i8.
+  const [out, left, up] = face.tongue ?? [0, 0, 0];
+  weights[SLOT.tongueOut] = u8(out);
+  if (weights[SLOT.tongueOut] > 0) {
+    weights[SLOT.tongueX] = i8(left) & 0xff;
+    weights[SLOT.tongueY] = i8(up) & 0xff;
   }
+
+  // Gaze: ±45° over the i8 range (§5.6). Without a pose value the eyes lead the slow
+  // look-around of the head (same rhythm as `alive` in poses.ts).
+  const [yaw, pitch] = face.gaze ?? [8 * Math.sin(tSec * 0.1 * 2 * Math.PI), 0];
 
   return {
     version: 1,
@@ -41,7 +49,7 @@ export function poseAt(tSec: number, body: BodyPose): Frame {
     idle: false,
     bones: body.bones,
     root: { x: 0x8000, y: 0x8000, z: 0, h: body.h },
-    fingers: body.fingers ?? { left: hand(), right: hand() },
-    expressions: { perfectSync: false, weights, gazeYaw: 0, gazePitch: 0 },
+    fingers: body.fingers ?? RELAXED_HANDS,
+    expressions: { perfectSync: false, weights, gazeYaw: i8(yaw / 45), gazePitch: i8(pitch / 45) },
   };
 }

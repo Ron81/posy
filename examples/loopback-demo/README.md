@@ -12,15 +12,22 @@ right is what the room receives. No server, no signup.
 - **Poses.** One dropdown of whole-body poses (standing, moving, seated), written as joint
   angles in `src/poses.ts`; "Auto" cycles through them. The last group holds the
   conformance pose vectors from `testvectors/poses` (spec §3.4).
-- **Hands and feet.** Two poses outside the Auto cycle: "Count to ten on the fingers" (one
-  hand opens finger by finger, thumb first, then the other) and "Toes up" (each foot, then
-  both on tiptoe). They need a loaded model. A view selector next to the pose moves both
-  cameras to the hands or the feet; on "auto" these two poses do it themselves.
+- **Hands, feet and face.** Three poses outside the Auto cycle: "Count to ten on the
+  fingers" (one hand opens finger by finger, thumb first, then the other), "Toes up" (each
+  foot, then both on tiptoe) and "Face" (lids, mouth shapes, tongue, gaze, one at a time).
+  A view selector next to the pose moves both cameras to the hands, the feet or the face;
+  on "auto" these three poses do it themselves.
+- **The stick figure shows every data type**: fingers, one toe piece per foot (what the
+  wire carries), lids, mouth, a tongue with direction, and pupils that follow the gaze.
+  Tongue direction is visible only there; VRM has no expression for it.
+- **Hands and face fit the pose.** Relaxed, flat on the lap, on the hips, open for a wave;
+  the mouth moves where the pose speaks. Nothing else moves but blinking and the eyes
+  following the head.
 - **Hips height.** The sender estimates `h` from the lowest point of the legs (spec
   Appendix D); poses where nothing touches the floor supply it. Both avatars apply it.
 - **Links.** `?tracker=<id>&pose=<id>` preselects both, e.g. `?tracker=full&pose=p07`
   holds the ankle-on-knee vector and `?pose=squat` the squat. A bare number means that
-  vector (`pose=7` = `p07`). `&look=hands` or `&look=feet` holds a close-up. Tracker ids: `full-toes-tongue`, `full-toes`, `full`,
+  vector (`pose=7` = `p07`). `&look=hands`, `&look=feet` or `&look=head` holds a close-up. Tracker ids: `full-toes-tongue`, `full-toes`, `full`,
   `upper`, `face`.
 
 ```sh

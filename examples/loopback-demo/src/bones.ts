@@ -24,8 +24,22 @@ export const BIT = {
   rightHand: 24,
 } as const;
 
-// Standard-Sync expression slots this demo uses (spec §5.6).
-export const BLINK_LEFT_INDEX = 0; // blinkLeft
-export const BLINK_RIGHT_INDEX = 1; // blinkRight
-export const TONGUE_OUT_INDEX = 13; // tongueOut, u8
-export const TONGUE_X_INDEX = 14; // tongueX, i8
+// Standard-Sync expression slots by name (spec §5.6).
+export const SLOT = {
+  blinkLeft: 0,
+  blinkRight: 1,
+  aa: 2,
+  ih: 3,
+  ou: 4,
+  ee: 5,
+  oh: 6,
+  happy: 7,
+  angry: 8,
+  sad: 9,
+  relaxed: 10,
+  surprised: 11,
+  neutral: 12,
+  tongueOut: 13, // u8
+  tongueX: 14, // i8, positive = toward the avatar's own left
+  tongueY: 15, // i8, positive = upward
+} as const;
