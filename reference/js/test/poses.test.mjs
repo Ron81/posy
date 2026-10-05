@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { packQuat, unpackQuat } from '../dist/index.js';
 import { estimateHipsHeight, fk } from '../scripts/pose-fk.mjs';
+import { fingerPose, fkHand, eulerXYZ } from '../scripts/finger-fk.mjs';
 
 const POSES = join(dirname(fileURLToPath(import.meta.url)), '../../../testvectors/poses');
 const skeleton = JSON.parse(readFileSync(join(POSES, 'skeleton.json'), 'utf8'));
@@ -47,4 +48,55 @@ test('a flipped knee sign is caught', () => {
   const [x, y, z, w] = vec.bones[0].quat;
   const wrong = fk(skeleton.joints, { [vec.bones[0].name]: { x: -x, y: -y, z: -z, w } });
   assert.ok(maxError(wrong, vec.expect) > 0.5);
+});
+
+// --- Finger pose vectors (§5.5 synthesis: curl / splay / opposition → bone rotations) ---
+
+const handSkeleton = JSON.parse(readFileSync(join(POSES, 'hand-skeleton.json'), 'utf8'));
+const fingerFiles = readdirSync(POSES).filter((f) => /^f\d+.*\.json$/.test(f)).sort();
+
+const synth = (bytes) => ({ ...fingerPose('left', bytes.left), ...fingerPose('right', bytes.right) });
+
+for (const file of fingerFiles) {
+  const vec = JSON.parse(readFileSync(join(POSES, file), 'utf8'));
+
+  test(`finger ${vec.name}: §5.5 synthesis gives the expected fingertip positions`, () => {
+    assert.ok(maxError(fkHand(handSkeleton.joints, synth(vec.bytes)), vec.expect) < 1e-4);
+  });
+}
+
+// The thumb flexes about Y, not Z (§5.5). Pin it against the pre-1.2 bug: with the thumb
+// synthesised about Z instead, f02's thumb tip leaves the y = 0 plane and misses by centimetres.
+test('a thumb synthesised about Z (the old bug) is caught', () => {
+  const vec = JSON.parse(readFileSync(join(POSES, 'f02-thumb-curl.json'), 'utf8'));
+  const wrong = {};
+  for (const side of ['left', 'right']) {
+    const sign = side === 'left' ? -1 : 1;
+    const curl = (vec.bytes[side].curl[0] / 255) * 60; // thumb proximal max
+    const distal = (vec.bytes[side].curl[0] / 255) * 80;
+    wrong[`${side}ThumbMetacarpal`] = eulerXYZ(0, 0, 0);
+    wrong[`${side}ThumbProximal`] = eulerXYZ(0, 0, sign * curl); // about Z — wrong
+    wrong[`${side}ThumbDistal`] = eulerXYZ(0, 0, sign * distal);
+  }
+  assert.ok(maxError(fkHand(handSkeleton.joints, wrong), vec.expect) > 0.02);
+});
+
+// A flipped curl sign on the fingers (curl toward +Y instead of −Y) is caught. A fully curled
+// finger folds back near its knuckle, so the tip's +Y/−Y gap is a couple of centimetres, not the
+// tens a leg sign error gives — still far above the sub-millimetre quantisation noise.
+test('a flipped finger curl sign is caught', () => {
+  const vec = JSON.parse(readFileSync(join(POSES, 'f01-four-fingers-curl.json'), 'utf8'));
+  const good = synth(vec.bytes);
+  const wrong = Object.fromEntries(
+    Object.entries(good).map(([k, q]) => [k, { x: q.x, y: q.y, z: -q.z, w: q.w }]),
+  );
+  assert.ok(maxError(fkHand(handSkeleton.joints, wrong), vec.expect) > 0.02);
+});
+
+// Left and right must differ: an asymmetric pose applied with a single (unmirrored) sign fails.
+test('f06 is asymmetric: the right hand is not the left', () => {
+  const vec = JSON.parse(readFileSync(join(POSES, 'f06-count-two.json'), 'utf8'));
+  // Drive the right hand with the left hand's bytes (as a sender that forgot to mirror would):
+  const wrong = { ...fingerPose('left', vec.bytes.left), ...fingerPose('right', vec.bytes.left) };
+  assert.ok(maxError(fkHand(handSkeleton.joints, wrong), vec.expect) > 0.1);
 });

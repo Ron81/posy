@@ -1,0 +1,112 @@
+{
+  "name": "f03-index-splay",
+  "description": "index proximal splayed to +127 on both hands, no curl. Splay about Y (−Y left, +Y right): the extended index tip moves toward the thumb side, +Z.",
+  "bytes": {
+    "left": {
+      "curl": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "splay": [
+        0,
+        127,
+        0,
+        0,
+        0
+      ],
+      "opposition": 0
+    },
+    "right": {
+      "curl": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "splay": [
+        0,
+        127,
+        0,
+        0,
+        0
+      ],
+      "opposition": 0
+    }
+  },
+  "expect": {
+    "leftIndexTip": [
+      0.16807,
+      0,
+      0.052258
+    ],
+    "leftMiddleTip": [
+      0.182,
+      0,
+      0.01
+    ],
+    "leftRingTip": [
+      0.173,
+      0,
+      -0.01
+    ],
+    "leftLittleTip": [
+      0.157,
+      0,
+      -0.03
+    ],
+    "leftThumbProximal": [
+      0.037627,
+      0,
+      0.058627
+    ],
+    "leftThumbDistal": [
+      0.058841,
+      0,
+      0.079841
+    ],
+    "leftThumbTip": [
+      0.076518,
+      0,
+      0.097518
+    ],
+    "rightIndexTip": [
+      -0.16807,
+      0,
+      0.052258
+    ],
+    "rightMiddleTip": [
+      -0.182,
+      0,
+      0.01
+    ],
+    "rightRingTip": [
+      -0.173,
+      0,
+      -0.01
+    ],
+    "rightLittleTip": [
+      -0.157,
+      0,
+      -0.03
+    ],
+    "rightThumbProximal": [
+      -0.037627,
+      0,
+      0.058627
+    ],
+    "rightThumbDistal": [
+      -0.058841,
+      0,
+      0.079841
+    ],
+    "rightThumbTip": [
+      -0.076518,
+      0,
+      0.097518
+    ]
+  }
+}

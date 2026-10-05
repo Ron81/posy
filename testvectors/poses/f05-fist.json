@@ -1,0 +1,112 @@
+{
+  "name": "f05-fist",
+  "description": "full fist both hands: all four fingers curled, thumb curled with half opposition. Everything at once; product order on the proximal (q_splay · q_curl) and the thumb axis both matter.",
+  "bytes": {
+    "left": {
+      "curl": [
+        255,
+        255,
+        255,
+        255,
+        255
+      ],
+      "splay": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "opposition": 128
+    },
+    "right": {
+      "curl": [
+        255,
+        255,
+        255,
+        255,
+        255
+      ],
+      "splay": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "opposition": 128
+    }
+  },
+  "expect": {
+    "leftIndexTip": [
+      0.060568,
+      -0.011107,
+      0.03
+    ],
+    "leftMiddleTip": [
+      0.056809,
+      -0.012739,
+      0.01
+    ],
+    "leftRingTip": [
+      0.058689,
+      -0.010423,
+      -0.01
+    ],
+    "leftLittleTip": [
+      0.064327,
+      -0.006476,
+      -0.03
+    ],
+    "leftThumbProximal": [
+      0.037627,
+      -0.011354,
+      0.055573
+    ],
+    "leftThumbDistal": [
+      0.066605,
+      -0.007458,
+      0.048856
+    ],
+    "leftThumbTip": [
+      0.064426,
+      0.005039,
+      0.027314
+    ],
+    "rightIndexTip": [
+      -0.060568,
+      -0.011107,
+      0.03
+    ],
+    "rightMiddleTip": [
+      -0.056809,
+      -0.012739,
+      0.01
+    ],
+    "rightRingTip": [
+      -0.058689,
+      -0.010423,
+      -0.01
+    ],
+    "rightLittleTip": [
+      -0.064327,
+      -0.006476,
+      -0.03
+    ],
+    "rightThumbProximal": [
+      -0.037627,
+      -0.011354,
+      0.055573
+    ],
+    "rightThumbDistal": [
+      -0.066605,
+      -0.007458,
+      0.048856
+    ],
+    "rightThumbTip": [
+      -0.064426,
+      0.005039,
+      0.027314
+    ]
+  }
+}

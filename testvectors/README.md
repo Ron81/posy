@@ -87,6 +87,38 @@ The frame vectors check bytes. They cannot tell whether a knee bends the right w
 
 `h` is checked against `hips_height` only. For `p01`–`p08` it equals the lowest-contact estimate of spec Appendix D to within 1 mm (ankle 0.08 m and toes 0.01 m above the floor in the T-pose, shin radius 0.05 m); for `p09` it does not, which is the reason `h` is transmitted rather than derived.
 
+### Finger poses (`hand-skeleton.json`, `f01`–`f06`)
+
+The frame vectors pin the bytes of the finger block (§5.5); they cannot tell whether the receiver *synthesises* the right rotations from them — a decoder that curls the thumb about the wrong axis still decodes every frame. The finger pose vectors check that synthesis.
+
+`hand-skeleton.json` is a reference hand (both hands) in the T-pose: palm down, index–little along ±X, the thumb forward and outward in the palm plane; `Tip` joints are end points, not bones. Each `fNN-name.json` carries the input **bytes**, not quaternions, because the receiver builds the rotations:
+
+```jsonc
+{
+  "name": "f02-thumb-curl",
+  "description": "...",
+  "bytes": {                                 // one hand each; curl/splay are [thumb, index, middle, ring, little]
+    "left":  { "curl": [255,0,0,0,0], "splay": [0,0,0,0,0], "opposition": 0 },
+    "right": { "curl": [255,0,0,0,0], "splay": [0,0,0,0,0], "opposition": 0 }
+  },
+  "expect": {                                // fingertip (and thumb-joint) positions relative to the wrist, metres
+    "leftThumbTip": [0.064426, 0, 0.025958]
+    // ...
+  }
+}
+```
+
+**How to check:** synthesise the finger-bone rotations from `bytes` by §5.5, apply them to the hand by the same forward kinematics as the leg poses, and compare the `Tip` joints with `expect`. Tolerance **1e-4 m**. The synthesis is spec text, not a wire format, so there is no wire-encoding tolerance here.
+
+| Vectors | What they pin |
+|---|---|
+| `f01-four-fingers-curl` | index–little flexion about Z, mirrored sign (−Z left, +Z right) |
+| `f02-thumb-curl` | thumb flexion about **Y**, not Z — the fingertip stays in the palm plane (`y = 0`), which a Z-axis synthesis would violate |
+| `f03-index-splay` | splay about Y on the proximal only, mirrored sign |
+| `f04-thumb-opposition` | opposition about X on the metacarpal, positive on both hands |
+| `f05-fist` | everything at once; the product order `q_splay · q_curl` and the thumb axis both matter |
+| `f06-count-two` | an asymmetric pose: the right hand is not a copy of the left |
+
 ## `quaternions.csv`
 
 ```

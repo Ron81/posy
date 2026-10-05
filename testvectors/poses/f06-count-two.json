@@ -1,0 +1,112 @@
+{
+  "name": "f06-count-two",
+  "description": "left hand: index and middle extended, ring/little curled, thumb across (opposition). Right hand flat. An asymmetric pose: left and right must differ.",
+  "bytes": {
+    "left": {
+      "curl": [
+        255,
+        0,
+        0,
+        255,
+        255
+      ],
+      "splay": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "opposition": 200
+    },
+    "right": {
+      "curl": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "splay": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "opposition": 0
+    }
+  },
+  "expect": {
+    "leftIndexTip": [
+      0.171,
+      0,
+      0.03
+    ],
+    "leftMiddleTip": [
+      0.182,
+      0,
+      0.01
+    ],
+    "leftRingTip": [
+      0.058689,
+      -0.010423,
+      -0.01
+    ],
+    "leftLittleTip": [
+      0.064327,
+      -0.006476,
+      -0.03
+    ],
+    "leftThumbProximal": [
+      0.037627,
+      -0.016564,
+      0.051415
+    ],
+    "leftThumbDistal": [
+      0.066605,
+      -0.01088,
+      0.046125
+    ],
+    "leftThumbTip": [
+      0.064426,
+      0.007351,
+      0.029159
+    ],
+    "rightIndexTip": [
+      -0.171,
+      0,
+      0.03
+    ],
+    "rightMiddleTip": [
+      -0.182,
+      0,
+      0.01
+    ],
+    "rightRingTip": [
+      -0.173,
+      0,
+      -0.01
+    ],
+    "rightLittleTip": [
+      -0.157,
+      0,
+      -0.03
+    ],
+    "rightThumbProximal": [
+      -0.037627,
+      0,
+      0.058627
+    ],
+    "rightThumbDistal": [
+      -0.058841,
+      0,
+      0.079841
+    ],
+    "rightThumbTip": [
+      -0.076518,
+      0,
+      0.097518
+    ]
+  }
+}

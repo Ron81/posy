@@ -16,9 +16,16 @@ format or the signaling.** The meaning of `thumb_curl` changes (see Changed).
   per side.
 - Spec §10 item 8: implementations that send or render leg bones reproduce the pose
   vectors.
+- Spec §10 item 9: implementations that render fingers reproduce the finger pose vectors.
+  §5.5 now points at them.
 - `testvectors/poses/`: a reference skeleton and nine poses with expected joint
   positions. Five pin the §3.4 table; four are the seated and kneeling poses a full-body
   sender must be able to express.
+- `testvectors/poses/hand-skeleton.json` and `f01`–`f06`: finger poses that carry the
+  curl / splay / opposition bytes and the fingertip positions a §5.5 receiver must
+  synthesise. They catch a wrong thumb axis, a flipped sign or the wrong product order,
+  none of which the frame vectors can. `reference/js/scripts/finger-fk.mjs` holds the
+  synthesis and FK; three negative controls are in `test/poses.test.mjs`.
 - `reference/js`: `scripts/pose-fk.mjs` (forward kinematics used by the generator and the
   tests) and `test/poses.test.mjs`.
 - Loopback demo: drives legs, toes and hips height `h`; tracker selector showing what the

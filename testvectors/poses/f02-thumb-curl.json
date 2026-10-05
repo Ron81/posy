@@ -1,0 +1,112 @@
+{
+  "name": "f02-thumb-curl",
+  "description": "thumbs fully curled, fingers extended. Thumb flexes about Y (+Y left, −Y right): the thumb tip crosses the palm toward the fingers, not down. About Z it would move in Y instead — the pre-1.2 bug this pins against.",
+  "bytes": {
+    "left": {
+      "curl": [
+        255,
+        0,
+        0,
+        0,
+        0
+      ],
+      "splay": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "opposition": 0
+    },
+    "right": {
+      "curl": [
+        255,
+        0,
+        0,
+        0,
+        0
+      ],
+      "splay": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "opposition": 0
+    }
+  },
+  "expect": {
+    "leftIndexTip": [
+      0.171,
+      0,
+      0.03
+    ],
+    "leftMiddleTip": [
+      0.182,
+      0,
+      0.01
+    ],
+    "leftRingTip": [
+      0.173,
+      0,
+      -0.01
+    ],
+    "leftLittleTip": [
+      0.157,
+      0,
+      -0.03
+    ],
+    "leftThumbProximal": [
+      0.037627,
+      0,
+      0.058627
+    ],
+    "leftThumbDistal": [
+      0.066605,
+      0,
+      0.050863
+    ],
+    "leftThumbTip": [
+      0.064426,
+      0,
+      0.025958
+    ],
+    "rightIndexTip": [
+      -0.171,
+      0,
+      0.03
+    ],
+    "rightMiddleTip": [
+      -0.182,
+      0,
+      0.01
+    ],
+    "rightRingTip": [
+      -0.173,
+      0,
+      -0.01
+    ],
+    "rightLittleTip": [
+      -0.157,
+      0,
+      -0.03
+    ],
+    "rightThumbProximal": [
+      -0.037627,
+      0,
+      0.058627
+    ],
+    "rightThumbDistal": [
+      -0.066605,
+      0,
+      0.050863
+    ],
+    "rightThumbTip": [
+      -0.064426,
+      0,
+      0.025958
+    ]
+  }
+}

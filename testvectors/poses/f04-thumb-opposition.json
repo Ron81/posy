@@ -1,0 +1,112 @@
+{
+  "name": "f04-thumb-opposition",
+  "description": "thumb opposition 255 on both hands, no curl. Opposition rotates the metacarpal about X (positive both hands): the whole thumb swings toward −Y, under the palm.",
+  "bytes": {
+    "left": {
+      "curl": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "splay": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "opposition": 255
+    },
+    "right": {
+      "curl": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "splay": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "opposition": 255
+    }
+  },
+  "expect": {
+    "leftIndexTip": [
+      0.171,
+      0,
+      0.03
+    ],
+    "leftMiddleTip": [
+      0.182,
+      0,
+      0.01
+    ],
+    "leftRingTip": [
+      0.173,
+      0,
+      -0.01
+    ],
+    "leftLittleTip": [
+      0.157,
+      0,
+      -0.03
+    ],
+    "leftThumbProximal": [
+      0.037627,
+      -0.019596,
+      0.047314
+    ],
+    "leftThumbDistal": [
+      0.058841,
+      -0.037967,
+      0.05792
+    ],
+    "leftThumbTip": [
+      0.076518,
+      -0.053276,
+      0.066759
+    ],
+    "rightIndexTip": [
+      -0.171,
+      0,
+      0.03
+    ],
+    "rightMiddleTip": [
+      -0.182,
+      0,
+      0.01
+    ],
+    "rightRingTip": [
+      -0.173,
+      0,
+      -0.01
+    ],
+    "rightLittleTip": [
+      -0.157,
+      0,
+      -0.03
+    ],
+    "rightThumbProximal": [
+      -0.037627,
+      -0.019596,
+      0.047314
+    ],
+    "rightThumbDistal": [
+      -0.058841,
+      -0.037967,
+      0.05792
+    ],
+    "rightThumbTip": [
+      -0.076518,
+      -0.053276,
+      0.066759
+    ]
+  }
+}
