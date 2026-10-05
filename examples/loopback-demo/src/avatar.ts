@@ -37,10 +37,28 @@ const DEG = Math.PI / 180;
 /** Hips height as a fraction of standing (§5.4). No root block → standing. */
 const hipsRatio = (frame: Frame): number => (frame.root?.h ?? 0x8000) / 0x8000;
 
+// §3.3: an absent bone holds its rest rotation. That is the identity except for the arms,
+// which hang at the side. The literals are the spec's.
+const REST_ROTATION = new Map<number, [number, number, number, number]>([
+  [BIT.leftUpperArm, [0, 0, -0.573576, 0.819152]],
+  [BIT.rightUpperArm, [0, 0, 0.573576, 0.819152]],
+  [BIT.leftLowerArm, [0, -0.087156, 0, 0.996195]],
+  [BIT.rightLowerArm, [0, 0.087156, 0, 0.996195]],
+]);
+
+// §5.5: the hand a receiver shows when a frame carries no finger block.
+const REST_HAND = { curl: [40, 50, 60, 70, 80], splay: [0, 0, 0, 0, 0], thumbOpposition: 40 };
+
+/** The bone's rotation from the frame, or its non-identity rest rotation. False = identity. */
 function frameQuat(frame: Frame, bit: number, out: THREE.Quaternion): boolean {
   const q = frame.bones.get(bit);
-  if (!q) return false;
-  out.set(q.x, q.y, q.z, q.w);
+  if (q) {
+    out.set(q.x, q.y, q.z, q.w);
+    return true;
+  }
+  const rest = REST_ROTATION.get(bit);
+  if (!rest) return false;
+  out.set(...rest);
   return true;
 }
 
@@ -81,16 +99,16 @@ const THUMB_FLEXION = { Proximal: 60, Distal: 80 };
 /**
  * §5.5: the rotations of the 30 finger bones. `set` gets the VRM humanoid bone name and
  * Euler XYZ angles in degrees, in avatar space; with x = 0 that is Ry · Rz, splay outside
- * curl, as §5.5 orders them. No finger block → fingers extended.
+ * curl, as §5.5 orders them. No finger block → the rest hand.
  */
 function fingerAngles(frame: Frame, set: (bone: string, x: number, y: number, z: number) => void): void {
   for (const side of ['left', 'right'] as const) {
-    const hand = frame.fingers?.[side];
+    const hand = frame.fingers?.[side] ?? REST_HAND;
     // Toward −Y (curl) and toward the thumb (splay) is −Z / −Y on the left hand, + on the right.
     const sign = side === 'left' ? -1 : 1;
     FINGERS.forEach((finger, i) => {
-      const curl = (hand?.curl[i] ?? 0) / 255;
-      const splay = ((hand?.splay[i] ?? 0) / 127) * 15;
+      const curl = hand.curl[i] / 255;
+      const splay = (hand.splay[i] / 127) * 15;
       for (const [joint, max] of Object.entries(finger === 'Thumb' ? THUMB_FLEXION : FLEXION)) {
         const y = joint === 'Proximal' ? sign * splay : 0;
         // The thumb lies in the palm plane, so it flexes about Y, toward the fingers.
@@ -98,7 +116,7 @@ function fingerAngles(frame: Frame, set: (bone: string, x: number, y: number, z:
         else set(`${side}${finger}${joint}`, 0, y, sign * curl * max);
       }
     });
-    set(`${side}ThumbMetacarpal`, ((hand?.thumbOpposition ?? 0) / 255) * 60, 0, 0);
+    set(`${side}ThumbMetacarpal`, (hand.thumbOpposition / 255) * 60, 0, 0);
   }
 }
 

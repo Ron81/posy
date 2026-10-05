@@ -234,7 +234,7 @@ the mapping once per peer over signaling:
 
 `sends` is that peer's granted set (its `allowed`). Receivers use it to prepare the
 peer's avatar before the first frame arrives; a type absent from it never arrives, and
-the receiver leaves that part of the avatar in its rest state. An `add` for a `uid`
+the receiver leaves that part of the avatar in its rest state (§3.3, §5.5). An `add` for a `uid`
 already known replaces the earlier entry. A peer whose granted set is empty has no pose
 producer and is not listed; if its set becomes empty it is removed.
 
@@ -376,9 +376,26 @@ avatar driver, which adapts it to the rig as above (the mirror of the sender's p
 
 A sender that cannot solve a bone, or whose avatar lacks it (e.g. an MMD model without
 `upperChest`), MUST clear that bone's bit in `bone_mask` and omit its quaternion. Receivers MUST treat an absent
-bone as "hold identity relative to T-pose" — that is, apply the identity quaternion (no
-rotation delta from T-pose), not "hold last value" — except during the packet-loss
-concealment window defined in §8.3.
+bone as holding its **rest rotation**, not "hold last value", except during the
+packet-loss concealment window defined in §8.3.
+
+The rest rotation is the identity quaternion (no rotation delta from the T-pose) for
+every bone except the four below. Those rest with the arm hanging at the side:
+
+| Bone | Rest rotation `(x, y, z, w)` | That is |
+|---|---|---|
+| `leftUpperArm` | `(0, 0, −0.573576, 0.819152)` | 70° about −Z: the arm points down and slightly outward |
+| `rightUpperArm` | `(0, 0, 0.573576, 0.819152)` | 70° about +Z |
+| `leftLowerArm` | `(0, −0.087156, 0, 0.996195)` | 10° about −Y: the forearm bends slightly forward |
+| `rightLowerArm` | `(0, 0.087156, 0, 0.996195)` | 10° about +Y |
+
+Shoulders and hands rest at identity, so a hand hangs in line with its forearm. The rule
+is per bone and does not depend on the declaration: it applies to a sender that declared
+no `"bones"` at all and to one that sends `"bones"` without the arms (face tracking with
+head rotation). Without it both are rendered with the arms held out sideways. A sender
+that wants an arm in the T-pose sends the identity quaternion for it.
+
+A frame without a finger block is rendered with the rest hand of §5.5.
 
 ### 3.4 Rotation sense of the leg bones (Normative)
 
@@ -627,6 +644,11 @@ coincide with the avatar axes (§3.1 item 6). Angles follow the right-hand rule.
 Receivers MUST synthesise the 30 finger bone rotations from this block. Senders MUST
 NOT also send finger bones via `bone_mask` in v1.
 
+**Rest hand.** When a frame carries no finger block, receivers MUST synthesise both hands
+from these values instead: curl `40, 50, 60, 70, 80` (thumb to little finger), all splay
+`0`, thumb opposition `40`. That is a relaxed hand, a little more closed toward the
+little finger. A sender that wants flat hands sends a finger block of zeros.
+
 `testvectors/poses/hand-skeleton.json` plus `f01`–`f07` pin this synthesis: each carries the
 curl / splay / opposition bytes and the joint positions they produce on a reference hand.
 A wrong flexion axis (the thumb about Z rather than Y), a flipped sign, or the wrong product
@@ -758,6 +780,10 @@ datacentre or fibre-grade uplink, not a home connection.
 - Senders MUST honour the `rate` message (§2.4).
 - Senders SHOULD set `IDLE` when no significant motion has occurred for 2 s and drop to
   `MINIMAL` until motion resumes.
+- A sender without tracking for a body part MAY transmit a pose or an animation of its
+  own choosing for it (seated, leaning, an idle loop) as ordinary bones and blocks of the
+  types it declared. To a receiver this is indistinguishable from tracked motion. A part
+  it does not transmit is shown in its rest state (§3.3).
 
 ---
 

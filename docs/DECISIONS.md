@@ -6,6 +6,47 @@ that commit messages and the spec text do not keep in one place.
 
 ---
 
+## 0004 — Rest rotation of absent arm bones and the rest hand
+
+**Date:** 2026-10-05 · **Status:** Proposed · **Affects:** §3.3, §5.5, §2.3, §7 (receiver behaviour; nothing on the wire)
+
+### Context
+
+§3.3 had one rule: an absent bone holds the identity quaternion, the T-pose. For spine,
+head and legs that is upright standing. For the arms it is arms held out sideways, and a
+missing finger block gave flat hands. Senders without arm tracking are a large group:
+face tracking with head rotation declares `"bones"` and sends only neck and head. The
+loopback demo showed them as scarecrows.
+
+### Decision
+
+An absent bone holds its rest rotation. That is the identity for every bone except
+`upperArm` (70° down) and `lowerArm` (10° forward) on both sides, given as literal
+quaternions in §3.3. A frame without a finger block is rendered with a fixed relaxed hand
+(§5.5). The rule is per bone and independent of the declaration. Idle poses and idle
+animations are transmitted by the sender as ordinary bones (§7).
+
+### Alternatives rejected
+
+- **The sender always transmits hanging arms.** No spec change, but 32 bytes per frame
+  for a constant, and every sending application has to know to do it.
+- **A rest pose only for a type the peer did not declare.** It misses the main case:
+  a face tracker with head rotation declares `"bones"`.
+- **A receiver-chosen idle pose.** Two receivers would show the same sender differently.
+- **An idle pose or a "play animation X" command in signaling.** Animations are not part
+  of VRM or PMX avatar files, so it needs file distribution, a format per avatar type,
+  timing and blending rules. Recorded as a possible later use of declared extras.
+
+### Consequences
+
+- A sender that wants the T-pose or flat hands has to send it; absence no longer means it.
+- A tracker that loses an arm sees it sink to the side after the concealment window
+  (§8.3) instead of snapping outward.
+- The angles are a choice, not derived. They were set on the loopback demo; other avatar
+  types may want different ones.
+
+---
+
 ## 0003 — The version byte is the minor revision
 
 **Date:** 2026-10-05 · **Status:** Proposed · **Affects:** §5.1, §9, §1.2 (byte 0 of every frame)

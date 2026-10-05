@@ -52,6 +52,13 @@ layout or the signaling.** The `version` byte now writes 2, and the meaning of
   reconstructs. No wire change.
 
 ### Changed
+- §3.3: an absent `upperArm` or `lowerArm` rests hanging at the side (fixed quaternions
+  in the spec), not in the T-pose. §5.5: a frame without a finger block is rendered with a
+  relaxed rest hand, not flat. Before, every sender without arm tracking, face tracking
+  with head rotation above all, was shown with the arms out. No change on the wire; a
+  sender that wants the T-pose or flat hands sends them. §7 states that a sender may
+  transmit an idle pose or animation as ordinary bones. `DECISIONS.md` 0004. The demo
+  follows.
 - §3.2: the MMD conversion is marked untested. It was never checked on an MMD/PMX model
   and assumes a per-bone rest rotation that PMX bones do not carry. A tested PMX driver
   is planned for 1.4.
@@ -161,6 +168,13 @@ version bump signals that the package tracks the spec.
   1.0.0 default.
 
 ### Changed
+- §3.3: an absent `upperArm` or `lowerArm` rests hanging at the side (fixed quaternions
+  in the spec), not in the T-pose. §5.5: a frame without a finger block is rendered with a
+  relaxed rest hand, not flat. Before, every sender without arm tracking, face tracking
+  with head rotation above all, was shown with the arms out. No change on the wire; a
+  sender that wants the T-pose or flat hands sends them. §7 states that a sender may
+  transmit an idle pose or animation as ordinary bones. `DECISIONS.md` 0004. The demo
+  follows.
 - §3.2: the MMD conversion is marked untested. It was never checked on an MMD/PMX model
   and assumes a per-bone rest rotation that PMX bones do not carry. A tested PMX driver
   is planned for 1.4.
