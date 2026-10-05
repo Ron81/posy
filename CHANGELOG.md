@@ -52,6 +52,9 @@ layout or the signaling.** The `version` byte now writes 2, and the meaning of
   reconstructs. No wire change.
 
 ### Changed
+- §1.1: the largest v1 frame is 238 bytes, not 202. The length formula counts a
+  quaternion for each of the reserved `bone_mask` bits 55–63, and a relay passes them.
+  Behaviour is unchanged; only the stated figure was wrong.
 - §5.1, §9: the `version` byte is the minor revision of the spec release; 1.2 writes 2.
   The spec described the byte three ways ("= 1", "the minor revision", "major v1"), and
   1.1.0 still wrote 1. Decoders are unaffected: any value 0–15 was and is accepted. Every
@@ -155,6 +158,9 @@ version bump signals that the package tracks the spec.
   1.0.0 default.
 
 ### Changed
+- §1.1: the largest v1 frame is 238 bytes, not 202. The length formula counts a
+  quaternion for each of the reserved `bone_mask` bits 55–63, and a relay passes them.
+  Behaviour is unchanged; only the stated figure was wrong.
 - §5.1, §9: the `version` byte is the minor revision of the spec release; 1.2 writes 2.
   The spec described the byte three ways ("= 1", "the minor revision", "major v1"), and
   1.1.0 still wrote 1. Decoders are unaffected: any value 0–15 was and is accepted. Every

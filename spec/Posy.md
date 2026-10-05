@@ -60,7 +60,9 @@ physics, props, scene state.
 - A lost pose frame MUST NOT be retransmitted. Late frames are useless by definition.
 - Every pose frame MUST fit in a single datagram (SCTP) or single WebSocket message (WS).
   Implementations MUST NOT emit a pose frame larger than 1100 bytes. v1 frames are
-  ≤ 202 bytes, so fragmentation never occurs.
+  ≤ 238 bytes, so fragmentation never occurs: 202 bytes with every defined bone and
+  block, plus 4 bytes for each reserved `bone_mask` bit 55–63 that is set, which a relay
+  passes (§1.2).
 
 #### Reconciling WebSocket with the loss-tolerant design
 
