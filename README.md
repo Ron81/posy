@@ -29,7 +29,7 @@ It lets you build a frame byte by byte, play with the **[bandwidth calculator](h
 
 - Pose rides an **unordered, zero-retransmit** data channel — label `avatar-pose`, protocol `posy/1`. A late frame is a useless frame, so nothing is ever resent. (A reliable WebSocket can stand in where server-side WebRTC isn't available — same frames, same "drop don't resend" rule, see spec §1.1.)
 - Every frame is **self-contained**. Losing one is fine; dropping one to save bandwidth is always safe.
-- Rotations are VRM 1.0 normalized-space quaternions, packed **smallest-three into 4 bytes** each.
+- Rotations are quaternions in Posy avatar space (the normalized rig of VRM 1.0 runtimes), packed **smallest-three into 4 bytes** each.
 - The routing peer only forwards or drops frames — it never rewrites bytes. That's what keeps the job light enough to run at home.
 - Voice is plain WebRTC Opus. Posy doesn't touch audio.
 

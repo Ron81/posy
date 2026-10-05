@@ -1,5 +1,5 @@
 {
-  "description": "Reference skeleton for the pose vectors. VRM 1.0 normalized space: right-handed, Y up, facing +Z, left = +X. Offsets are from the parent joint in the T-pose, in metres. ToeTip joints are end points, not bones.",
+  "description": "Reference skeleton for the pose vectors. Posy avatar space: right-handed, Y up, facing +Z, left = +X. Offsets are from the parent joint in the T-pose, in metres. ToeTip joints are end points, not bones.",
   "standing_hip_height": 0.93,
   "joints": [
     {

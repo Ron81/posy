@@ -7,6 +7,7 @@ import {
   FLAG_HAS_FINGERS,
   FLAG_HAS_EXPRESSIONS,
   FLAG_IDLE,
+  FLAG_HAS_EXTRA,
   FINGER_BIT_LOW,
   FINGER_BIT_HIGH,
 } from './index.js';
@@ -70,7 +71,16 @@ export function encode(frame: Frame): Uint8Array {
     }
   }
 
-  const total = 16 + 4 * bits.length + (frame.root ? 8 : 0) + (frame.fingers ? 24 : 0) + exprLen;
+  let extraLen = 0;
+  if (frame.extra) {
+    const { bones, values } = frame.extra;
+    if (bones.length > 255 || values.length > 255) throw new PosyEncodeError('extras: at most 255 bones and 255 values');
+    if (bones.length + values.length === 0) throw new PosyEncodeError('extras block with no bones and no values');
+    flags |= FLAG_HAS_EXTRA;
+    extraLen = 4 * bones.length + values.length;
+  }
+
+  const total = 16 + 4 * bits.length + (frame.root ? 8 : 0) + (frame.fingers ? 24 : 0) + exprLen + extraLen;
   if (total > MAX_FRAME) throw new PosyEncodeError(`frame ${total} B exceeds ${MAX_FRAME} B limit`);
 
   const buf = new Uint8Array(total);
@@ -111,6 +121,14 @@ export function encode(frame: Frame): Uint8Array {
     for (const wgt of frame.expressions.weights) buf[off++] = u8(wgt, 'weight');
     buf[off++] = i8(frame.expressions.gazeYaw, 'gazeYaw');
     buf[off++] = i8(frame.expressions.gazePitch, 'gazePitch');
+  }
+
+  if (frame.extra) {
+    for (const q of frame.extra.bones) {
+      dv.setUint32(off, packQuat(q), true);
+      off += 4;
+    }
+    for (const v of frame.extra.values) buf[off++] = u8(v, 'extra value');
   }
 
   return buf;

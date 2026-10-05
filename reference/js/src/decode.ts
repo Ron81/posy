@@ -1,12 +1,13 @@
 // Wire bytes → Frame (spec §5, Appendix B). Rejects any malformed frame.
 import { unpackQuat } from './quat.js';
-import type { Frame, HandFingers } from './index.js';
+import type { ExtraCounts, Frame, HandFingers } from './index.js';
 import {
   FLAG_PERFECT_SYNC,
   FLAG_HAS_ROOT,
   FLAG_HAS_FINGERS,
   FLAG_HAS_EXPRESSIONS,
   FLAG_IDLE,
+  FLAG_HAS_EXTRA,
 } from './index.js';
 
 export class PosyDecodeError extends Error {
@@ -25,7 +26,18 @@ function popcount64(v: bigint): number {
   return n;
 }
 
-export function decode(bytes: Uint8Array): Frame {
+/** `timestamp_ms` of a frame, to pick the declaration that applies to it (§2.6). */
+export function timestampOf(bytes: Uint8Array): number {
+  if (bytes.length < 16) throw new PosyDecodeError(`length ${bytes.length} < 16`);
+  return new DataView(bytes.buffer, bytes.byteOffset, bytes.length).getUint32(4, true);
+}
+
+/**
+ * `extra` is the pair of list lengths of the declaration that applies at the frame's
+ * timestamp. Without it the extras block of a frame cannot be sized: it is skipped and
+ * the rest of the frame is returned (§2.6).
+ */
+export function decode(bytes: Uint8Array, extra?: ExtraCounts): Frame {
   const len = bytes.length;
   if (len < 16) throw new PosyDecodeError(`length ${len} < 16`);
   const dv = new DataView(bytes.buffer, bytes.byteOffset, len);
@@ -44,8 +56,15 @@ export function decode(bytes: Uint8Array): Frame {
 
   const n = popcount64(mask);
   const exprLen = b3 ? (b0 ? 54 : 18) : 0;
-  const need = 16 + 4 * n + (b1 ? 8 : 0) + (b2 ? 24 : 0) + exprLen;
-  if (len !== need) throw new PosyDecodeError(`length ${len} != required ${need}`);
+  const b5 = (flags & FLAG_HAS_EXTRA) !== 0;
+  const fixed = 16 + 4 * n + (b1 ? 8 : 0) + (b2 ? 24 : 0) + exprLen;
+  if (b5 && !extra) {
+    // No declaration for this frame: everything after the known blocks is the extras block.
+    if (len <= fixed) throw new PosyDecodeError(`length ${len}: HAS_EXTRA set but no extras block`);
+  } else {
+    const need = fixed + (b5 ? 4 * extra!.bones + extra!.values : 0);
+    if (len !== need) throw new PosyDecodeError(`length ${len} != required ${need}`);
+  }
 
   // Consume a quaternion for every set bit, including reserved/unknown ones (§9),
   // so downstream offsets stay aligned. Unknown bones are still stored by bit.
@@ -104,6 +123,15 @@ export function decode(bytes: Uint8Array): Frame {
     const gazeYaw = dv.getInt8(off++);
     const gazePitch = dv.getInt8(off++);
     frame.expressions = { perfectSync: b0, weights, gazeYaw, gazePitch };
+  }
+
+  if (b5 && extra) {
+    const extraBones = [];
+    for (let k = 0; k < extra.bones; k++) {
+      extraBones.push(unpackQuat(dv.getUint32(off, true)));
+      off += 4;
+    }
+    frame.extra = { bones: extraBones, values: bytes.slice(off, off + extra.values) };
   }
 
   return frame;

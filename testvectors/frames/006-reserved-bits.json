@@ -2,9 +2,9 @@
   "name": "006-reserved-bits",
   "description": "bit 0 (hips) plus reserved bit 60 set; decoder consumes both quaternions",
   "expect": "accept",
-  "bytes_hex": "02 00 06 00 00 00 00 00 01 00 00 00 00 00 00 10 00 02 08 e0 00 02 08 e0",
+  "bytes_hex": "03 00 06 00 00 00 00 00 01 00 00 00 00 00 00 10 00 02 08 e0 00 02 08 e0",
   "frame": {
-    "version": 2,
+    "version": 3,
     "flags": 0,
     "seq": 6,
     "timestamp_ms": 0,

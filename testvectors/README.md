@@ -17,6 +17,8 @@ Each vector is a pair: `NNN-name.bin` (the exact bytes) and `NNN-name.json` (wha
 | `005-quat-edgecases` | Components near ±1/√2, sign flips, ties between equally large components |
 | `006-reserved-bits` | A reserved bone bit is set — the frame **must be accepted** and the extra quaternion skipped |
 | `007-fullbody-legs` | Distinct non-identity leg and toe rotations, lowered hips height `h`, signed tongue slots |
+| `008-extras` | The extras block (§5.8) of a declaration with 2 bones and 3 values. Its size is not in the frame: the JSON carries `extra_counts`, which stands for the declaration |
+| `009-extras-wrong-counts` | The bytes of 008 under a declaration of 3 bones and 3 values → **must be rejected** |
 
 ### JSON format
 
@@ -25,9 +27,9 @@ Each vector is a pair: `NNN-name.bin` (the exact bytes) and `NNN-name.json` (wha
   "name": "001-minimal",
   "description": "one bone (hips, identity), nothing else",
   "expect": "accept",                       // or "reject"
-  "bytes_hex": "02 00 01 00 00 00 00 00 01 00 00 00 00 00 00 00 00 02 08 E0",
+  "bytes_hex": "03 00 01 00 00 00 00 00 01 00 00 00 00 00 00 00 00 02 08 E0",
   "frame": {                                // absent when expect = "reject"
-    "version": 2,
+    "version": 3,
     "flags": 0,
     "seq": 1,
     "timestamp_ms": 0,
@@ -38,11 +40,14 @@ Each vector is a pair: `NNN-name.bin` (the exact bytes) and `NNN-name.json` (wha
     "root": null,                           // or { "x": u16, "y": u16, "z": i16, "h": u16 }
     "fingers": null,                        // or { "left": [12 bytes], "right": [12 bytes] } as integers (splay bytes signed)
     "expressions": null                     // or { "perfect_sync": bool, "weights": [raw bytes 0..255], "gaze_yaw": i8, "gaze_pitch": i8 }
+    // only when the frame has an extras block (§5.8):
+    // "extra_counts": { "bones": B, "values": V },   the list lengths of the declaration; give them to your decoder
+    // "extra": { "bones": [ { "u32": "0x…" } ], "values": [raw bytes 0..255] }
   }
 }
 ```
 
-For `reject` vectors, `frame` is replaced by `"reason"` (a short human-readable explanation). Which exact error you report is up to you — the test is only that the frame is refused.
+For `reject` vectors, `frame` is replaced by `"reason"` (a short human-readable explanation). A reject vector with a top-level `"extra_counts"` is malformed under that declaration. Which exact error you report is up to you — the test is only that the frame is refused.
 
 ### Comparison rules
 

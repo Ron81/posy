@@ -7,6 +7,7 @@
 import { VERSION, type Frame } from 'posy';
 import { SLOT } from './bones.ts';
 import { RELAXED_HANDS, type BodyPose } from './poses.ts';
+import type { ExtraDecl } from './declare.ts';
 
 let seq = 0;
 
@@ -52,4 +53,20 @@ export function poseAt(tSec: number, body: BodyPose): Frame {
     fingers: body.fingers ?? RELAXED_HANDS,
     expressions: { perfectSync: false, weights, gazeYaw: i8(yaw / 45), gazePitch: i8(pitch / 45) },
   };
+}
+
+/**
+ * A sender-side animation for declared extras (spec §5.8): every extra bone swings, the
+ * even ones sideways about Z and the odd ones forward about X, each a little out of step;
+ * every value rises and falls. It stands for whatever drives them in a real sender: an
+ * animation clip, a trigger, a mechanism. Nothing here knows what the names mean.
+ */
+export function extrasAt(tSec: number, decl: ExtraDecl): Frame['extra'] {
+  if (decl.bones.length + decl.values.length === 0) return undefined;
+  const bones = decl.bones.map((_, i) => {
+    const half = (25 * Math.sin(2 * Math.PI * 0.8 * tSec + i * 0.9) * Math.PI) / 360;
+    return i % 2 === 0 ? { x: 0, y: 0, z: Math.sin(half), w: Math.cos(half) } : { x: Math.sin(half), y: 0, z: 0, w: Math.cos(half) };
+  });
+  const values = Uint8Array.from(decl.values, (_, i) => Math.round(127.5 * (1 + Math.sin(2 * Math.PI * 0.3 * tSec + i))));
+  return { bones, values };
 }

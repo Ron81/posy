@@ -3,6 +3,39 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
+## [Unreleased] - proposed as 1.3.0
+
+Declared extras: avatar-specific bones and values. **Additive: a sender that declares no
+extras produces the same frames as in 1.2 except for the `version` byte, which writes 3.**
+
+### Added
+- Spec §2.6 and §5.8, flag bit 5 `HAS_EXTRA`, data type `"extra"`: a sender declares, by
+  the names in its own avatar file, further bones (tail, ears, wings, further limbs,
+  single toes) and scalar values (expressions of its own, MMD morphs), and transmits them
+  in one block at the end of the frame: 4 B per bone, 1 B per value. The block carries no
+  counts and no identifier; both come from the declaration. A declared extra bone is
+  driven by the sender and leaves the receiver's secondary motion.
+- `extra.since`: the session time from which a declaration applies, so that an avatar
+  switch cannot apply one avatar's extras to another.
+- `extra_max` in `session`: the server's limits for the two lists. `"extra"` is granted
+  as a whole or not at all.
+- The `app:` prefix for value names that are not avatar data.
+- §10 item 10. Frame vectors `008-extras` and `009-extras-wrong-counts`.
+- `reference/js`: `Frame.extra`, `decode(bytes, counts)`, `timestampOf(bytes)`,
+  `FLAG_HAS_EXTRA`.
+- Loopback demo: extra bones and values of a loaded avatar, chosen by name, driven by a
+  sender-side animation.
+
+### Changed
+- §3.1, §5.5, §10: "VRM 1.0 normalized space" is now "Posy avatar space", defined by
+  §3.1 alone. Same space; the old name was a runtime construct of VRM libraries, not a
+  term of the VRM specification.
+- §1.2: a relay's length check needs the declared counts of a sender with extras, not
+  only the frame header. §9: a block behind a flag bit is not transparent to relays; the
+  text said flag bits were a backward-compatible extension.
+- §5.2: flag bits 6–7 are the reserved ones; bit 5 is `HAS_EXTRA`.
+- `DECISIONS.md` 0005.
+
 ## [Unreleased] - proposed as 1.2.0
 
 Leg rotation conventions, VRM 0.x conversion, finger signs. **No change to the packet

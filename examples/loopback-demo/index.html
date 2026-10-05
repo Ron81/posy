@@ -118,7 +118,7 @@
       .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
       .row .lbl { color: var(--muted); font-size: 13px; min-width: 52px; }
       .row .preset { padding: 4px 11px; font-size: 12.5px; }
-      .row select {
+      .row select, .row input[type="text"] {
         background: #242736; color: var(--ink); border: 1px solid var(--line);
         border-radius: 8px; padding: 5px 8px; font-size: 13px; max-width: 100%;
       }
@@ -209,6 +209,14 @@
           <button type="button" class="fake" id="vrm-unload" hidden>Back to stick figure</button>
           <span class="note" id="vrm-note">Optional. Built-in stick figure is used by default. Nothing is uploaded.</span>
         </div>
+        <div class="row">
+          <span class="lbl" title="Spec §2.6: parts beyond the humanoid body, declared by the names in the avatar file">Extras</span>
+          <input id="extra-bones" type="text" list="extra-bone-names" placeholder="bones, by name, comma separated" aria-label="Extra bones to declare" />
+          <input id="extra-values" type="text" list="extra-value-names" placeholder="expressions, by name" aria-label="Extra values to declare" />
+          <datalist id="extra-bone-names"></datalist>
+          <datalist id="extra-value-names"></datalist>
+        </div>
+        <p class="note" id="extra-note">Extras need a loaded avatar: the stick figure is the humanoid body and nothing else.</p>
         <div class="stats">
           <span>frame: <b><span id="stat-bytes">–</span> B</b></span>
           <span>rate: <b><span id="stat-hz">–</span> FPS</b></span>

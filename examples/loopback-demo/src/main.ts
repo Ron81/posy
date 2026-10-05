@@ -9,9 +9,9 @@
 // spec §2.1) and what then survived the channel.
 import * as THREE from 'three';
 import { encode, type Frame } from 'posy';
-import { poseAt } from './animator.ts';
+import { poseAt, extrasAt } from './animator.ts';
 import { POSES, bodyPoseAt } from './poses.ts';
-import { TRACKERS, FEATURES, computeSends, crop, region, type DataType, type Tracker } from './declare.ts';
+import { TRACKERS, FEATURES, computeSends, crop, region, declAt, NO_EXTRAS, type DataType, type ExtraDecl, type Tracker } from './declare.ts';
 import { LossyChannel } from './channel.ts';
 import { Receiver } from './receiver.ts';
 import { StickFigure, VrmAvatar, type Avatar } from './avatar.ts';
@@ -311,6 +311,7 @@ function backToStickFigure(): void {
   vrmInput.value = ''; // let the same file be picked again later
   vrmNote.textContent = 'Optional. Built-in stick figure is used by default. Nothing is uploaded.';
   renderDeclaration();
+  declareExtras();
 }
 
 vrmInput.addEventListener('change', async () => {
@@ -326,6 +327,7 @@ vrmInput.addEventListener('change', async () => {
     vrmUnload.hidden = false;
     vrmNote.textContent = `showing ${file.name}. Nothing was uploaded.`;
     renderDeclaration();
+    declareExtras();
   } catch (err) {
     backToStickFigure();
     vrmNote.textContent = `couldn't load that file (${(err as Error).message}). Back to the stick figure.`;
@@ -333,6 +335,43 @@ vrmInput.addEventListener('change', async () => {
 });
 
 vrmUnload.addEventListener('click', backToStickFigure);
+
+// --- extras (spec §2.6) ----------------------------------------------------
+
+// The names typed here are declared if the loaded avatar has them. `?extra=a,b&values=c`
+// presets both fields. Declarations are kept oldest first; the receiver shares the list,
+// as a peer gets it from the server.
+const extraBonesInput = document.getElementById('extra-bones') as HTMLInputElement;
+const extraValuesInput = document.getElementById('extra-values') as HTMLInputElement;
+const extraNote = document.getElementById('extra-note')!;
+extraBonesInput.value = params.get('extra') ?? '';
+extraValuesInput.value = params.get('values') ?? '';
+let decls: ExtraDecl[] = [NO_EXTRAS];
+receiver.decls = decls;
+
+function declareExtras(): void {
+  const has = receiverView.avatar.extras;
+  const pick = (input: HTMLInputElement, known: string[]) =>
+    [...new Set(input.value.split(',').map((s) => s.trim()).filter((s) => s !== ''))].filter((s) => known.includes(s) || s.startsWith('app:'));
+  const bones = pick(extraBonesInput, has.bones).slice(0, 255);
+  const values = pick(extraValuesInput, has.values).slice(0, 255);
+  // `since` lies half a second ahead, so the peer holds the lists before the first frame
+  // that uses them; frames already under way still follow the previous declaration.
+  decls = [decls[decls.length - 1], { bones, values, since: Math.floor(performance.now()) + 500 }];
+  receiver.decls = decls;
+
+  for (const [id, names] of [['extra-bone-names', has.bones], ['extra-value-names', has.values]] as const) {
+    document.getElementById(id)!.replaceChildren(...names.map((n) => Object.assign(document.createElement('option'), { value: n })));
+  }
+  extraNote.textContent =
+    has.bones.length + has.values.length === 0
+      ? 'Extras need a loaded avatar: the stick figure is the humanoid body and nothing else.'
+      : `This avatar has ${has.bones.length} further bones and ${has.values.length} expressions of its own. ` +
+        `Declared: ${bones.length} bones, ${values.length} values = ${4 * bones.length + values.length} B per frame. ` +
+        'Declared bones are moved by a sender-side animation; the others stay with the spring bones. To move a whole ear or tail, declare every bone of it.';
+}
+extraBonesInput.addEventListener('change', declareExtras);
+extraValuesInput.addEventListener('change', declareExtras);
 
 // --- loops -----------------------------------------------------------------
 
@@ -351,9 +390,12 @@ function maybeSend(nowMs: number): void {
   if (now !== shownPose) poseNow.textContent = shownPose = now;
 
   const performance = poseAt(nowMs / 1000, body);
-  const bytes = encode(crop(performance, tracker, sends)); // only the declared parts go out
+  // Extras follow the declaration that applies at this frame's timestamp (§2.6).
+  const decl = declAt(decls, performance.timestampMs);
+  performance.extra = extrasAt(nowMs / 1000, decl);
+  const bytes = encode({ ...crop(performance, tracker, sends), extra: performance.extra }); // only the declared parts go out
   stats.frame(bytes.length);
-  senderView.avatar.applyPose(performance, 0.5); // left: everything the performer does
+  senderView.avatar.applyPose(performance, 0.5, decl); // left: everything the performer does
   channel.send(bytes);
 }
 
@@ -366,7 +408,7 @@ function tick(nowMs: number): void {
   maybeSend(nowMs);
 
   const target: Frame | null = receiver.target(nowMs);
-  if (target) receiverView.avatar.applyPose(target, 0.2); // smooth over jitter
+  if (target) receiverView.avatar.applyPose(target, 0.2, receiver.currentDecl); // smooth over jitter
 
   // Left always shows the whole performer; right frames the declared region. A close-up
   // applies to both, so the two sides can be compared.

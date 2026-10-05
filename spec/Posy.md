@@ -87,17 +87,19 @@ sender → server → receiver. The server MAY drop, filter or refuse frames. Th
 MUST NOT modify the byte content of a forwarded frame in v1 (this is what makes
 rate-tiering a pure frame-drop operation).
 
-A relay MAY validate a frame structurally using only the §5.1 header — without decoding
-the quaternion payload — by checking:
+A relay MAY validate a frame structurally without decoding the quaternion payload. It
+needs the §5.1 header and, for a sender that was granted `"extra"`, the two list lengths
+of its declaration (§2.6), which it has from the handshake. It checks:
 1. `version` byte: `version >> 4 == 0` (a 1.x frame; the value is the minor revision, §9).
-2. Frame length exactly equals `16 + 4·popcount(bone_mask) + 8·b1 + 24·b2 + (b3 ? (b0 ? 54 : 18) : 0)`.
+2. Frame length exactly equals `16 + 4·popcount(bone_mask) + 8·b1 + 24·b2 + (b3 ? (b0 ? 54 : 18) : 0) + (b5 ? 4·B + V : 0)`,
+   with `B` and `V` from the declaration that applies at the frame's `timestamp_ms`.
 3. `bone_mask` bits 25–54 (finger bones) are 0 (§4).
-4. The frame stays within the sender's granted set (§2.1): none of flag bits 0–3 is set
+4. The frame stays within the sender's granted set (§2.1): none of flag bits 0–3 and 5 is set
    for a type that was not granted, and `bone_mask & 0x01FFFFFF & ~granted_mask == 0`,
    where `granted_mask` is the OR of the bone masks of the granted types.
 
-A relay MUST NOT reject a frame because reserved flag bits 5–7 or reserved `bone_mask`
-bits 55–63 are set. Those bits are the extension mechanism (§9) and are ignored on
+A relay MUST NOT reject a frame because reserved flag bits 6–7 or reserved `bone_mask`
+bits 55–63 are set. Those bits are reserved for extensions (§9) and are ignored on
 receive (§5.2); the length check already accounts for a quaternion per set mask bit.
 
 A frame failing check 1, 2 or 3 is invalid: the relay drops it and counts it toward
@@ -177,6 +179,7 @@ Server → Client:
   | `"expressions"` | expression block (§5.6) | flag `HAS_EXPRESSIONS` |
   | `"perfect_sync"` | 52-slot ARKit mode (§5.6) | flag `PERFECT_SYNC` |
   | `"tongue"` | tongue values (§5.6) | not visible in the header; the sender sends 0 when not granted |
+  | `"extra"` | declared extras: avatar-specific bones and values (§2.6, §5.8) | flag `HAS_EXTRA` |
 
   `"legs"` requires `"bones"`; `"toes"` requires `"legs"`; `"perfect_sync"` and
   `"tongue"` require `"expressions"`. A declaration that violates this is rejected with
@@ -235,7 +238,8 @@ the mapping once per peer over signaling:
 `sends` is that peer's granted set (its `allowed`). Receivers use it to prepare the
 peer's avatar before the first frame arrives; a type absent from it never arrives, and
 the receiver leaves that part of the avatar in its rest state (§3.3, §5.5). An `add` for a `uid`
-already known replaces the earlier entry. A peer whose granted set is empty has no pose
+already known replaces the earlier entry. The entry of a peer that was granted `"extra"`
+also carries its `extra` object (§2.6). A peer whose granted set is empty has no pose
 producer and is not listed; if its set becomes empty it is removed.
 
 Receivers MUST associate an inbound data consumer with the `uid` given here. No UID
@@ -291,6 +295,86 @@ honour `OFF`, which needs no per-frame state.
 Error handling is **server-enforced, not sender-negotiated**. Receivers MUST NOT
 validate packets beyond a length check — they only ever see server-validated frames.
 
+### 2.6 Declared extras
+
+The humanoid bones of §4 and the blocks of §5.4–§5.6 are fixed. Everything else an avatar
+has — a tail, animal ears, wings, further limbs, single toes, expressions of its own — is
+an **extra**. The sender declares each extra by the name it has in the sender's own avatar
+file and transmits it in the extras block (§5.8). Posy defines the mechanism and no names:
+no humanoid standard agrees on any of these parts, and every receiver holds the sender's
+avatar file (§0).
+
+A sender that declares `"extra"` adds an `extra` object beside `sends` (in `caps` of
+`hello`, and in a `caps` message):
+
+```json
+{ "t": "caps", "sends": ["bones", "expressions", "extra"],
+  "extra": { "bones":  ["ear.L", "ear.R", "tail.001", "tail.002"],
+             "values": ["tailWag", "blush", "app:confidence"],
+             "since":  734500 } }
+```
+
+- `bones` — up to 255 names. Each names one bone of the avatar file that is neither a
+  humanoid bone of §4 nor a finger bone (VRM: the glTF node name; MMD/PMX: the bone name).
+  It is transmitted as a rotation.
+- `values` — up to 255 names. Each names one scalar control the avatar file defines
+  (VRM: an expression other than those §5.6 carries; MMD/PMX: a morph, including bone
+  and group morphs). It is transmitted as one byte.
+- A name MUST be unique in the avatar file among the items of its kind. An item without a
+  unique name cannot be declared; that is a fault of the file and is not worked around.
+- A name in `values` that begins with `app:` is not resolved against the avatar. Its
+  meaning is agreed between applications and is outside Posy; a receiver that does not
+  know it ignores the byte.
+- The order of the two lists is the order in the block.
+- `since` — the session time (§2.2) in milliseconds from which this declaration applies.
+  It MAY be omitted in `hello`, where it defaults to 0.
+- Either list MAY be empty; a sender with both empty MUST NOT declare `"extra"`.
+
+**What to declare.** As for every type (§2.1): only what the sender will drive and its
+current avatar has. Three cases:
+
+| Motion | On the wire |
+|---|---|
+| Passive swing of hair, ears, a tail, clothing | nothing: the receiver's own secondary motion moves it (VRM spring bones, MMD rigid bodies) |
+| A motion the avatar file itself defines (an expression, an MMD bone morph) | a **value** |
+| A motion it does not define (a sender-side animation, a mechanism that steers a tail, a tracked further limb) | a **bone** |
+
+**Grant.** `"extra"` is granted as a whole or not at all. A server MAY state its limits in
+`session`:
+
+```json
+{ "t": "session", "allowed": ["bones", "expressions"], "extra_max": { "bones": 32, "values": 64 } }
+```
+
+A declaration that exceeds either limit is not granted: `"extra"` is absent from
+`allowed`, and the client MAY declare again within the limits. Without `extra_max` the
+limits are 255 and 255. The server reads the two list lengths and nothing else; it MUST
+NOT edit the lists, and the names are opaque to it. The frame size limit of §1.1 applies
+unchanged: a sender MUST NOT declare extras that could make one of its frames exceed it.
+
+*Advice to server implementations (non-normative):* make the limits configurable, and
+choose the default so that the largest frame a granted sender can produce still fits one
+network packet. 64 bones and 64 values add 320 bytes.
+
+**Peers.** The `peers` entry (§2.3) of a sender that was granted `"extra"` carries its
+`extra` object unchanged, so a client that joins later learns the lists from the server.
+
+**Changing the declaration.** When the avatar changes, the client sends `caps` with the
+new lists and a new `since`. The extras block carries no identifier, so the frame's
+`timestamp_ms` decides which declaration it follows:
+
+- A frame with `timestamp_ms` earlier than `since` follows the previous declaration; a
+  frame at or after `since` follows the new one (compared as in §5.7).
+- The sender SHOULD choose `since` at least 500 ms ahead of its current session time, so
+  that peers hold the new lists before the first frame that uses them.
+- The sender MUST NOT send an extras block of the previous declaration in a frame at or
+  after `since`, and MUST NOT send one of the new declaration before the `session` that
+  grants it has arrived (§2.1). Frames in between carry no extras block.
+- Server and receivers keep the previous declaration until `since` has passed and the
+  frames before it have left the jitter buffer.
+- A receiver that holds no declaration for a frame's `timestamp_ms` MUST ignore that
+  frame's extras block and use the rest of the frame.
+
 ---
 
 ## 3. Coordinate System and Retargeting (Normative)
@@ -298,7 +382,12 @@ validate packets beyond a length check — they only ever see server-validated f
 This section is the interoperability core. Any implementation that deviates here is
 non-conformant regardless of byte-level correctness.
 
-### 3.1 The wire speaks VRM 1.0 normalized space — always
+### 3.1 The wire speaks Posy avatar space — always
+
+Posy avatar space is defined by the six items below and by nothing else. It coincides
+with the normalized humanoid rig that VRM 1.0 runtimes (three-vrm, UniVRM) expose, which
+is why earlier revisions called it "VRM 1.0 normalized space"; that is a runtime
+construct, not a term of the VRM specification.
 
 1. Coordinate system: **right-handed, Y-up, model faces +Z**, metres.
 2. Every humanoid bone has **identity rotation in the T-pose**.
@@ -506,7 +595,7 @@ decode every valid frame, whichever of the peer's types it chooses to render.
 ```
 Offset  Size  Field
 ------  ----  ---------------------------------------------
-  0      1    u8   version          (= 2 in 1.2; the minor revision, §9)
+  0      1    u8   version          (= 3 in 1.3; the minor revision, §9)
   1      1    u8   flags
   2      2    u16  seq
   4      4    u32  timestamp_ms     (ms since session epoch)
@@ -515,10 +604,11 @@ Offset  Size  Field
   +      8    root block            if flags bit 1
   +     24    finger block          if flags bit 2
   +   18|54   expression block      if flags bit 3
+  +  4*B+V    extras block          if flags bit 5 (B, V from the declaration, §5.8)
 ```
 
 Total length MUST equal:
-`16 + 4*popcount(bone_mask) + 8*b1 + 24*b2 + (b3 ? (b0 ? 54 : 18) : 0)`
+`16 + 4*popcount(bone_mask) + 8*b1 + 24*b2 + (b3 ? (b0 ? 54 : 18) : 0) + (b5 ? 4*B + V : 0)`
 
 A frame whose actual length differs MUST be treated as malformed.
 
@@ -531,7 +621,8 @@ A frame whose actual length differs MUST be treated as malformed.
 | 2 | `HAS_FINGERS` | Finger block present |
 | 3 | `HAS_EXPRESSIONS` | Expression block present |
 | 4 | `IDLE` | Sender is idle/AFK; receiver MAY skip interpolation work |
-| 5–7 | reserved | MUST be 0, MUST be ignored on receive |
+| 5 | `HAS_EXTRA` | Extras block present (§5.8) |
+| 6–7 | reserved | MUST be 0, MUST be ignored on receive |
 
 ### 5.3 Quaternion encoding — smallest-three
 
@@ -619,7 +710,7 @@ why splay and thumb opposition are added rather than more curl bits.
   For the thumb, curl drives `thumbProximal` (60°) and `thumbDistal` (80°) only.
   Flexion is linear in the curl byte.
 
-All axes below are the bone's local axes in the VRM 1.0 normalized T-pose, where they
+All axes below are the bone's local axes in the T-pose of Posy avatar space, where they
 coincide with the avatar axes (§3.1 item 6). Angles follow the right-hand rule.
 
 - **Flexion axis, index to little finger:** **Z**, signed so that fingertips move toward
@@ -726,6 +817,42 @@ Frames older than the newest frame already **released for playout** MUST be disc
 frames that arrive out of order while still inside the jitter buffer are reordered by `seq`
 (§8.1). `timestamp_ms` wraps at ~49.7 days and MUST be compared the same way as `int32_t`.
 
+### 5.8 Extras block
+
+Present when flag bit 5 (`HAS_EXTRA`) is set. It is the last block of the frame.
+
+```
+4*B   u32  bones[B]     smallest-three (§5.3), in the order of the declaration
+V     u8   values[V]    in the order of the declaration
+```
+
+`B` and `V` are the lengths of the `bones` and `values` lists of the declaration that
+applies at the frame's `timestamp_ms` (§2.6). The block carries neither the counts nor an
+identifier: both ends know them from the declaration.
+
+- A frame carries the whole block or none of it. A sender that declared extras MAY omit
+  the block in any frame.
+- **Extra bone.** The quaternion has the meaning of every other bone (§3.1 items 3, 5
+  and 6): the bone's local rotation delta from its rest pose in the avatar file, in avatar
+  axes, composed parent first. In the rest pose it is the identity. The avatar driver
+  (§3.2) turns it into the node's own local rotation:
+  `q_node = q_rest · W⁻¹ · q · W`, where `q_rest` is the node's local rotation at rest
+  and `W` its rotation in avatar space at rest, with the avatar facing +Z. A driver that
+  measures `W` in a rig that faces −Z applies `(−x, y, −z, w)` to `q` first, as for the
+  humanoid bones (§3.2).
+- **Value.** `0` … `255` is the weight `0.0` … `1.0`, linear. For an `app:` name the byte
+  is not interpreted by Posy.
+- **A declared extra bone is driven by the sender.** A receiver MUST set it from the frame
+  and MUST NOT apply its own secondary motion (spring bones, physics) to it. Bones that
+  are not declared, including descendants of a declared one, stay with the receiver's
+  secondary motion. A sender that steers a chain (an ear of two bones, a tail of six)
+  therefore declares every bone of it: an undeclared descendant keeps following the
+  receiver's secondary motion and cancels most of the movement.
+- A frame without the block leaves every declared extra bone at its rest rotation and
+  every value at 0, as §3.3 does for an absent bone.
+- Interpolation and loss concealment (§8.2, §8.3) treat extra bones like bones and values
+  like expression weights.
+
 ---
 
 ## 6. Sizing and Bandwidth (Informative)
@@ -743,6 +870,8 @@ expressions          18 B
 
 Perfect-Sync frame = 154 B. Add ~50 B UDP+DTLS+SCTP overhead ⇒ ~168 B / ~204 B on wire.
 A full-body sender adds 24 B (`legs`) or 32 B (`legs` + `toes`).
+Declared extras (§5.8) add 4 B per bone and 1 B per value: two ears of two bones each and
+three values are 19 B.
 On the WebSocket lane (§1.1) the per-frame overhead differs — a WebSocket binary
 frame adds a small header (2–14 B) over TCP/TLS rather than UDP/DTLS/SCTP — but the figures
 below are the right order of magnitude for either lane.
@@ -859,7 +988,7 @@ legs, kneeling, lying down and jumping without any pose-specific rule on the rec
   version is carried by `protocol` in the `hello` handshake (§2.1) instead, and a mismatch is
   answered with a `BAD_VERSION` error.
 - The `version` byte carries the **minor** revision of the spec release the sender
-  implements: a 1.y sender writes y. 1.2 writes 2. (1.0 and 1.1 both wrote 1.) The value
+  implements: a 1.y sender writes y. 1.3 writes 3. (1.0 and 1.1 both wrote 1.) The value
   is 0–15 for every 1.x release, which is all that `version >> 4 == 0` tests; it does not
   encode the major version, which is in the `protocol` string. Receivers MUST accept any
   value 0–15 and MUST ignore unknown flag bits and unknown `bone_mask` bits. A receiver
@@ -869,8 +998,11 @@ legs, kneeling, lying down and jumping without any pose-specific rule on the rec
 - **Soft lock.** While the format is soft-locked (see Status), a justified layout or
   signaling change ships as a 1.x revision under `posy/1`. Once the maintainers declare
   the format frozen, any such change requires `posy/2`.
-- Extension mechanism: reserved flag bits 5–7, reserved bone bits 55–63,
-  and the reserved finger byte.
+- Extension mechanism: avatar-specific data travels as declared extras (§2.6), which
+  need no further change to the format. Reserved for other extensions: flag bits 6–7,
+  bone bits 55–63 and the reserved finger byte. A block placed behind a flag bit changes
+  the frame length, so a relay that checks lengths (§1.2) has to know it: such an
+  extension is not transparent to relays. `HAS_EXTRA` (1.3) is the first.
 
 ---
 
@@ -878,7 +1010,7 @@ legs, kneeling, lying down and jumping without any pose-specific rule on the rec
 
 An implementation is conformant if it:
 1. Uses the exact packet layout of §5 with little-endian ordering.
-2. Emits and consumes rotations in VRM 1.0 normalized space per §3.
+2. Emits and consumes rotations in Posy avatar space as defined in §3.1.
 3. Renormalises reconstructed quaternions.
 4. Uses the bone index table of §4 without modification.
 5. Never retransmits pose frames.
@@ -889,6 +1021,9 @@ An implementation is conformant if it:
 9. If it renders fingers: synthesises the finger-bone rotations from the §5.5 block so that
    the joint positions of the finger pose vectors (`testvectors/poses/f*.json`) are
    reproduced within their tolerance (§5.5).
+10. If it declares or renders extras: follows §2.6 and §5.8, sets a declared extra bone
+    from the frame only, and takes the block's size from the declaration that applies at
+    the frame's `timestamp_ms`.
 
 ---
 

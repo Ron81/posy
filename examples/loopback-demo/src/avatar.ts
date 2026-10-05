@@ -12,10 +12,10 @@
 // continuous rather than steppy.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { VRMLoaderPlugin, VRMUtils, type VRM, VRMHumanBoneName } from '@pixiv/three-vrm';
+import { VRMLoaderPlugin, VRMUtils, type VRM, type VRMSpringBoneJoint, VRMHumanBoneName } from '@pixiv/three-vrm';
 import type { Frame } from 'posy';
 import { BIT, SLOT } from './bones.ts';
-import type { DataType } from './declare.ts';
+import type { DataType, ExtraDecl } from './declare.ts';
 
 export interface Avatar {
   readonly object: THREE.Object3D;
@@ -23,13 +23,19 @@ export interface Avatar {
   readonly caps: ReadonlySet<DataType>;
   /** Top of the head above the floor in metres, for camera framing. */
   readonly height: number;
-  /** Move rendered bones a fraction toward the decoded pose. */
-  applyPose(frame: Frame, smoothing: number): void;
+  /** What a sender with this avatar can declare as extras (spec §2.6): the file's own names. */
+  readonly extras: { bones: string[]; values: string[] };
+  /**
+   * Move rendered bones a fraction toward the decoded pose. `extra` is the declaration the
+   * frame's extras block follows.
+   */
+  applyPose(frame: Frame, smoothing: number, extra?: ExtraDecl): void;
   update(deltaSec: number): void;
   dispose(): void;
 }
 
 const _q = new THREE.Quaternion();
+const _w = new THREE.Quaternion();
 const _v = new THREE.Vector3();
 const _e = new THREE.Euler();
 const DEG = Math.PI / 180;
@@ -145,6 +151,8 @@ const gaze = (frame: Frame): [number, number] => [
 export class StickFigure implements Avatar {
   readonly object = new THREE.Group();
   readonly caps: ReadonlySet<DataType> = new Set<DataType>(['bones', 'legs', 'toes', 'root', 'fingers', 'expressions', 'tongue']);
+  /** The figure is the humanoid core and nothing else. */
+  readonly extras = { bones: [], values: [] };
   readonly height = 1.75;
   private static readonly HIP_HEIGHT = 0.9;
   private readonly hips = new THREE.Group();
@@ -370,9 +378,30 @@ export class StickFigure implements Avatar {
 // Standard-Sync slots that are VRM 1.0 expression presets of the same name.
 const VRM_EXPRESSIONS = ['aa', 'ih', 'ou', 'ee', 'oh', 'happy', 'angry', 'sad', 'relaxed', 'surprised', 'neutral'] as const;
 
+// Expressions §5.6 already carries; every other expression of a model is an extra value.
+const CORE_EXPRESSIONS = new Set(
+  [...VRM_EXPRESSIONS, 'blink', 'blinkLeft', 'blinkRight', 'lookUp', 'lookDown', 'lookLeft', 'lookRight', 'tongueOut'].map((n) => n.toLowerCase()),
+);
+
+/** The name a node has in the avatar file. GLTFLoader keeps it here when it had to change it. */
+const fileName = (o: THREE.Object3D): string => (o.userData.name as string | undefined) ?? o.name;
+
+interface ExtraBone {
+  node: THREE.Object3D;
+  /** Local rotation at rest. */
+  rest: THREE.Quaternion;
+  /** Rotation in avatar space at rest (§5.8: W). */
+  w: THREE.Quaternion;
+}
+
 export class VrmAvatar implements Avatar {
   readonly object: THREE.Object3D;
   readonly caps: ReadonlySet<DataType>;
+  readonly extras: { bones: string[]; values: string[] };
+  private readonly extraBones = new Map<string, ExtraBone>();
+  /** Spring bone joints taken out while their bone is driven by the sender (§5.8). */
+  private readonly parked = new Map<string, VRMSpringBoneJoint[]>();
+  private drivenDecl: ExtraDecl | undefined;
   readonly height: number;
   private readonly rest = new Map<VRMHumanBoneName, THREE.Quaternion>();
   private readonly hips: THREE.Object3D | null;
@@ -424,6 +453,31 @@ export class VrmAvatar implements Avatar {
       const node = vrm.humanoid.getNormalizedBoneNode(name);
       if (node) this.rest.set(name, node.quaternion.clone());
     }
+
+    // Extras (§2.6): every bone of the file that is not a humanoid bone and has a name of
+    // its own. The scene is not placed anywhere yet and faces +Z, so a world rotation
+    // taken now is a rotation in avatar space.
+    const humanoid = new Set<THREE.Object3D>();
+    for (const name of Object.values(VRMHumanBoneName)) {
+      const raw = vrm.humanoid.getRawBoneNode(name);
+      if (raw) humanoid.add(raw);
+    }
+    const seen = new Map<string, number>();
+    const bones: THREE.Object3D[] = [];
+    vrm.scene.traverse((o) => {
+      if (!(o as THREE.Bone).isBone) return;
+      seen.set(fileName(o), (seen.get(fileName(o)) ?? 0) + 1);
+      if (!humanoid.has(o)) bones.push(o);
+    });
+    for (const o of bones) {
+      // A name that is not unique in the file cannot be declared (§2.6).
+      if (seen.get(fileName(o)) !== 1) continue;
+      this.extraBones.set(fileName(o), { node: o, rest: o.quaternion.clone(), w: o.getWorldQuaternion(new THREE.Quaternion()) });
+    }
+    this.extras = {
+      bones: [...this.extraBones.keys()],
+      values: (em?.expressions ?? []).map((e) => e.expressionName).filter((n) => !CORE_EXPRESSIONS.has(n.toLowerCase())),
+    };
   }
 
   static async load(buffer: ArrayBuffer): Promise<VrmAvatar> {
@@ -435,7 +489,8 @@ export class VrmAvatar implements Avatar {
     return new VrmAvatar(vrm);
   }
 
-  applyPose(frame: Frame, smoothing: number): void {
+  applyPose(frame: Frame, smoothing: number, extra?: ExtraDecl): void {
+    this.applyExtras(frame, smoothing, extra);
     for (const [bit, name] of VRM_BONE) {
       const node = this.vrm.humanoid.getNormalizedBoneNode(name);
       if (!node) continue;
@@ -456,6 +511,44 @@ export class VrmAvatar implements Avatar {
       });
     }
     this.applyFace(frame, smoothing);
+  }
+
+  // §5.8. A declared extra bone is set from the frame and taken away from the spring
+  // bones; a bone that is no longer declared goes back to them.
+  private applyExtras(frame: Frame, smoothing: number, decl?: ExtraDecl): void {
+    if (decl !== this.drivenDecl) {
+      this.drivenDecl = decl;
+      const declared = new Set(decl?.bones);
+      const springs = this.vrm.springBoneManager;
+      for (const [name, joints] of this.parked) {
+        if (declared.has(name)) continue;
+        for (const j of joints) springs?.addJoint(j);
+        this.parked.delete(name);
+      }
+      for (const joint of [...(springs?.joints ?? [])]) {
+        const name = fileName(joint.bone);
+        if (!declared.has(name)) continue;
+        springs!.deleteJoint(joint);
+        this.parked.set(name, [...(this.parked.get(name) ?? []), joint]);
+      }
+    }
+    if (!decl) return;
+    decl.bones.forEach((name, i) => {
+      const bone = this.extraBones.get(name);
+      if (!bone) return;
+      const q = frame.extra?.bones[i];
+      // q_node = q_rest · W⁻¹ · q · W; no block in the frame → the rest rotation.
+      _q.copy(bone.rest);
+      if (q) _q.multiply(_w.copy(bone.w).invert()).multiply(_w.set(q.x, q.y, q.z, q.w)).multiply(bone.w);
+      bone.node.quaternion.slerp(_q, smoothing);
+    });
+    const em = this.vrm.expressionManager;
+    decl.values.forEach((name, i) => {
+      // An `app:` value is not avatar data (§2.6).
+      if (!em || name.startsWith('app:') || !em.getExpression(name)) return;
+      const now = em.getValue(name) ?? 0;
+      em.setValue(name, now + ((frame.extra?.values[i] ?? 0) / 255 - now) * smoothing);
+    });
   }
 
   // §5.6. Tongue direction has no VRM expression, so only protrusion is shown, and only
