@@ -5,7 +5,7 @@ export type { Quat } from './quat.js';
 export { packQuat, unpackQuat } from './quat.js';
 export { encode, PosyEncodeError } from './encode.js';
 export { decode, PosyDecodeError } from './decode.js';
-export { BONE_NAMES, BLENDSHAPE_NAMES } from './tables.generated.js';
+export { BONE_NAMES, BLENDSHAPE_NAMES, STANDARD_SYNC_NAMES, FINGER_BLOCK_FIELDS, ERROR_CODES } from './tables.generated.js';
 
 import type { Quat } from './quat.js';
 

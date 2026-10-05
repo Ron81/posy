@@ -123,3 +123,48 @@ export const BLENDSHAPE_NAMES = [
   'noseSneerRight',
   'tongueOut',
 ] as const;
+
+/** Index = slot in the Standard-Sync expression block (spec §5.6). */
+export const STANDARD_SYNC_NAMES = [
+  'blinkLeft',
+  'blinkRight',
+  'aa',
+  'ih',
+  'ou',
+  'ee',
+  'oh',
+  'happy',
+  'angry',
+  'sad',
+  'relaxed',
+  'surprised',
+  'neutral',
+  'tongueOut',
+  'tongueX',
+  'tongueY',
+] as const;
+
+/** Index = byte offset within one hand of the finger block (spec §5.5). */
+export const FINGER_BLOCK_FIELDS = [
+  { type: 'u8', name: 'thumb_curl' },
+  { type: 'i8', name: 'thumb_splay' },
+  { type: 'u8', name: 'index_curl' },
+  { type: 'i8', name: 'index_splay' },
+  { type: 'u8', name: 'middle_curl' },
+  { type: 'i8', name: 'middle_splay' },
+  { type: 'u8', name: 'ring_curl' },
+  { type: 'i8', name: 'ring_splay' },
+  { type: 'u8', name: 'little_curl' },
+  { type: 'i8', name: 'little_splay' },
+  { type: 'u8', name: 'thumb_opposition' },
+  { type: 'u8', name: 'reserved' },
+] as const;
+
+/** Error codes of the `error` message (spec §2.5). */
+export const ERROR_CODES = [
+  'BAD_VERSION',
+  'UNAUTHORIZED_TYPE',
+  'MALFORMED_THRESHOLD',
+  'RATE_EXCEEDED',
+  'UNSUPPORTED_TRANSPORT',
+] as const;
