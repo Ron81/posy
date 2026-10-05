@@ -4,7 +4,7 @@
 //
 // Nothing moves here on its own account except what a person does without meaning to:
 // the eyes blink, and they follow the head when it looks around.
-import type { Frame } from 'posy';
+import { VERSION, type Frame } from 'posy';
 import { SLOT } from './bones.ts';
 import { RELAXED_HANDS, type BodyPose } from './poses.ts';
 
@@ -43,7 +43,7 @@ export function poseAt(tSec: number, body: BodyPose): Frame {
   const [yaw, pitch] = face.gaze ?? [8 * Math.sin(tSec * 0.1 * 2 * Math.PI), 0];
 
   return {
-    version: 1,
+    version: VERSION,
     seq: seq++ & 0xffff,
     timestampMs: Math.floor(tSec * 1000) >>> 0,
     idle: false,

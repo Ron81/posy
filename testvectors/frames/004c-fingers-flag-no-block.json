@@ -2,6 +2,6 @@
   "name": "004c-fingers-flag-no-block",
   "description": "HAS_FINGERS set but no 24-byte block",
   "expect": "reject",
-  "bytes_hex": "01 04 01 00 00 00 00 00 01 00 00 00 00 00 00 00 00 02 08 e0",
+  "bytes_hex": "02 04 01 00 00 00 00 00 01 00 00 00 00 00 00 00 00 02 08 e0",
   "reason": "length does not include the finger block"
 }

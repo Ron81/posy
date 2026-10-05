@@ -6,7 +6,8 @@ The spec follows the versioning rules in §9 (major version = channel protocol s
 ## [Unreleased] - proposed as 1.2.0
 
 Leg rotation conventions, VRM 0.x conversion, finger signs. **No change to the packet
-format or the signaling.** The meaning of `thumb_curl` changes (see Changed).
+layout or the signaling.** The `version` byte now writes 2, and the meaning of
+`thumb_curl` changes (see Changed).
 
 ### Added
 - Spec §3.1 items 5 and 6: rotation composition order (`q_parent · q_bone`) and the local
@@ -51,6 +52,11 @@ format or the signaling.** The meaning of `thumb_curl` changes (see Changed).
   reconstructs. No wire change.
 
 ### Changed
+- §5.1, §9: the `version` byte is the minor revision of the spec release; 1.2 writes 2.
+  The spec described the byte three ways ("= 1", "the minor revision", "major v1"), and
+  1.1.0 still wrote 1. Decoders are unaffected: any value 0–15 was and is accepted. Every
+  frame vector changes in byte 0 and nowhere else. The codec exports `VERSION`.
+  `DECISIONS.md` 0003.
 - §5.5: the thumb flexes about **Y**, toward the fingers (positive on the left hand,
   negative on the right). It was about Z like the other fingers, which bends the thumb
   away from the palm. `docs/DECISIONS.md` 0002.
@@ -149,6 +155,11 @@ version bump signals that the package tracks the spec.
   1.0.0 default.
 
 ### Changed
+- §5.1, §9: the `version` byte is the minor revision of the spec release; 1.2 writes 2.
+  The spec described the byte three ways ("= 1", "the minor revision", "major v1"), and
+  1.1.0 still wrote 1. Decoders are unaffected: any value 0–15 was and is accepted. Every
+  frame vector changes in byte 0 and nowhere else. The codec exports `VERSION`.
+  `DECISIONS.md` 0003.
 - Spec §1.1 relaxes "pose data MUST use a WebRTC (SCTP) data channel" to SHOULD, with the
   WebSocket lane as the sanctioned alternative. Reconciles the reliable/ordered WebSocket with
   the loss-tolerant pose stream: "MUST NOT retransmit" is clarified as a Posy-layer rule, and

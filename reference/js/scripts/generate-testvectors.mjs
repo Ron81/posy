@@ -3,7 +3,7 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { encode, packQuat, BONE_NAMES } from '../dist/index.js';
+import { encode, packQuat, BONE_NAMES, VERSION } from '../dist/index.js';
 import { fk, mul } from './pose-fk.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -85,7 +85,7 @@ function writeReject(name, description, bytes, reason) {
 const v001 = writeAccept(
   '001-minimal',
   'one bone (hips, identity), nothing else',
-  { version: 1, seq: 1, timestampMs: 0, idle: false, bones: new Map([[0, idQuat]]) },
+  { version: VERSION, seq: 1, timestampMs: 0, idle: false, bones: new Map([[0, idQuat]]) },
   { flags: 0 },
 );
 
@@ -97,7 +97,7 @@ const v001 = writeAccept(
     '002-fullbody-standard',
     '22 bones (spine/head + legs + toes + both arms), root + fingers + Standard-Sync face',
     {
-      version: 1,
+      version: VERSION,
       seq: 2,
       timestampMs: 33,
       idle: false,
@@ -123,7 +123,7 @@ const v001 = writeAccept(
     '003-perfectsync',
     '13 bones + root + fingers + Perfect-Sync (52 ARKit weights = i*5 mod 256)',
     {
-      version: 1,
+      version: VERSION,
       seq: 3,
       timestampMs: 66,
       idle: false,
@@ -172,7 +172,7 @@ writeReject('004d-length-too-short', 'a 15-byte buffer (< 16)', new Uint8Array(1
   ];
   const bones = new Map(cases);
   writeAccept('005-quat-edgecases', 'identity, its negation, ties, near 1/sqrt2, 180 deg, tiny angle', {
-    version: 1,
+    version: VERSION,
     seq: 5,
     timestampMs: 0,
     idle: false,
@@ -185,7 +185,7 @@ writeReject('004d-length-too-short', 'a 15-byte buffer (< 16)', new Uint8Array(1
 {
   const buf = new Uint8Array(24);
   const dv = new DataView(buf.buffer);
-  dv.setUint8(0, 1);
+  dv.setUint8(0, VERSION);
   dv.setUint8(1, 0);
   dv.setUint16(2, 6, true);
   dv.setUint32(4, 0, true);
@@ -199,7 +199,7 @@ writeReject('004d-length-too-short', 'a 15-byte buffer (< 16)', new Uint8Array(1
     expect: 'accept',
     bytes_hex: hex(buf),
     frame: {
-      version: 1,
+      version: VERSION,
       flags: 0,
       seq: 6,
       timestamp_ms: 0,
@@ -262,7 +262,7 @@ writeReject('004d-length-too-short', 'a 15-byte buffer (< 16)', new Uint8Array(1
     '007-fullbody-legs',
     '21 bones with non-identity legs and toes, root with h = 0.55 (seated), fingers, Standard-Sync with tongue',
     {
-      version: 1,
+      version: VERSION,
       seq: 7,
       timestampMs: 100,
       idle: false,

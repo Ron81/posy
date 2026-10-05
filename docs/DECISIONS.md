@@ -6,6 +6,42 @@ that commit messages and the spec text do not keep in one place.
 
 ---
 
+## 0003 — The version byte is the minor revision
+
+**Date:** 2026-10-05 · **Status:** Proposed · **Affects:** §5.1, §9, §1.2 (byte 0 of every frame)
+
+### Context
+
+The spec described byte 0 three ways: §5.1 `version (= 1)`, §9 "carries the minor
+revision", and §1.2 / Appendix B `version >> 4 == 0` commented as "major v1". 1.0 and 1.1
+both wrote 1, so the byte matched the minor revision in 1.1 only by coincidence, and no
+single reading satisfied all three sentences.
+
+### Decision
+
+The byte is the minor revision of the spec release the sender implements. 1.2 writes 2,
+1.3 writes 3. The value is 0–15 for every 1.x release; `version >> 4 == 0` tests exactly
+that and says nothing about the major version, which stays in the `protocol` string. If a
+minor revision above 15 were needed, releases continue as patch releases of 1.15.
+
+### Alternatives rejected
+
+- **A layout counter** that rises only when the frame layout changes. Frame vectors would
+  not change with every release, but the number would no longer say which spec text a
+  sender follows, and a reader would need a table to map it to a release.
+- **Two nibbles, `(major << 4) | minor`, with major stored as 0 for v1.** It explains the
+  existing check, but "v1 is stored as 0" is a trap, and the major version already has a
+  place.
+
+### Consequences
+
+- Byte 0 of every frame vector changes with each minor release, and only there.
+- Decoders do not change: any value 0–15 was and is accepted.
+- A receiver can tell which revision's layout a frame follows, which matters while the
+  soft lock allows layout changes.
+
+---
+
 ## 0002 — Thumb flexion axis, and stated signs for splay and opposition
 
 **Date:** 2026-10-04 · **Status:** Proposed · **Affects:** §5.5 (finger block)

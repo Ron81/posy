@@ -25,9 +25,9 @@ Each vector is a pair: `NNN-name.bin` (the exact bytes) and `NNN-name.json` (wha
   "name": "001-minimal",
   "description": "one bone (hips, identity), nothing else",
   "expect": "accept",                       // or "reject"
-  "bytes_hex": "01 00 01 00 00 00 00 00 01 00 00 00 00 00 00 00 00 02 08 E0",
+  "bytes_hex": "02 00 01 00 00 00 00 00 01 00 00 00 00 00 00 00 00 02 08 E0",
   "frame": {                                // absent when expect = "reject"
-    "version": 1,
+    "version": 2,
     "flags": 0,
     "seq": 1,
     "timestamp_ms": 0,
