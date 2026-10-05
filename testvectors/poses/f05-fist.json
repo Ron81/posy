@@ -1,6 +1,6 @@
 {
   "name": "f05-fist",
-  "description": "full fist both hands: all four fingers curled, thumb curled with half opposition. Everything at once; product order on the proximal (q_splay · q_curl) and the thumb axis both matter.",
+  "description": "full fist both hands: all four fingers curled, thumb curled with half opposition. Every flexion axis and the opposition at once.",
   "bytes": {
     "left": {
       "curl": [
@@ -38,25 +38,95 @@
     }
   },
   "expect": {
+    "wrist": [
+      0,
+      0,
+      0
+    ],
+    "leftIndexProximal": [
+      0.085,
+      0,
+      0.03
+    ],
+    "leftIndexIntermediate": [
+      0.085,
+      -0.04,
+      0.03
+    ],
+    "leftIndexDistal": [
+      0.060568,
+      -0.031107,
+      0.03
+    ],
     "leftIndexTip": [
       0.060568,
       -0.011107,
       0.03
+    ],
+    "leftMiddleProximal": [
+      0.085,
+      0,
+      0.01
+    ],
+    "leftMiddleIntermediate": [
+      0.085,
+      -0.045,
+      0.01
+    ],
+    "leftMiddleDistal": [
+      0.056809,
+      -0.034739,
+      0.01
     ],
     "leftMiddleTip": [
       0.056809,
       -0.012739,
       0.01
     ],
+    "leftRingProximal": [
+      0.085,
+      0,
+      -0.01
+    ],
+    "leftRingIntermediate": [
+      0.085,
+      -0.04,
+      -0.01
+    ],
+    "leftRingDistal": [
+      0.058689,
+      -0.030423,
+      -0.01
+    ],
     "leftRingTip": [
       0.058689,
       -0.010423,
       -0.01
     ],
+    "leftLittleProximal": [
+      0.085,
+      0,
+      -0.03
+    ],
+    "leftLittleIntermediate": [
+      0.085,
+      -0.032,
+      -0.03
+    ],
+    "leftLittleDistal": [
+      0.064327,
+      -0.024476,
+      -0.03
+    ],
     "leftLittleTip": [
       0.064327,
       -0.006476,
       -0.03
+    ],
+    "leftThumbMetacarpal": [
+      0.015,
+      0,
+      0.036
     ],
     "leftThumbProximal": [
       0.037627,
@@ -73,25 +143,90 @@
       0.005039,
       0.027314
     ],
+    "rightIndexProximal": [
+      -0.085,
+      0,
+      0.03
+    ],
+    "rightIndexIntermediate": [
+      -0.085,
+      -0.04,
+      0.03
+    ],
+    "rightIndexDistal": [
+      -0.060568,
+      -0.031107,
+      0.03
+    ],
     "rightIndexTip": [
       -0.060568,
       -0.011107,
       0.03
+    ],
+    "rightMiddleProximal": [
+      -0.085,
+      0,
+      0.01
+    ],
+    "rightMiddleIntermediate": [
+      -0.085,
+      -0.045,
+      0.01
+    ],
+    "rightMiddleDistal": [
+      -0.056809,
+      -0.034739,
+      0.01
     ],
     "rightMiddleTip": [
       -0.056809,
       -0.012739,
       0.01
     ],
+    "rightRingProximal": [
+      -0.085,
+      0,
+      -0.01
+    ],
+    "rightRingIntermediate": [
+      -0.085,
+      -0.04,
+      -0.01
+    ],
+    "rightRingDistal": [
+      -0.058689,
+      -0.030423,
+      -0.01
+    ],
     "rightRingTip": [
       -0.058689,
       -0.010423,
       -0.01
     ],
+    "rightLittleProximal": [
+      -0.085,
+      0,
+      -0.03
+    ],
+    "rightLittleIntermediate": [
+      -0.085,
+      -0.032,
+      -0.03
+    ],
+    "rightLittleDistal": [
+      -0.064327,
+      -0.024476,
+      -0.03
+    ],
     "rightLittleTip": [
       -0.064327,
       -0.006476,
       -0.03
+    ],
+    "rightThumbMetacarpal": [
+      -0.015,
+      0,
+      0.036
     ],
     "rightThumbProximal": [
       -0.037627,

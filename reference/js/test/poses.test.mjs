@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { packQuat, unpackQuat } from '../dist/index.js';
 import { estimateHipsHeight, fk } from '../scripts/pose-fk.mjs';
-import { fingerPose, fkHand, eulerXYZ } from '../scripts/finger-fk.mjs';
+import { fingerPose, fkHand, eulerXYZ, mul } from '../scripts/finger-fk.mjs';
 
 const POSES = join(dirname(fileURLToPath(import.meta.url)), '../../../testvectors/poses');
 const skeleton = JSON.parse(readFileSync(join(POSES, 'skeleton.json'), 'utf8'));
@@ -60,7 +60,7 @@ const synth = (bytes) => ({ ...fingerPose('left', bytes.left), ...fingerPose('ri
 for (const file of fingerFiles) {
   const vec = JSON.parse(readFileSync(join(POSES, file), 'utf8'));
 
-  test(`finger ${vec.name}: §5.5 synthesis gives the expected fingertip positions`, () => {
+  test(`finger ${vec.name}: §5.5 synthesis gives the expected joint positions`, () => {
     assert.ok(maxError(fkHand(handSkeleton.joints, synth(vec.bytes)), vec.expect) < 1e-4);
   });
 }
@@ -81,15 +81,48 @@ test('a thumb synthesised about Z (the old bug) is caught', () => {
   assert.ok(maxError(fkHand(handSkeleton.joints, wrong), vec.expect) > 0.02);
 });
 
-// A flipped curl sign on the fingers (curl toward +Y instead of −Y) is caught. A fully curled
-// finger folds back near its knuckle, so the tip's +Y/−Y gap is a couple of centimetres, not the
-// tens a leg sign error gives — still far above the sub-millimetre quantisation noise.
+// A flipped curl sign on the fingers (curl toward +Y instead of −Y) is caught. Checked on the
+// half-curled f07: a fully curled finger folds back onto its knuckle and a sign error moves its
+// tip by about 2 cm only, a half-curled one by more than 10 cm.
 test('a flipped finger curl sign is caught', () => {
-  const vec = JSON.parse(readFileSync(join(POSES, 'f01-four-fingers-curl.json'), 'utf8'));
-  const good = synth(vec.bytes);
-  const wrong = Object.fromEntries(
-    Object.entries(good).map(([k, q]) => [k, { x: q.x, y: q.y, z: -q.z, w: q.w }]),
-  );
+  const vec = JSON.parse(readFileSync(join(POSES, 'f07-half-curl-splay.json'), 'utf8'));
+  const wrong = synth(vec.bytes);
+  for (const side of ['left', 'right']) {
+    const sign = side === 'left' ? -1 : 1;
+    ['Index', 'Middle', 'Ring', 'Little'].forEach((finger, i) => {
+      const curl = vec.bytes[side].curl[i + 1] / 255;
+      const splay = (vec.bytes[side].splay[i + 1] / 127) * 15;
+      for (const [joint, max] of [['Proximal', 90], ['Intermediate', 110], ['Distal', 70]]) {
+        // curl toward +Y — wrong
+        wrong[`${side}${finger}${joint}`] = eulerXYZ(0, joint === 'Proximal' ? sign * splay : 0, -sign * curl * max);
+      }
+    });
+  }
+  assert.ok(maxError(fkHand(handSkeleton.joints, wrong), vec.expect) > 0.1);
+});
+
+// §5.5 orders the proximal joint q = q_splay · q_curl. f07 is the pose with both on one joint.
+test('the wrong product order on a proximal joint is caught', () => {
+  const vec = JSON.parse(readFileSync(join(POSES, 'f07-half-curl-splay.json'), 'utf8'));
+  const wrong = synth(vec.bytes);
+  for (const side of ['left', 'right']) {
+    const sign = side === 'left' ? -1 : 1;
+    ['Thumb', 'Index', 'Middle', 'Ring', 'Little'].forEach((finger, i) => {
+      if (finger === 'Thumb') return;
+      const splay = eulerXYZ(0, sign * (vec.bytes[side].splay[i] / 127) * 15, 0);
+      const curl = eulerXYZ(0, 0, sign * (vec.bytes[side].curl[i] / 255) * 90);
+      wrong[`${side}${finger}Proximal`] = mul(curl, splay); // curl outside splay — wrong
+    });
+  }
+  assert.ok(maxError(fkHand(handSkeleton.joints, wrong), vec.expect) > 0.01);
+});
+
+// Positive thumb splay opens the thumb away from the fingers (§5.5). f07 carries the only
+// non-zero thumb splay byte.
+test('a flipped thumb splay sign is caught', () => {
+  const vec = JSON.parse(readFileSync(join(POSES, 'f07-half-curl-splay.json'), 'utf8'));
+  const flipped = (b) => ({ ...b, splay: [-b.splay[0], ...b.splay.slice(1)] });
+  const wrong = synth({ left: flipped(vec.bytes.left), right: flipped(vec.bytes.right) });
   assert.ok(maxError(fkHand(handSkeleton.joints, wrong), vec.expect) > 0.02);
 });
 

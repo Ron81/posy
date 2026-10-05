@@ -21,11 +21,15 @@ format or the signaling.** The meaning of `thumb_curl` changes (see Changed).
 - `testvectors/poses/`: a reference skeleton and nine poses with expected joint
   positions. Five pin the §3.4 table; four are the seated and kneeling poses a full-body
   sender must be able to express.
-- `testvectors/poses/hand-skeleton.json` and `f01`–`f06`: finger poses that carry the
-  curl / splay / opposition bytes and the fingertip positions a §5.5 receiver must
+- `testvectors/poses/hand-skeleton.json` and `f01`–`f07`: finger poses that carry the
+  curl / splay / opposition bytes and every joint position a §5.5 receiver must
   synthesise. They catch a wrong thumb axis, a flipped sign or the wrong product order,
-  none of which the frame vectors can. `reference/js/scripts/finger-fk.mjs` holds the
-  synthesis and FK; three negative controls are in `test/poses.test.mjs`.
+  none of which the frame vectors can. `f07` is half curled with splay on the same bones
+  and a thumb splay; without it the product order, the thumb splay and the linearity of
+  the curl byte were not pinned. `reference/js/scripts/finger-fk.mjs` holds the synthesis
+  and FK; five negative controls are in `test/poses.test.mjs`.
+- §5.5: splay is on the proximal bone, which for the thumb is `thumbProximal`. The text
+  said "proximal joint" and left the thumb open.
 - `reference/js`: `scripts/pose-fk.mjs` (forward kinematics used by the generator and the
   tests) and `test/poses.test.mjs`.
 - Loopback demo: drives legs, toes and hips height `h`; tracker selector showing what the

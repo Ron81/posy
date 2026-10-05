@@ -1,4 +1,4 @@
-// Generates the finger pose vectors in testvectors/poses/ (hand-skeleton.json + f01…f06).
+// Generates the finger pose vectors in testvectors/poses/ (hand-skeleton.json + f01…f07).
 // Run from reference/js:  node scripts/generate-finger-vectors.mjs
 // The vectors pin the §5.5 finger synthesis (curl / splay / opposition → bone rotations).
 // Codec-independent: uses only finger-fk.mjs. Re-run and diff to regenerate.
@@ -85,7 +85,7 @@ const POSES = [
   },
   {
     name: 'f05-fist',
-    description: 'full fist both hands: all four fingers curled, thumb curled with half opposition. Everything at once; product order on the proximal (q_splay · q_curl) and the thumb axis both matter.',
+    description: 'full fist both hands: all four fingers curled, thumb curled with half opposition. Every flexion axis and the opposition at once.',
     left: { curl: [255, 255, 255, 255, 255], opposition: 128 },
     right: { curl: [255, 255, 255, 255, 255], opposition: 128 },
   },
@@ -94,6 +94,12 @@ const POSES = [
     description: 'left hand: index and middle extended, ring/little curled, thumb across (opposition). Right hand flat. An asymmetric pose: left and right must differ.',
     left: { curl: [255, 0, 0, 255, 255], opposition: 200 },
     right: null,
+  },
+  {
+    name: 'f07-half-curl-splay',
+    description: 'both hands half curled (128), index splayed +127, ring splayed −127, thumb splayed +100. The only pose with curl and splay on one joint, with a thumb splay and with a curl byte other than 0 or 255: it pins the product order q_splay · q_curl, the thumb splay sign and bone, and that flexion is linear in the byte.',
+    left: { curl: [128, 128, 128, 128, 128], splay: [100, 127, 0, -127, 0] },
+    right: { curl: [128, 128, 128, 128, 128], splay: [100, 127, 0, -127, 0] },
   },
 ];
 
@@ -106,13 +112,11 @@ function emit(pose) {
     Object.assign(full, fingerPose(side, b));
   }
   const posAll = fkHand(skeleton.joints, full);
-  // Store only the Tip positions (the measurable fingertips) plus the two thumb joints,
-  // rounded to 1e-6 m. That is enough to catch any axis/sign/order error.
+  // Store every joint, rounded to 1e-6 m, as the leg poses do. A fingertip alone can be
+  // reached by more than one set of joint angles; the joints in between cannot.
   const expect = {};
   for (const name of Object.keys(posAll)) {
-    if (name.endsWith('Tip') || name.endsWith('ThumbProximal') || name.endsWith('ThumbDistal')) {
-      expect[name] = posAll[name].map((v) => Math.round(v * 1e6) / 1e6);
-    }
+    expect[name] = posAll[name].map((v) => Math.round(v * 1e6) / 1e6);
   }
   return { name: pose.name, description: pose.description, bytes, expect };
 }

@@ -87,7 +87,7 @@ The frame vectors check bytes. They cannot tell whether a knee bends the right w
 
 `h` is checked against `hips_height` only. For `p01`–`p08` it equals the lowest-contact estimate of spec Appendix D to within 1 mm (ankle 0.08 m and toes 0.01 m above the floor in the T-pose, shin radius 0.05 m); for `p09` it does not, which is the reason `h` is transmitted rather than derived.
 
-### Finger poses (`hand-skeleton.json`, `f01`–`f06`)
+### Finger poses (`hand-skeleton.json`, `f01`–`f07`)
 
 The frame vectors pin the bytes of the finger block (§5.5); they cannot tell whether the receiver *synthesises* the right rotations from them — a decoder that curls the thumb about the wrong axis still decodes every frame. The finger pose vectors check that synthesis.
 
@@ -101,14 +101,14 @@ The frame vectors pin the bytes of the finger block (§5.5); they cannot tell wh
     "left":  { "curl": [255,0,0,0,0], "splay": [0,0,0,0,0], "opposition": 0 },
     "right": { "curl": [255,0,0,0,0], "splay": [0,0,0,0,0], "opposition": 0 }
   },
-  "expect": {                                // fingertip (and thumb-joint) positions relative to the wrist, metres
+  "expect": {                                // joint positions relative to the wrist, metres
     "leftThumbTip": [0.064426, 0, 0.025958]
-    // ...
+    // ... every joint of the hand skeleton
   }
 }
 ```
 
-**How to check:** synthesise the finger-bone rotations from `bytes` by §5.5, apply them to the hand by the same forward kinematics as the leg poses, and compare the `Tip` joints with `expect`. Tolerance **1e-4 m**. The synthesis is spec text, not a wire format, so there is no wire-encoding tolerance here.
+**How to check:** synthesise the finger-bone rotations from `bytes` by §5.5, apply them to the hand by the same forward kinematics as the leg poses, and compare every joint with `expect`. Tolerance **1e-4 m**. The synthesis is spec text, not a wire format, so there is no wire-encoding tolerance here.
 
 | Vectors | What they pin |
 |---|---|
@@ -116,8 +116,9 @@ The frame vectors pin the bytes of the finger block (§5.5); they cannot tell wh
 | `f02-thumb-curl` | thumb flexion about **Y**, not Z — the fingertip stays in the palm plane (`y = 0`), which a Z-axis synthesis would violate |
 | `f03-index-splay` | splay about Y on the proximal only, mirrored sign |
 | `f04-thumb-opposition` | opposition about X on the metacarpal, positive on both hands |
-| `f05-fist` | everything at once; the product order `q_splay · q_curl` and the thumb axis both matter |
+| `f05-fist` | every flexion axis and the opposition at once |
 | `f06-count-two` | an asymmetric pose: the right hand is not a copy of the left |
+| `f07-half-curl-splay` | the product order `q_splay · q_curl` on the proximal bone; the thumb splay sign and that it sits on `thumbProximal`; flexion linear in the curl byte. The only pose with curl and splay on one bone and with a curl byte other than 0 or 255 |
 
 ## `quaternions.csv`
 

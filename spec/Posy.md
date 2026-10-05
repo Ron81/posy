@@ -610,12 +610,12 @@ coincide with the avatar axes (§3.1 item 6). Angles follow the right-hand rule.
   lies in the plane of the palm in the T-pose and points forward and outward; about Z it
   would bend down and back toward the wrist, away from the palm.
 
-- **Splay** (`−127` … `+127` → `−15°` … `+15°`) is applied to the **proximal joint
-  only**, about **Y**. Positive = abduction toward the thumb side: negative Y-rotation
+- **Splay** (`−127` … `+127` → `−15°` … `+15°`) is applied to the **proximal bone
+  only** (`thumbProximal` for the thumb, not `thumbMetacarpal`), about **Y**. Positive = abduction toward the thumb side: negative Y-rotation
   on the left hand, positive on the right. For the thumb this is the axis of its flexion,
   in the opposite sense: positive thumb splay opens the thumb away from the fingers.
 
-- **Order on the proximal joint**, which carries both: `q = q_splay · q_curl` (§3.1
+- **Order on the proximal bone**, which carries both: `q = q_splay · q_curl` (§3.1
   item 5: the finger curls in the plane it was splayed into).
 
 - **Thumb opposition** (`0` … `255` → `0°` … `60°`) rotates `thumbMetacarpal` about
@@ -624,11 +624,11 @@ coincide with the avatar axes (§3.1 item 6). Angles follow the right-hand rule.
 Receivers MUST synthesise the 30 finger bone rotations from this block. Senders MUST
 NOT also send finger bones via `bone_mask` in v1.
 
-`testvectors/poses/hand-skeleton.json` plus `f01`–`f06` pin this synthesis: each carries the
-curl / splay / opposition bytes and the fingertip positions they produce on a reference hand.
+`testvectors/poses/hand-skeleton.json` plus `f01`–`f07` pin this synthesis: each carries the
+curl / splay / opposition bytes and the joint positions they produce on a reference hand.
 A wrong flexion axis (the thumb about Z rather than Y), a flipped sign, or the wrong product
-order on a proximal joint moves a fingertip by centimetres there, which the frame vectors
-cannot detect (§10 item 9).
+order on a proximal bone moves a joint by a centimetre or more there, which the frame
+vectors cannot detect (§10 item 9).
 
 **Integration note.** The reduction from per-joint bone rotations to the curl/splay/
 opposition parameterisation is integration-layer work (sender-side). Posy intentionally
@@ -853,7 +853,7 @@ An implementation is conformant if it:
 8. If it sends or renders leg bones: reproduces the joint positions of the pose vectors
    in `testvectors/poses/` within their tolerance (§3.4).
 9. If it renders fingers: synthesises the finger-bone rotations from the §5.5 block so that
-   the fingertip positions of the finger pose vectors (`testvectors/poses/f*.json`) are
+   the joint positions of the finger pose vectors (`testvectors/poses/f*.json`) are
    reproduced within their tolerance (§5.5).
 
 ---
