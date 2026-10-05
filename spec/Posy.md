@@ -772,6 +772,11 @@ datacentre or fibre-grade uplink, not a home connection.
   interpolation**, same timing.
 - Playout time MUST be derived from the audio clock of the same peer so that lips and
   voice remain aligned.
+- Receivers MAY apply a light low-pass filter (e.g. One-Euro) to the interpolated output
+  to round off the velocity discontinuities at frame boundaries. This is not a substitute
+  for sender-side filtering (§7): it cannot recover detail lost to downsampling, and it
+  adds latency on top of the jitter buffer (§8.1), so it SHOULD be weak and MUST be
+  optional.
 
 ### 8.3 Packet-loss concealment
 1. **0 – 250 ms gap:** continue the last motion with decaying angular velocity

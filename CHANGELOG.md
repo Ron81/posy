@@ -41,6 +41,10 @@ format or the signaling.** The meaning of `thumb_curl` changes (see Changed).
   close-up view of hands, feet or face on both sides.
 - `reference/js`: `estimateHipsHeight` in `scripts/pose-fk.mjs`, and a test that the
   Appendix D estimate gives the stated hips height for `p01`–`p08` and misses it for `p09`.
+- §8.2: a receiver MAY apply a light low-pass filter (e.g. One-Euro) to the interpolated
+  output; stated as optional and weak, and not a substitute for sender-side filtering
+  (§7). Clarifies the split: the sender denoises before encoding, the receiver
+  reconstructs. No wire change.
 
 ### Changed
 - §5.5: the thumb flexes about **Y**, toward the fingers (positive on the left hand,
