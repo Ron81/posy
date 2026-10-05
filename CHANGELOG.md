@@ -52,6 +52,9 @@ layout or the signaling.** The `version` byte now writes 2, and the meaning of
   reconstructs. No wire change.
 
 ### Changed
+- §3.2: the MMD conversion is marked untested. It was never checked on an MMD/PMX model
+  and assumes a per-bone rest rotation that PMX bones do not carry. A tested PMX driver
+  is planned for 1.4.
 - §1.1: the largest v1 frame is 238 bytes, not 202. The length formula counts a
   quaternion for each of the reserved `bone_mask` bits 55–63, and a relay passes them.
   Behaviour is unchanged; only the stated figure was wrong.
@@ -158,6 +161,9 @@ version bump signals that the package tracks the spec.
   1.0.0 default.
 
 ### Changed
+- §3.2: the MMD conversion is marked untested. It was never checked on an MMD/PMX model
+  and assumes a per-bone rest rotation that PMX bones do not carry. A tested PMX driver
+  is planned for 1.4.
 - §1.1: the largest v1 frame is 238 bytes, not 202. The length formula counts a
   quaternion for each of the reserved `bone_mask` bits 55–63, and a relay passes them.
   Behaviour is unchanged; only the stated figure was wrong.

@@ -324,7 +324,7 @@ MUST NOT need to know the sender's tracker or how the sender produced the rotati
 |---|---|
 | **VRM 1.0** | None. Normalized bones are native. Read and send. |
 | **VRM 0.x** | Send rotations in the avatar space of §3.1, exactly as for a VRM 1.0 avatar. If they are read from the runtime's normalized humanoid rig, convert them where that rig is not in avatar space (see below). MUST NOT read the raw glTF node rotations. VRM 0.x names the thumb joints one step further out: 0.x `ThumbProximal` / `ThumbIntermediate` are 1.0 `ThumbMetacarpal` / `ThumbProximal`. §5.5 uses the 1.0 names; a sender that derives the finger block from 0.x bone names MUST apply this mapping. |
-| **MMD** | Map MMD bones to humanoid semantics, then send `q_wire = inverse(q_rest) · q_current` per bone in the parent-relative frame, where `q_rest` is that bone's rotation in the model's own rest (A- or T-) pose. `inverse(q_rest)` MUST be precomputed once at model load. |
+| **MMD** (untested) | Map MMD bones to humanoid semantics, then send `q_wire = inverse(q_rest) · q_current` per bone in the parent-relative frame, where `q_rest` is that bone's rotation in the model's own rest (A- or T-) pose. `inverse(q_rest)` MUST be precomputed once at model load. **This formula has not been checked on an MMD/PMX model and may be wrong**: a PMX bone has a position and a parent but no rest rotation of its own. It stays until a PMX model passes the pose vectors (`testvectors/poses/`); do not build on it. |
 
 **The wire is always in avatar space; the avatar driver adapts the rig.** Rotations on
 the wire are in the avatar space of §3.1 for every avatar, whatever its file format. A
@@ -369,7 +369,8 @@ Receiver side: decode `q_wire` to the avatar-space rotation of §3.1, then hand 
 avatar driver, which adapts it to the rig as above (the mirror of the sender's path).
 - VRM 1.0: the rig is in avatar space; the driver applies `q_wire` directly.
 - VRM 0.x facing −Z: the driver applies `q_rig = (−x, y, −z, w)` before setting the bone.
-- MMD: `q_local = q_rest · q_wire`, with `q_rest` precomputed at load.
+- MMD (untested, see the table above): `q_local = q_rest · q_wire`, with `q_rest`
+  precomputed at load.
 
 ### 3.3 Missing bones
 
