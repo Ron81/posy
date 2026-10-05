@@ -363,8 +363,10 @@ Whether a driver needs the conversion depends only on the avatar file and the ru
 and is known at load. It can be checked with pose vector `p02` (§10 item 8): the shin
 must point toward the avatar's back.
 
-Receiver side:
-- VRM 0.x / 1.0: apply `q_wire` to the normalized rig directly.
+Receiver side: decode `q_wire` to the avatar-space rotation of §3.1, then hand it to the
+avatar driver, which adapts it to the rig as above (the mirror of the sender's path).
+- VRM 1.0: the rig is in avatar space; the driver applies `q_wire` directly.
+- VRM 0.x facing −Z: the driver applies `q_rig = (−x, y, −z, w)` before setting the bone.
 - MMD: `q_local = q_rest · q_wire`, with `q_rest` precomputed at load.
 
 ### 3.3 Missing bones
