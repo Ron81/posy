@@ -1,0 +1,110 @@
+{
+  "name": "p06-seated-crossed-legs",
+  "description": "seated, left foot on the floor, right thigh crossed over the left knee",
+  "bones": [
+    {
+      "bit": 9,
+      "name": "leftUpperLeg",
+      "quat": [
+        -0.707107,
+        0,
+        0,
+        0.707107
+      ]
+    },
+    {
+      "bit": 10,
+      "name": "leftLowerLeg",
+      "quat": [
+        0.707107,
+        0,
+        0,
+        0.707107
+      ]
+    },
+    {
+      "bit": 13,
+      "name": "rightUpperLeg",
+      "quat": [
+        -0.747886,
+        0.139125,
+        0.165802,
+        0.627551
+      ]
+    },
+    {
+      "bit": 14,
+      "name": "rightLowerLeg",
+      "quat": [
+        0.642788,
+        0,
+        0,
+        0.766044
+      ]
+    },
+    {
+      "bit": 15,
+      "name": "rightFoot",
+      "quat": [
+        0.173648,
+        0,
+        0,
+        0.984808
+      ]
+    }
+  ],
+  "hips_height": 0.53,
+  "h": 18674,
+  "expect": {
+    "leftUpperLeg": [
+      0.1,
+      -0.05,
+      0
+    ],
+    "leftLowerLeg": [
+      0.1,
+      -0.05,
+      0.4
+    ],
+    "leftFoot": [
+      0.1,
+      -0.45,
+      0.4
+    ],
+    "leftToes": [
+      0.1,
+      -0.52,
+      0.52
+    ],
+    "leftToeTip": [
+      0.1,
+      -0.52,
+      0.58
+    ],
+    "rightUpperLeg": [
+      -0.1,
+      -0.05,
+      0
+    ],
+    "rightLowerLeg": [
+      0.066479,
+      0.019459,
+      0.357016
+    ],
+    "rightFoot": [
+      0.124297,
+      -0.356418,
+      0.481006
+    ],
+    "rightToes": [
+      0.175011,
+      -0.426418,
+      0.589763
+    ],
+    "rightToeTip": [
+      0.200368,
+      -0.426418,
+      0.644141
+    ]
+  }
+}

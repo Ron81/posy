@@ -60,7 +60,9 @@ physics, props, scene state.
 - A lost pose frame MUST NOT be retransmitted. Late frames are useless by definition.
 - Every pose frame MUST fit in a single datagram (SCTP) or single WebSocket message (WS).
   Implementations MUST NOT emit a pose frame larger than 1100 bytes. v1 frames are
-  ≤ 202 bytes, so fragmentation never occurs.
+  ≤ 238 bytes, so fragmentation never occurs: 202 bytes with every defined bone and
+  block, plus 4 bytes for each reserved `bone_mask` bit 55–63 that is set, which a relay
+  passes (§1.2).
 
 #### Reconciling WebSocket with the loss-tolerant design
 
@@ -87,7 +89,7 @@ rate-tiering a pure frame-drop operation).
 
 A relay MAY validate a frame structurally using only the §5.1 header — without decoding
 the quaternion payload — by checking:
-1. `version` byte: `version >> 4 == 0` (major v1).
+1. `version` byte: `version >> 4 == 0` (a 1.x frame; the value is the minor revision, §9).
 2. Frame length exactly equals `16 + 4·popcount(bone_mask) + 8·b1 + 24·b2 + (b3 ? (b0 ? 54 : 18) : 0)`.
 3. `bone_mask` bits 25–54 (finger bones) are 0 (§4).
 4. The frame stays within the sender's granted set (§2.1): none of flag bits 0–3 is set
@@ -232,7 +234,7 @@ the mapping once per peer over signaling:
 
 `sends` is that peer's granted set (its `allowed`). Receivers use it to prepare the
 peer's avatar before the first frame arrives; a type absent from it never arrives, and
-the receiver leaves that part of the avatar in its rest state. An `add` for a `uid`
+the receiver leaves that part of the avatar in its rest state (§3.3, §5.5). An `add` for a `uid`
 already known replaces the earlier entry. A peer whose granted set is empty has no pose
 producer and is not listed; if its set becomes empty it is removed.
 
@@ -303,30 +305,138 @@ non-conformant regardless of byte-level correctness.
 3. Each transmitted quaternion is the bone's **local (parent-relative) rotation delta
    from the T-pose**.
 4. The hips bone additionally carries the root position block (§5.4).
+5. Rotations compose from the hips outward: a bone's rotation in avatar space is its
+   parent's rotation in avatar space times the bone's own quaternion,
+   `q_avatar(bone) = q_avatar(parent) · q_bone` (Hamilton product; a vector is rotated as
+   `q · v · q⁻¹`).
+6. It follows from 2 and 3 that while a bone's parent chain is in the T-pose, the bone's
+   local axes coincide with the avatar axes: **+X = the avatar's left, +Y = up,
+   +Z = forward**. A positive angle about an axis is counter-clockwise when looking from
+   the tip of that axis toward the origin (right-hand rule).
 
-### 3.2 Conversion is the sender's job, never the receiver's
+### 3.2 Conversion from the capture is the sender's job, never the receiver's
 
 A receiver MUST apply incoming quaternions directly to the normalized humanoid rig of
-its local instance of the sender's avatar (§0). It MUST NOT need to know the sender's
-tracker or how the sender produced the rotations.
+its local instance of the sender's avatar (§0), taken in the avatar space of §3.1. It
+MUST NOT need to know the sender's tracker or how the sender produced the rotations.
 
 | Sender avatar | Sender obligation |
 |---|---|
 | **VRM 1.0** | None. Normalized bones are native. Read and send. |
-| **VRM 0.x** | Read from the normalized humanoid rig exposed by the runtime (e.g. three-vrm), which already resolves the 0.x −Z facing to +Z. MUST NOT read the raw glTF node rotations. VRM 0.x names the thumb joints one step further out: 0.x `ThumbProximal` / `ThumbIntermediate` are 1.0 `ThumbMetacarpal` / `ThumbProximal`. §5.5 uses the 1.0 names; a sender that derives the finger block from 0.x bone names MUST apply this mapping. |
-| **MMD** | Map MMD bones to humanoid semantics, then send `q_wire = inverse(q_rest) · q_current` per bone in the parent-relative frame, where `q_rest` is that bone's rotation in the model's own rest (A- or T-) pose. `inverse(q_rest)` MUST be precomputed once at model load. |
+| **VRM 0.x** | Send rotations in the avatar space of §3.1, exactly as for a VRM 1.0 avatar. If they are read from the runtime's normalized humanoid rig, convert them where that rig is not in avatar space (see below). MUST NOT read the raw glTF node rotations. VRM 0.x names the thumb joints one step further out: 0.x `ThumbProximal` / `ThumbIntermediate` are 1.0 `ThumbMetacarpal` / `ThumbProximal`. §5.5 uses the 1.0 names; a sender that derives the finger block from 0.x bone names MUST apply this mapping. |
+| **MMD** (untested) | Map MMD bones to humanoid semantics, then send `q_wire = inverse(q_rest) · q_current` per bone in the parent-relative frame, where `q_rest` is that bone's rotation in the model's own rest (A- or T-) pose. `inverse(q_rest)` MUST be precomputed once at model load. **This formula has not been checked on an MMD/PMX model and may be wrong**: a PMX bone has a position and a parent but no rest rotation of its own. It stays until a PMX model passes the pose vectors (`testvectors/poses/`); do not build on it. |
 
-Receiver side:
-- VRM 0.x / 1.0: apply `q_wire` to the normalized rig directly.
-- MMD: `q_local = q_rest · q_wire`, with `q_rest` precomputed at load.
+**The wire is always in avatar space; the avatar driver adapts the rig.** Rotations on
+the wire are in the avatar space of §3.1 for every avatar, whatever its file format. A
+sender MUST NOT transmit rotations in the space of its own rig when that differs, and a
+receiver MUST NOT expect them so.
+
+The *avatar driver* is the code that sets rotations on a loaded model's rig, or reads
+them from it. Both ends have one, since both display the sender's avatar. Where the
+runtime exposes a rig that is not in avatar space, converting between the two is the
+driver's job, on both ends alike:
+
+```
+sender:    capture → avatar-space rotation ─┬→ encode → wire
+                                            └→ avatar driver → rig
+receiver:  wire → decode → avatar-space rotation → avatar driver → rig
+```
+
+A sender that takes its rotations before the driver step needs no conversion for Posy.
+A sender that reads them back from the rig MUST apply the driver's conversion in reverse
+before encoding.
+
+**VRM 0.x rigs that face −Z.** This is the known case. A VRM 0.x model faces −Z, and a
+runtime may expose its normalized rig in that space without turning it; three-vrm does
+(checked with 3.5.5). On such a rig the avatar's left is −X and its forward is −Z: the
+rig's axes are the avatar axes turned half a turn about Y. A rotation converts between
+the two by negating two components, the same in both directions:
+
+```
+q_rig = (−x, y, −z, w)   for   q_avatar = (x, y, z, w)
+```
+
+The driver for such a rig MUST apply this to every bone rotation, including the finger
+rotations a receiver synthesises (§5.5), and turns the model half a turn about Y so that
+it faces +Z (three-vrm: `VRMUtils.rotateVRM0`). Without it every X and Z rotation is
+inverted: lowered arms are raised, knees bend forward, fingers curl upward.
+
+Whether a driver needs the conversion depends only on the avatar file and the runtime
+and is known at load. It can be checked with pose vector `p02` (§10 item 8): the shin
+must point toward the avatar's back.
+
+Receiver side: decode `q_wire` to the avatar-space rotation of §3.1, then hand it to the
+avatar driver, which adapts it to the rig as above (the mirror of the sender's path).
+- VRM 1.0: the rig is in avatar space; the driver applies `q_wire` directly.
+- VRM 0.x facing −Z: the driver applies `q_rig = (−x, y, −z, w)` before setting the bone.
+- MMD (untested, see the table above): `q_local = q_rest · q_wire`, with `q_rest`
+  precomputed at load.
 
 ### 3.3 Missing bones
 
 A sender that cannot solve a bone, or whose avatar lacks it (e.g. an MMD model without
 `upperChest`), MUST clear that bone's bit in `bone_mask` and omit its quaternion. Receivers MUST treat an absent
-bone as "hold identity relative to T-pose" — that is, apply the identity quaternion (no
-rotation delta from T-pose), not "hold last value" — except during the packet-loss
-concealment window defined in §8.3.
+bone as holding its **rest rotation**, not "hold last value", except during the
+packet-loss concealment window defined in §8.3.
+
+The rest rotation is the identity quaternion (no rotation delta from the T-pose) for
+every bone except the four below. Those rest with the arm hanging at the side:
+
+| Bone | Rest rotation `(x, y, z, w)` | That is |
+|---|---|---|
+| `leftUpperArm` | `(0, 0, −0.573576, 0.819152)` | 70° about −Z: the arm points down and slightly outward |
+| `rightUpperArm` | `(0, 0, 0.573576, 0.819152)` | 70° about +Z |
+| `leftLowerArm` | `(0, −0.087156, 0, 0.996195)` | 10° about −Y: the forearm bends slightly forward |
+| `rightLowerArm` | `(0, 0.087156, 0, 0.996195)` | 10° about +Y |
+
+Shoulders and hands rest at identity, so a hand hangs in line with its forearm. The rule
+is per bone and does not depend on the declaration: it applies to a sender that declared
+no `"bones"` at all and to one that sends `"bones"` without the arms (face tracking with
+head rotation). Without it both are rendered with the arms held out sideways. A sender
+that wants an arm in the T-pose sends the identity quaternion for it.
+
+A frame without a finger block is rendered with the rest hand of §5.5.
+
+### 3.4 Rotation sense of the leg bones (Normative)
+
+§3.1 already determines what every leg quaternion means. This section writes the result
+out, so that it does not have to be derived and so that it can be tested. It adds no rule
+that §3.1 does not imply; if the two ever disagree, §3.1 wins.
+
+**T-pose of the legs.** Legs straight and vertical, feet parallel, toes pointing +Z, soles
+flat on the floor.
+
+Each row is a rotation of that bone alone about one axis, starting from the T-pose:
+
+| Bone | Motion | Left | Right |
+|---|---|---|---|
+| `upperLeg` | flexion — thigh swings forward | −X | −X |
+| `upperLeg` | extension — thigh swings back | +X | +X |
+| `upperLeg` | abduction — leg moves away from the midline | +Z | −Z |
+| `upperLeg` | external rotation — knee and toes turn outward | +Y | −Y |
+| `lowerLeg` | knee flexion — heel moves toward the buttock | +X | +X |
+| `foot` | dorsiflexion — toes lift toward the shin | −X | −X |
+| `foot` | plantarflexion — toes point down | +X | +X |
+| `foot` | toe-out — foot turns outward about the vertical axis | +Y | −Y |
+| `foot` | eversion — outer edge of the foot lifts | +Z | −Z |
+| `toes` | extension — toes bend upward | −X | −X |
+| `toes` | flexion — toes curl downward | +X | +X |
+
+Motions about X have the same sign on both sides. Motions about Y and Z are mirrored,
+because "outward" is +X for the left leg and −X for the right.
+
+- A motion that combines several rows is still **one quaternion per bone**. Posy defines
+  no Euler order. A sender that starts from anatomical angles composes them itself and
+  transmits the result; the receiver applies the quaternion as is (§3.2).
+- The wire does not restrict a bone to anatomically possible rotations. A knee is a hinge
+  on a human; `lowerLeg` may still carry any rotation.
+- The hips quaternion (bit 0) rotates both leg chains with it (§3.1 item 5). Where the
+  hips sit above the floor is carried separately as `h` (§5.4, §8.5).
+
+`testvectors/poses/` holds one pose per table group and the seated and kneeling poses
+that a full-body sender must be able to express, each with the joint positions the
+quaternions produce on a reference skeleton. A wrong axis, sign, side or product order
+moves a joint by tens of centimetres there, which the frame vectors cannot detect.
 
 ---
 
@@ -396,7 +506,7 @@ decode every valid frame, whichever of the peer's types it chooses to render.
 ```
 Offset  Size  Field
 ------  ----  ---------------------------------------------
-  0      1    u8   version          (= 1)
+  0      1    u8   version          (= 2 in 1.2; the minor revision, §9)
   1      1    u8   flags
   2      2    u16  seq
   4      4    u32  timestamp_ms     (ms since session epoch)
@@ -509,20 +619,41 @@ why splay and thumb opposition are added rather than more curl bits.
   For the thumb, curl drives `thumbProximal` (60°) and `thumbDistal` (80°) only.
   Flexion is linear in the curl byte.
 
-- **Flexion axis:** in the VRM 1.0 normalized T-pose, rotation about the bone's local
-  axis aligned with **world +Z**, signed so that fingertips move toward **−Y** (into
-  the palm) on both hands. (Concretely: negative Z-rotation on the left hand, positive
-  on the right.)
+All axes below are the bone's local axes in the VRM 1.0 normalized T-pose, where they
+coincide with the avatar axes (§3.1 item 6). Angles follow the right-hand rule.
 
-- **Splay** (`−127` … `+127` → `−15°` … `+15°`) is applied to the **proximal joint
-  only**, about the bone's local axis aligned with world **+Y** in T-pose. Positive =
-  abduction toward the thumb side.
+- **Flexion axis, index to little finger:** **Z**, signed so that fingertips move toward
+  **−Y** (into the palm): negative Z-rotation on the left hand, positive on the right.
 
-- **Thumb opposition** (`0` … `255` → `0°` … `60°`) rotates `thumbMetacarpal` about the
-  world-**X**-aligned axis, bringing the thumb across the palm.
+- **Flexion axis, thumb:** **Y**, signed so that the thumb tip moves toward the fingers,
+  across the palm: positive Y-rotation on the left hand, negative on the right. The thumb
+  lies in the plane of the palm in the T-pose and points forward and outward; about Z it
+  would bend down and back toward the wrist, away from the palm.
+
+- **Splay** (`−127` … `+127` → `−15°` … `+15°`) is applied to the **proximal bone
+  only** (`thumbProximal` for the thumb, not `thumbMetacarpal`), about **Y**. Positive = abduction toward the thumb side: negative Y-rotation
+  on the left hand, positive on the right. For the thumb this is the axis of its flexion,
+  in the opposite sense: positive thumb splay opens the thumb away from the fingers.
+
+- **Order on the proximal bone**, which carries both: `q = q_splay · q_curl` (§3.1
+  item 5: the finger curls in the plane it was splayed into).
+
+- **Thumb opposition** (`0` … `255` → `0°` … `60°`) rotates `thumbMetacarpal` about
+  **X**, positive on both hands: the thumb moves toward −Y and under the palm.
 
 Receivers MUST synthesise the 30 finger bone rotations from this block. Senders MUST
 NOT also send finger bones via `bone_mask` in v1.
+
+**Rest hand.** When a frame carries no finger block, receivers MUST synthesise both hands
+from these values instead: curl `40, 50, 60, 70, 80` (thumb to little finger), all splay
+`0`, thumb opposition `40`. That is a relaxed hand, a little more closed toward the
+little finger. A sender that wants flat hands sends a finger block of zeros.
+
+`testvectors/poses/hand-skeleton.json` plus `f01`–`f07` pin this synthesis: each carries the
+curl / splay / opposition bytes and the joint positions they produce on a reference hand.
+A wrong flexion axis (the thumb about Z rather than Y), a flipped sign, or the wrong product
+order on a proximal bone moves a joint by a centimetre or more there, which the frame
+vectors cannot detect (§10 item 9).
 
 **Integration note.** The reduction from per-joint bone rotations to the curl/splay/
 opposition parameterisation is integration-layer work (sender-side). Posy intentionally
@@ -649,6 +780,10 @@ datacentre or fibre-grade uplink, not a home connection.
 - Senders MUST honour the `rate` message (§2.4).
 - Senders SHOULD set `IDLE` when no significant motion has occurred for 2 s and drop to
   `MINIMAL` until motion resumes.
+- A sender without tracking for a body part MAY transmit a pose or an animation of its
+  own choosing for it (seated, leaning, an idle loop) as ordinary bones and blocks of the
+  types it declared. To a receiver this is indistinguishable from tracked motion. A part
+  it does not transmit is shown in its rest state (§3.3).
 
 ---
 
@@ -666,6 +801,11 @@ datacentre or fibre-grade uplink, not a home connection.
   interpolation**, same timing.
 - Playout time MUST be derived from the audio clock of the same peer so that lips and
   voice remain aligned.
+- Receivers MAY apply a light low-pass filter (e.g. One-Euro) to the interpolated output
+  to round off the velocity discontinuities at frame boundaries. This is not a substitute
+  for sender-side filtering (§7): it cannot recover detail lost to downsampling, and it
+  adds latency on top of the jitter buffer (§8.1), so it SHOULD be weak and MUST be
+  optional.
 
 ### 8.3 Packet-loss concealment
 1. **0 – 250 ms gap:** continue the last motion with decaying angular velocity
@@ -718,9 +858,14 @@ legs, kneeling, lying down and jumping without any pose-specific rule on the rec
   lane (§1.1), which has no `RTCDataChannel`-style `protocol` string, the major
   version is carried by `protocol` in the `hello` handshake (§2.1) instead, and a mismatch is
   answered with a `BAD_VERSION` error.
-- The `version` byte carries the **minor** revision within a major version. Receivers
-  MUST accept any minor version with `version >> 4 == 0` for v1.x and MUST ignore
-  unknown flag bits and unknown `bone_mask` bits.
+- The `version` byte carries the **minor** revision of the spec release the sender
+  implements: a 1.y sender writes y. 1.2 writes 2. (1.0 and 1.1 both wrote 1.) The value
+  is 0–15 for every 1.x release, which is all that `version >> 4 == 0` tests; it does not
+  encode the major version, which is in the `protocol` string. Receivers MUST accept any
+  value 0–15 and MUST ignore unknown flag bits and unknown `bone_mask` bits. A receiver
+  MAY use the value to tell which revision's layout a frame follows while the soft lock
+  allows layout changes. If a minor revision above 15 were ever needed, releases continue
+  as patch releases of 1.15 and the byte stays 15.
 - **Soft lock.** While the format is soft-locked (see Status), a justified layout or
   signaling change ships as a 1.x revision under `posy/1`. Once the maintainers declare
   the format frozen, any such change requires `posy/2`.
@@ -739,6 +884,11 @@ An implementation is conformant if it:
 5. Never retransmits pose frames.
 6. Declares what it transmits (§2.1) and stays within the granted set.
 7. Honours server `allowed`, `rate` and `error` messages.
+8. If it sends or renders leg bones: reproduces the joint positions of the pose vectors
+   in `testvectors/poses/` within their tolerance (§3.4).
+9. If it renders fingers: synthesises the finger-bone rotations from the §5.5 block so that
+   the joint positions of the finger pose vectors (`testvectors/poses/f*.json`) are
+   reproduced within their tolerance (§5.5).
 
 ---
 
@@ -789,7 +939,7 @@ form of this table is `spec/blendshape-order.json`, generated by `scripts/genera
 bool posy_decode(const uint8_t *p, size_t len, Frame *out) {
     if (len < 16) return false;
     out->version   = p[0];
-    if ((out->version >> 4) != 0) return false;   // major v1 only
+    if ((out->version >> 4) != 0) return false;   // 1.x only: minor revision 0–15 (§9)
     out->flags     = p[1];
     out->seq       = rd_u16(p + 2);
     out->timestamp = rd_u32(p + 4);
@@ -857,8 +1007,8 @@ sender rule 3). It assumes that whatever part of the legs is lowest rests on the
 
 Per avatar, once, in the T-pose: for each contact point `c` — both feet (ankle), both
 toes if the avatar has them, both knees — record its clearance `clear[c]`, the height of
-that bone's origin above the floor line. For the knees use the shin radius instead, since
-a knee only touches the floor when kneeling.
+that bone's origin above the floor line. For the knees use the shin radius `r_shin`
+instead, since a knee only touches the floor when kneeling.
 
 Per frame, with the solved rotations applied and the hips at the origin:
 
@@ -866,11 +1016,16 @@ Per frame, with the solved rotations applied and the hips at the origin:
 h_est = 0
 for c in contacts:
     y = world_y(c)                 // ≤ 0 when the point is below the hips
-    h_est = max(h_est, clear[c] - y)
+    k = clear[c]
+    if c is a foot and its local +Y axis points below the horizontal:
+        k = r_shin                 // sole up: the foot rests on its instep
+    h_est = max(h_est, k - y)
 h = round(h_est / H * 32768)       // clamp to 0..65535
 ```
 
-In the T-pose this yields exactly `H`, so `h = 32768`.
+In the T-pose this yields exactly `H`, so `h = 32768`. The sole-up case is the kneeling
+pose with the insteps on the floor: the ankle then lies as low as the shin, and its T-pose
+clearance would put the hips too high by the difference.
 
 The estimate is wrong whenever nothing in the contact set touches the floor: both feet
 off the floor on a seat, or a jump. A sender that knows the performer is seated SHOULD

@@ -1,0 +1,247 @@
+{
+  "name": "f03-index-splay",
+  "description": "index proximal splayed to +127 on both hands, no curl. Splay about Y (−Y left, +Y right): the extended index tip moves toward the thumb side, +Z.",
+  "bytes": {
+    "left": {
+      "curl": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "splay": [
+        0,
+        127,
+        0,
+        0,
+        0
+      ],
+      "opposition": 0
+    },
+    "right": {
+      "curl": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "splay": [
+        0,
+        127,
+        0,
+        0,
+        0
+      ],
+      "opposition": 0
+    }
+  },
+  "expect": {
+    "wrist": [
+      0,
+      0,
+      0
+    ],
+    "leftIndexProximal": [
+      0.085,
+      0,
+      0.03
+    ],
+    "leftIndexIntermediate": [
+      0.123637,
+      0,
+      0.040353
+    ],
+    "leftIndexDistal": [
+      0.148751,
+      0,
+      0.047082
+    ],
+    "leftIndexTip": [
+      0.16807,
+      0,
+      0.052258
+    ],
+    "leftMiddleProximal": [
+      0.085,
+      0,
+      0.01
+    ],
+    "leftMiddleIntermediate": [
+      0.13,
+      0,
+      0.01
+    ],
+    "leftMiddleDistal": [
+      0.16,
+      0,
+      0.01
+    ],
+    "leftMiddleTip": [
+      0.182,
+      0,
+      0.01
+    ],
+    "leftRingProximal": [
+      0.085,
+      0,
+      -0.01
+    ],
+    "leftRingIntermediate": [
+      0.125,
+      0,
+      -0.01
+    ],
+    "leftRingDistal": [
+      0.153,
+      0,
+      -0.01
+    ],
+    "leftRingTip": [
+      0.173,
+      0,
+      -0.01
+    ],
+    "leftLittleProximal": [
+      0.085,
+      0,
+      -0.03
+    ],
+    "leftLittleIntermediate": [
+      0.117,
+      0,
+      -0.03
+    ],
+    "leftLittleDistal": [
+      0.139,
+      0,
+      -0.03
+    ],
+    "leftLittleTip": [
+      0.157,
+      0,
+      -0.03
+    ],
+    "leftThumbMetacarpal": [
+      0.015,
+      0,
+      0.036
+    ],
+    "leftThumbProximal": [
+      0.037627,
+      0,
+      0.058627
+    ],
+    "leftThumbDistal": [
+      0.058841,
+      0,
+      0.079841
+    ],
+    "leftThumbTip": [
+      0.076518,
+      0,
+      0.097518
+    ],
+    "rightIndexProximal": [
+      -0.085,
+      0,
+      0.03
+    ],
+    "rightIndexIntermediate": [
+      -0.123637,
+      0,
+      0.040353
+    ],
+    "rightIndexDistal": [
+      -0.148751,
+      0,
+      0.047082
+    ],
+    "rightIndexTip": [
+      -0.16807,
+      0,
+      0.052258
+    ],
+    "rightMiddleProximal": [
+      -0.085,
+      0,
+      0.01
+    ],
+    "rightMiddleIntermediate": [
+      -0.13,
+      0,
+      0.01
+    ],
+    "rightMiddleDistal": [
+      -0.16,
+      0,
+      0.01
+    ],
+    "rightMiddleTip": [
+      -0.182,
+      0,
+      0.01
+    ],
+    "rightRingProximal": [
+      -0.085,
+      0,
+      -0.01
+    ],
+    "rightRingIntermediate": [
+      -0.125,
+      0,
+      -0.01
+    ],
+    "rightRingDistal": [
+      -0.153,
+      0,
+      -0.01
+    ],
+    "rightRingTip": [
+      -0.173,
+      0,
+      -0.01
+    ],
+    "rightLittleProximal": [
+      -0.085,
+      0,
+      -0.03
+    ],
+    "rightLittleIntermediate": [
+      -0.117,
+      0,
+      -0.03
+    ],
+    "rightLittleDistal": [
+      -0.139,
+      0,
+      -0.03
+    ],
+    "rightLittleTip": [
+      -0.157,
+      0,
+      -0.03
+    ],
+    "rightThumbMetacarpal": [
+      -0.015,
+      0,
+      0.036
+    ],
+    "rightThumbProximal": [
+      -0.037627,
+      0,
+      0.058627
+    ],
+    "rightThumbDistal": [
+      -0.058841,
+      0,
+      0.079841
+    ],
+    "rightThumbTip": [
+      -0.076518,
+      0,
+      0.097518
+    ]
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "name": "p08-kneeling",
+  "description": "kneeling upright on both knees, shins and insteps on the floor",
+  "bones": [
+    {
+      "bit": 10,
+      "name": "leftLowerLeg",
+      "quat": [
+        0.707107,
+        0,
+        0,
+        0.707107
+      ]
+    },
+    {
+      "bit": 11,
+      "name": "leftFoot",
+      "quat": [
+        0.642788,
+        0,
+        0,
+        0.766044
+      ]
+    },
+    {
+      "bit": 14,
+      "name": "rightLowerLeg",
+      "quat": [
+        0.707107,
+        0,
+        0,
+        0.707107
+      ]
+    },
+    {
+      "bit": 15,
+      "name": "rightFoot",
+      "quat": [
+        0.642788,
+        0,
+        0,
+        0.766044
+      ]
+    }
+  ],
+  "hips_height": 0.5,
+  "h": 17617,
+  "expect": {
+    "leftUpperLeg": [
+      0.1,
+      -0.05,
+      0
+    ],
+    "leftLowerLeg": [
+      0.1,
+      -0.45,
+      0
+    ],
+    "leftFoot": [
+      0.1,
+      -0.45,
+      -0.4
+    ],
+    "leftToes": [
+      0.1,
+      -0.401901,
+      -0.530332
+    ],
+    "leftToeTip": [
+      0.1,
+      -0.41232,
+      -0.589421
+    ],
+    "rightUpperLeg": [
+      -0.1,
+      -0.05,
+      0
+    ],
+    "rightLowerLeg": [
+      -0.1,
+      -0.45,
+      0
+    ],
+    "rightFoot": [
+      -0.1,
+      -0.45,
+      -0.4
+    ],
+    "rightToes": [
+      -0.1,
+      -0.401901,
+      -0.530332
+    ],
+    "rightToeTip": [
+      -0.1,
+      -0.41232,
+      -0.589421
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 {
   "name": "posy-protocol",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Reference encoder/decoder for the Posy avatar pose protocol",
   "type": "module",
   "main": "dist/index.js",

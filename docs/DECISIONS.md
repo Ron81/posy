@@ -6,6 +6,137 @@ that commit messages and the spec text do not keep in one place.
 
 ---
 
+## 0004 — Rest rotation of absent arm bones and the rest hand
+
+**Date:** 2026-10-05 · **Status:** Proposed · **Affects:** §3.3, §5.5, §2.3, §7 (receiver behaviour; nothing on the wire)
+
+### Context
+
+§3.3 had one rule: an absent bone holds the identity quaternion, the T-pose. For spine,
+head and legs that is upright standing. For the arms it is arms held out sideways, and a
+missing finger block gave flat hands. Senders without arm tracking are a large group:
+face tracking with head rotation declares `"bones"` and sends only neck and head. The
+loopback demo showed them as scarecrows.
+
+### Decision
+
+An absent bone holds its rest rotation. That is the identity for every bone except
+`upperArm` (70° down) and `lowerArm` (10° forward) on both sides, given as literal
+quaternions in §3.3. A frame without a finger block is rendered with a fixed relaxed hand
+(§5.5). The rule is per bone and independent of the declaration. Idle poses and idle
+animations are transmitted by the sender as ordinary bones (§7).
+
+### Alternatives rejected
+
+- **The sender always transmits hanging arms.** No spec change, but 32 bytes per frame
+  for a constant, and every sending application has to know to do it.
+- **A rest pose only for a type the peer did not declare.** It misses the main case:
+  a face tracker with head rotation declares `"bones"`.
+- **A receiver-chosen idle pose.** Two receivers would show the same sender differently.
+- **An idle pose or a "play animation X" command in signaling.** Animations are not part
+  of VRM or PMX avatar files, so it needs file distribution, a format per avatar type,
+  timing and blending rules. Recorded as a possible later use of declared extras.
+
+### Consequences
+
+- A sender that wants the T-pose or flat hands has to send it; absence no longer means it.
+- A tracker that loses an arm sees it sink to the side after the concealment window
+  (§8.3) instead of snapping outward.
+- The angles are a choice, not derived. They were set on the loopback demo; other avatar
+  types may want different ones.
+
+---
+
+## 0003 — The version byte is the minor revision
+
+**Date:** 2026-10-05 · **Status:** Proposed · **Affects:** §5.1, §9, §1.2 (byte 0 of every frame)
+
+### Context
+
+The spec described byte 0 three ways: §5.1 `version (= 1)`, §9 "carries the minor
+revision", and §1.2 / Appendix B `version >> 4 == 0` commented as "major v1". 1.0 and 1.1
+both wrote 1, so the byte matched the minor revision in 1.1 only by coincidence, and no
+single reading satisfied all three sentences.
+
+### Decision
+
+The byte is the minor revision of the spec release the sender implements. 1.2 writes 2,
+1.3 writes 3. The value is 0–15 for every 1.x release; `version >> 4 == 0` tests exactly
+that and says nothing about the major version, which stays in the `protocol` string. If a
+minor revision above 15 were needed, releases continue as patch releases of 1.15.
+
+### Alternatives rejected
+
+- **A layout counter** that rises only when the frame layout changes. Frame vectors would
+  not change with every release, but the number would no longer say which spec text a
+  sender follows, and a reader would need a table to map it to a release.
+- **Two nibbles, `(major << 4) | minor`, with major stored as 0 for v1.** It explains the
+  existing check, but "v1 is stored as 0" is a trap, and the major version already has a
+  place.
+
+### Consequences
+
+- Byte 0 of every frame vector changes with each minor release, and only there.
+- Decoders do not change: any value 0–15 was and is accepted.
+- A receiver can tell which revision's layout a frame follows, which matters while the
+  soft lock allows layout changes.
+
+---
+
+## 0002 — Thumb flexion axis, and stated signs for splay and opposition
+
+**Date:** 2026-10-04 · **Status:** Proposed · **Affects:** §5.5 (finger block)
+
+### Context
+
+§5.5 gave one flexion axis for all five fingers: Z, fingertips toward −Y. For splay and
+thumb opposition it gave an axis and a description ("toward the thumb side", "across the
+palm") but no sign per hand, and it did not say in which order curl and splay combine on
+the proximal joint.
+
+The first receiver written from that text (loopback demo, on VRM 1.0 and VRM 0.x models
+through three-vrm 3.5.5) showed two things:
+
+- The four fingers curl into the palm as described.
+- The thumb does not. In the T-pose the thumb lies in the plane of the palm and points
+  forward and outward. A rotation about Z bends it down and, at full curl, back toward
+  the wrist. Measured on one model: the thumb tip moves from 7.2 cm to 9.4 cm from the
+  base of the index finger. A closing hand showed the thumb sticking out.
+
+### Decision
+
+- Thumb flexion (`thumbProximal`, `thumbDistal`) is about Y: positive on the left hand,
+  negative on the right. Same model, same curl: the thumb tip ends 2.6 cm from the base
+  of the index finger, and a full curl with half opposition gives a closed fist.
+- Splay sign: negative Y on the left hand, positive on the right.
+- Opposition sign: positive X on both hands.
+- Proximal joint: `q = q_splay · q_curl`.
+
+No byte changes. The meaning of `thumb_curl` changes.
+
+### Alternatives rejected
+
+- **Leave the thumb on Z.** One rule for five fingers is simpler to state, but no hand
+  closes that way, and every sender would have to distort its thumb values to
+  compensate.
+- **Leave the signs as prose.** Two receivers can read "toward the thumb side"
+  differently and both conform; the frame vectors compare bytes and cannot tell.
+- **A per-avatar thumb axis taken from the model's rest pose.** More faithful on models
+  whose thumb is not in the palm plane, but the receiver would have to derive an axis per
+  model, and sender and receiver would have to derive the same one.
+
+### Consequences
+
+- A fist, a pinch and a thumbs-up can be expressed with curl and opposition alone.
+- Thumb splay and thumb curl share an axis on `thumbProximal`, in opposite senses. They
+  stay distinguishable: curl also drives `thumbDistal`, splay does not.
+- On a model whose T-pose thumb is rotated out of the palm plane (seen on one VRM 0.x
+  model) the thumb closes less cleanly. Accepted.
+- Not yet pinned by a test vector. A finger pose vector in the manner of
+  `testvectors/poses/` is the open follow-up.
+
+---
+
 ## 0001 — Hips height on the wire (full-body grounding)
 
 **Date:** 2026-10-03 · **Status:** Accepted · **Affects:** §5.4 (root block), §8.5
@@ -62,8 +193,9 @@ Length impact: typical frame 116 → 118 B, Perfect-Sync 152 → 154 B, largest 
   every receiver. Rejected as too heavy for a protocol whose model is "render the sender's
   avatar as the sender grounded it."
 - **D — profile-conditional `z` (z means height only in the full-body profile).** The only
-  in-1.x path that reused a field, but ambiguous and deferred rather than adopted; recorded
-  in §11 as a possible future option, not part of 1.1.0.
+  in-1.x path that reused a field, but ambiguous: the same bytes would mean depth or height
+  depending on session state. Rejected. The 1.1.0 draft listed it in §11 as a future
+  option; it was removed from §11 together with `root_height_mm` when `h` was adopted.
 
 ### Consequences
 

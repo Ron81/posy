@@ -1,0 +1,100 @@
+{
+  "name": "p07-seated-ankle-on-knee",
+  "description": "seated, right foot on the floor, left ankle resting on the right knee",
+  "bones": [
+    {
+      "bit": 9,
+      "name": "leftUpperLeg",
+      "quat": [
+        -0.603942,
+        0.612293,
+        -0.422885,
+        0.285517
+      ]
+    },
+    {
+      "bit": 10,
+      "name": "leftLowerLeg",
+      "quat": [
+        0.843391,
+        0,
+        0,
+        0.5373
+      ]
+    },
+    {
+      "bit": 13,
+      "name": "rightUpperLeg",
+      "quat": [
+        -0.707107,
+        0,
+        0,
+        0.707107
+      ]
+    },
+    {
+      "bit": 14,
+      "name": "rightLowerLeg",
+      "quat": [
+        0.707107,
+        0,
+        0,
+        0.707107
+      ]
+    }
+  ],
+  "hips_height": 0.53,
+  "h": 18674,
+  "expect": {
+    "leftUpperLeg": [
+      0.1,
+      -0.05,
+      0
+    ],
+    "leftLowerLeg": [
+      0.299239,
+      -0.015138,
+      0.345092
+    ],
+    "leftFoot": [
+      -0.096891,
+      0.032841,
+      0.373006
+    ],
+    "leftToes": [
+      -0.155678,
+      0.059489,
+      0.496026
+    ],
+    "leftToeTip": [
+      -0.150411,
+      0.068615,
+      0.555094
+    ],
+    "rightUpperLeg": [
+      -0.1,
+      -0.05,
+      0
+    ],
+    "rightLowerLeg": [
+      -0.1,
+      -0.05,
+      0.4
+    ],
+    "rightFoot": [
+      -0.1,
+      -0.45,
+      0.4
+    ],
+    "rightToes": [
+      -0.1,
+      -0.52,
+      0.52
+    ],
+    "rightToeTip": [
+      -0.1,
+      -0.52,
+      0.58
+    ]
+  }
+}

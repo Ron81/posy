@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Posy transmission quality demo</title>
+    <title>Posy transmission demo</title>
     <style>
       :root {
         --bg: #12131a;
@@ -58,6 +58,12 @@
       }
       .preset:hover { border-color: var(--accent); }
       .preset.active { border-color: var(--accent); color: var(--accent); }
+      .preset.now { border-style: dashed; border-color: var(--accent); }
+      .caps { border-collapse: collapse; margin: 10px 24px 8px; font-size: 13px; }
+      .caps th, .caps td { text-align: left; padding: 4px 22px 4px 0; border-bottom: 1px solid var(--line); }
+      .caps th { color: var(--muted); font-weight: 600; }
+      .caps td.y { color: #86efac; }
+      .caps td.n, .caps tr.off td:first-child { color: var(--muted); }
       .ctl { display: flex; flex-direction: column; gap: 4px; min-width: 180px; }
       .ctl label { font-size: 13px; color: var(--muted); }
       .ctl output { font: 600 14px var(--mono); color: var(--accent); }
@@ -72,7 +78,7 @@
       }
       .compare b { color: var(--accent); font-weight: 600; }
       .explainer {
-        margin: 0; padding: 0 24px 20px; max-width: 80ch;
+        margin: 0; padding: 0 24px 14px; max-width: 80ch;
         color: var(--muted); font-size: 13px; line-height: 1.6;
       }
       .explainer b { color: var(--ink); font-weight: 600; }
@@ -93,73 +99,177 @@
       footer .thanks p { margin: 0; }
       footer a { color: var(--accent); }
       code { font-family: var(--mono); color: var(--ink); }
+      [hidden] { display: none !important; }
+      /* Layout: avatars on top, every control in one strip directly below. */
+      header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; padding: 10px 24px 6px; }
+      header h1 { margin: 0; font-size: 17px; }
+      header p { max-width: none; font-size: 13px; }
+      .stage { margin: 4px 0 0; }
+      .panel canvas { height: 54vh; min-height: 260px; }
+      .strip {
+        display: grid; grid-template-columns: 1.2fr 1.2fr 1fr; gap: 6px 32px;
+        padding: 10px 24px 6px; align-items: start;
+      }
+      @media (max-width: 1100px) { .strip { grid-template-columns: 1fr; } }
+      .strip h2 {
+        margin: 0 0 6px; font: 600 11px/1 var(--mono);
+        letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted);
+      }
+      .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 8px; }
+      .row .lbl { color: var(--muted); font-size: 13px; min-width: 52px; }
+      .row .preset { padding: 4px 11px; font-size: 12.5px; }
+      .row select {
+        background: #242736; color: var(--ink); border: 1px solid var(--line);
+        border-radius: 8px; padding: 5px 8px; font-size: 13px; max-width: 100%;
+      }
+      .row #pose { flex: 1 1 0; min-width: 0; }
+      .row .now { color: var(--accent); font-size: 12px; }
+      .chip {
+        font-size: 11.5px; line-height: 1; padding: 4px 8px; border-radius: 999px;
+        border: 1px solid var(--line); color: var(--muted); white-space: nowrap;
+      }
+      .chip.on { color: #86efac; border-color: #2f5d43; }
+      .sliders { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+      .sliders .ctl { min-width: 0; }
+      .strip .stats { padding: 0; gap: 4px 18px; font-size: 12.5px; }
+      .strip .compare { padding: 4px 0 0; font-size: 12px; }
+      .file .note { margin-top: 0; }
+      details { padding: 0 24px 6px; color: var(--muted); font-size: 13px; line-height: 1.6; max-width: 110ch; }
+      details summary { cursor: pointer; color: var(--ink); padding: 2px 0; }
+      details p { margin: 6px 0; }
+      details b { color: var(--ink); font-weight: 600; }
+      details .caps { margin: 8px 0; }
     </style>
   </head>
   <body>
     <header>
-      <h1>Posy transmission quality demo</h1>
-      <p>
-        A pose is generated, <code>encode()</code>d to Posy wire bytes, pushed through a
-        simulated lossy channel, then <code>decode()</code>d and rendered. No server, no signup —
-        everything runs in this tab. Turn up loss and jitter and watch the right-hand avatar suffer.
-      </p>
+      <h1>Posy transmission demo</h1>
+      <p>Left: what you do. Right: what the room sees — only what you declared, after a lossy channel. Runs entirely in this tab.</p>
     </header>
 
     <div class="stage">
       <div class="panel">
-        <span class="tag">sender · ground truth</span>
+        <span class="tag">you · the full performance</span>
         <canvas id="sender"></canvas>
       </div>
       <div class="panel">
-        <span class="tag">receiver · after the channel</span>
+        <span class="tag">the room · what you declared, after the channel</span>
         <canvas id="receiver"></canvas>
       </div>
     </div>
 
-    <div class="stats">
-      <span>frame: <b><span id="stat-bytes">–</span> B</b></span>
-      <span>rate: <b><span id="stat-hz">–</span> FPS</b></span>
-      <span>bitrate: <b><span id="stat-bitrate">–</span> kbit/s</b></span>
-      <span>delivered: <b><span id="stat-delivered">–</span></b> / dropped: <b><span id="stat-dropped">–</span></b></span>
-    </div>
-    <p class="compare" id="stat-compare">&nbsp;</p>
+    <div class="strip">
+      <section>
+        <h2>Send</h2>
+        <div class="row" id="trackers"><span class="lbl">Tracker</span></div>
+        <div class="row">
+          <label class="lbl" for="pose">Pose</label>
+          <select id="pose"></select>
+          <select id="look" title="Camera close-up, both views" aria-label="Camera close-up">
+            <option value="auto">View: auto</option>
+            <option value="full">Whole body</option>
+            <option value="hands">Hands</option>
+            <option value="feet">Feet</option>
+            <option value="head">Face</option>
+          </select>
+          <span class="now" id="pose-now"></span>
+        </div>
+        <div class="row" id="chips"><span class="lbl" id="chips-label">Sent</span></div>
+      </section>
 
-    <div class="presets">
-      <span class="presets-label">Connection:</span>
-      <button type="button" class="preset" data-preset="excellent">Excellent · fibre</button>
-      <button type="button" class="preset" data-preset="standard">Standard · good</button>
-      <button type="button" class="preset" data-preset="countryside">Countryside</button>
-      <button type="button" class="preset" data-preset="nosignal">NoSignalNation</button>
+      <section>
+        <h2>Connection</h2>
+        <div class="row">
+          <button type="button" class="preset" data-preset="excellent">Excellent · fibre</button>
+          <button type="button" class="preset" data-preset="standard">Standard · good</button>
+          <button type="button" class="preset" data-preset="countryside">Countryside</button>
+          <button type="button" class="preset" data-preset="nosignal">NoSignalNation</button>
+        </div>
+        <div class="sliders">
+          <div class="ctl">
+            <label for="loss">Packet loss — <output id="loss-out">0%</output></label>
+            <input id="loss" type="range" min="0" max="80" step="1" value="0" />
+          </div>
+          <div class="ctl">
+            <label for="jitter">Jitter — <output id="jitter-out">0 ms</output></label>
+            <input id="jitter" type="range" min="0" max="300" step="5" value="0" />
+          </div>
+          <div class="ctl">
+            <label for="rate">Send rate — <output id="rate-out">30 FPS</output></label>
+            <input id="rate" type="range" min="5" max="60" step="5" value="30" />
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2>Avatar and result</h2>
+        <div class="row file">
+          <label class="fake" for="vrm">Load your own .vrm…</label>
+          <input id="vrm" type="file" accept=".vrm,model/gltf-binary" />
+          <button type="button" class="fake" id="vrm-unload" hidden>Back to stick figure</button>
+          <span class="note" id="vrm-note">Optional. Built-in stick figure is used by default. Nothing is uploaded.</span>
+        </div>
+        <div class="stats">
+          <span>frame: <b><span id="stat-bytes">–</span> B</b></span>
+          <span>rate: <b><span id="stat-hz">–</span> FPS</b></span>
+          <span>bitrate: <b><span id="stat-bitrate">–</span> kbit/s</b></span>
+          <span>delivered: <b><span id="stat-delivered">–</span></b> / dropped: <b><span id="stat-dropped">–</span></b></span>
+        </div>
+        <p class="compare" id="stat-compare">&nbsp;</p>
+      </section>
     </div>
 
-    <div class="controls">
-      <div class="ctl">
-        <label for="loss">Packet loss — <output id="loss-out">0%</output></label>
-        <input id="loss" type="range" min="0" max="80" step="1" value="0" />
-      </div>
-      <div class="ctl">
-        <label for="jitter">Jitter — <output id="jitter-out">0 ms</output></label>
-        <input id="jitter" type="range" min="0" max="300" step="5" value="0" />
-      </div>
-      <div class="ctl">
-        <label for="rate">Send rate — <output id="rate-out">30 FPS</output></label>
-        <input id="rate" type="range" min="5" max="60" step="5" value="30" />
-      </div>
-      <div class="ctl file">
-        <label class="fake" for="vrm">Load your own .vrm…</label>
-        <input id="vrm" type="file" accept=".vrm,model/gltf-binary" />
-        <button type="button" class="fake" id="vrm-unload" hidden>Back to stick figure</button>
-        <span class="note" id="vrm-note">Optional. Built-in stick figure is used by default. Nothing is uploaded.</span>
-      </div>
-    </div>
-
-    <p class="explainer">
-      <b>Send rate</b> is how many pose frames leave the sender each second (FPS).
-      Spec tiers: <b>30 FPS</b> (FULL) looks smooth; <b>15 FPS</b> (NORMAL) still looks
-      fine because the receiver interpolates between frames; <b>5 FPS</b> (MINIMAL) is the
-      readable floor. 15 FPS and up is a good experience — going higher mostly costs
-      bandwidth for little visible gain. (The spec calls this rate in Hz; it's the same number.)
-    </p>
+    <details>
+      <summary>What is transmitted, and why</summary>
+      <table class="caps">
+        <thead>
+          <tr><th>Data</th><th>Tracker delivers</th><th>Avatar can show</th><th>Transmitted</th></tr>
+        </thead>
+        <tbody id="caps-body"></tbody>
+      </table>
+      <p>
+        A part is transmitted only if the tracker delivers it <b>and</b> the avatar can show it
+        (spec §2.1). That set is declared once as <code>caps.sends</code> = <code id="sends"></code>.
+        Everything else stays in its rest pose on the right and costs no bytes. The right-hand
+        camera frames the declared region. The stick figure has a part for every data type:
+        fingers, one toe piece per foot, lids, mouth, tongue and pupils. What a loaded model
+        can show is read from the model. Finger joints are worked out on the receiving side
+        from the finger block (spec §5.5); the face comes from the expression block (§5.6).
+      </p>
+    </details>
+    <details>
+      <summary>About the poses, hips height and send rate</summary>
+      <p>
+        <b>Poses.</b> Whole-body poses written as joint angles in the spec's conventions (§3.4).
+        "Auto" cycles through them. The last group holds the conformance pose vectors from
+        <code>testvectors/poses</code>, legs only.
+      </p>
+      <p>
+        <b>Hands, feet and face.</b> "Count to ten" raises one hand and opens it finger by
+        finger, thumb first, then the other hand. "Toes" lifts the toes of each foot, then
+        stands on tiptoe. "Face" goes through the lids, the mouth shapes, the tongue and the
+        gaze one at a time; the step that is on is named next to the selector. The view
+        selector moves both cameras close to the hands, the feet or the face; on "auto" these
+        three poses do that themselves. On a model, the toes are easiest to see barefoot, and
+        the tongue direction has nothing to drive: only the stick figure shows it.
+      </p>
+      <p>
+        <b>What moves.</b> In every pose the hands and the face do what fits it: hands hang
+        relaxed, lie flat on the lap, grip the hips or open for a wave; the mouth moves when
+        the pose speaks or shouts. Otherwise only the lids blink and the eyes follow the head.
+      </p>
+      <p>
+        <b>Hips height.</b> The sender estimates how high the hips are from the lowest point of the
+        legs (spec Appendix D) and transmits it as <code>h</code>. On the high stool and in the air
+        nothing touches the floor, so those poses supply the height themselves.
+      </p>
+      <p>
+        <b>Send rate</b> is how many pose frames leave the sender each second (FPS).
+        Spec tiers: <b>30 FPS</b> (FULL) looks smooth; <b>15 FPS</b> (NORMAL) still looks
+        fine because the receiver interpolates between frames; <b>5 FPS</b> (MINIMAL) is the
+        readable floor. (The spec calls this rate in Hz; it's the same number.)
+      </p>
+    </details>
 
     <footer>
       <h2>Thanks to the projects this demo stands on</h2>

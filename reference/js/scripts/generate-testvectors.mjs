@@ -3,11 +3,13 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { encode, packQuat, BONE_NAMES } from '../dist/index.js';
+import { encode, packQuat, BONE_NAMES, VERSION } from '../dist/index.js';
+import { fk, mul } from './pose-fk.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const TV = resolve(HERE, '../../../testvectors');
 mkdirSync(join(TV, 'frames'), { recursive: true });
+mkdirSync(join(TV, 'poses'), { recursive: true });
 
 const hex = (u8) => [...u8].map((b) => b.toString(16).padStart(2, '0')).join(' ');
 const u64hex = (bits) => {
@@ -83,7 +85,7 @@ function writeReject(name, description, bytes, reason) {
 const v001 = writeAccept(
   '001-minimal',
   'one bone (hips, identity), nothing else',
-  { version: 1, seq: 1, timestampMs: 0, idle: false, bones: new Map([[0, idQuat]]) },
+  { version: VERSION, seq: 1, timestampMs: 0, idle: false, bones: new Map([[0, idQuat]]) },
   { flags: 0 },
 );
 
@@ -95,7 +97,7 @@ const v001 = writeAccept(
     '002-fullbody-standard',
     '22 bones (spine/head + legs + toes + both arms), root + fingers + Standard-Sync face',
     {
-      version: 1,
+      version: VERSION,
       seq: 2,
       timestampMs: 33,
       idle: false,
@@ -121,7 +123,7 @@ const v001 = writeAccept(
     '003-perfectsync',
     '13 bones + root + fingers + Perfect-Sync (52 ARKit weights = i*5 mod 256)',
     {
-      version: 1,
+      version: VERSION,
       seq: 3,
       timestampMs: 66,
       idle: false,
@@ -170,7 +172,7 @@ writeReject('004d-length-too-short', 'a 15-byte buffer (< 16)', new Uint8Array(1
   ];
   const bones = new Map(cases);
   writeAccept('005-quat-edgecases', 'identity, its negation, ties, near 1/sqrt2, 180 deg, tiny angle', {
-    version: 1,
+    version: VERSION,
     seq: 5,
     timestampMs: 0,
     idle: false,
@@ -183,7 +185,7 @@ writeReject('004d-length-too-short', 'a 15-byte buffer (< 16)', new Uint8Array(1
 {
   const buf = new Uint8Array(24);
   const dv = new DataView(buf.buffer);
-  dv.setUint8(0, 1);
+  dv.setUint8(0, VERSION);
   dv.setUint8(1, 0);
   dv.setUint16(2, 6, true);
   dv.setUint32(4, 0, true);
@@ -197,7 +199,7 @@ writeReject('004d-length-too-short', 'a 15-byte buffer (< 16)', new Uint8Array(1
     expect: 'accept',
     bytes_hex: hex(buf),
     frame: {
-      version: 1,
+      version: VERSION,
       flags: 0,
       seq: 6,
       timestamp_ms: 0,
@@ -228,19 +230,13 @@ writeReject('004d-length-too-short', 'a 15-byte buffer (< 16)', new Uint8Array(1
     q[axis] = Math.sin(h);
     return q;
   };
-  const mul = (a, b) => ({
-    x: a.w * b.x + a.x * b.w + a.y * b.z - a.z * b.y,
-    y: a.w * b.y - a.x * b.z + a.y * b.w + a.z * b.x,
-    z: a.w * b.z + a.x * b.y - a.y * b.x + a.z * b.w,
-    w: a.w * b.w - a.x * b.x - a.y * b.y - a.z * b.z,
-  });
   const bones = new Map([
     [0, rot('x', -10)], // hips
     [1, rot('x', 5)], // spine
     [2, idQuat], // chest
     [4, idQuat], // neck
     [5, rot('y', 15)], // head
-    [9, mul(rot('y', -60), rot('x', -80))], // leftUpperLeg: raised and turned out
+    [9, mul(rot('y', -60), rot('x', -80))], // leftUpperLeg: raised, then swung across the body
     [10, rot('x', 95)], // leftLowerLeg
     [11, rot('x', -10)], // leftFoot
     [12, rot('x', 20)], // leftToes
@@ -266,7 +262,7 @@ writeReject('004d-length-too-short', 'a 15-byte buffer (< 16)', new Uint8Array(1
     '007-fullbody-legs',
     '21 bones with non-identity legs and toes, root with h = 0.55 (seated), fingers, Standard-Sync with tongue',
     {
-      version: 1,
+      version: VERSION,
       seq: 7,
       timestampMs: 100,
       idle: false,
@@ -343,4 +339,104 @@ writeReject('004d-length-too-short', 'a 15-byte buffer (< 16)', new Uint8Array(1
   }
   writeFileSync(join(TV, 'quaternions.csv'), rows.map((r) => r.join(',')).join('\n') + '\n');
   console.log(`wrote  quaternions.csv  (${rows.length - 1} rows)`);
+}
+
+/* poses/: leg rotation sense (spec §3.4). Each pose is a set of parent-relative
+   quaternions on the reference skeleton plus the joint positions they must produce.
+   A wrong axis, sign, side or composition order moves a joint by tens of centimetres. */
+{
+  const rot = (axis, deg) => {
+    const h = (deg * Math.PI) / 360;
+    const q = { x: 0, y: 0, z: 0, w: Math.cos(h) };
+    q[axis] = Math.sin(h);
+    return q;
+  };
+  const seq = (...parts) => parts.reduce(mul); // leftmost is outermost (applied last)
+
+  // Reference skeleton: T-pose offsets from the parent joint, metres. Left is +X.
+  const leg = (side, sx) => [
+    { name: `${side}UpperLeg`, parent: 'hips', offset: [0.1 * sx, -0.05, 0] },
+    { name: `${side}LowerLeg`, parent: `${side}UpperLeg`, offset: [0, -0.4, 0] },
+    { name: `${side}Foot`, parent: `${side}LowerLeg`, offset: [0, -0.4, 0] },
+    { name: `${side}Toes`, parent: `${side}Foot`, offset: [0, -0.07, 0.12] },
+    { name: `${side}ToeTip`, parent: `${side}Toes`, offset: [0, 0, 0.06] },
+  ];
+  const joints = [{ name: 'hips', parent: null, offset: [0, 0, 0] }, ...leg('left', 1), ...leg('right', -1)];
+  const skeleton = {
+    description:
+      'Reference skeleton for the pose vectors. VRM 1.0 normalized space: right-handed, Y up, facing +Z, left = +X. Offsets are from the parent joint in the T-pose, in metres. ToeTip joints are end points, not bones.',
+    standing_hip_height: 0.93,
+    joints,
+  };
+  writeFileSync(join(TV, 'poses', 'skeleton.json'), JSON.stringify(skeleton, null, 2) + '\n');
+
+  const r6 = (n) => Math.round(n * 1e6) / 1e6 + 0; // + 0 turns -0 into 0
+  const bitOf = (name) => BONE_NAMES.indexOf(name);
+
+  function writePose(name, description, pose, hipsHeight) {
+    const pos = fk(joints, pose);
+    const json = {
+      name,
+      description,
+      bones: Object.keys(pose)
+        .sort((a, b) => bitOf(a) - bitOf(b))
+        .map((bone) => ({ bit: bitOf(bone), name: bone, quat: ['x', 'y', 'z', 'w'].map((k) => r6(pose[bone][k])) })),
+      // hips height above the floor in metres, and the root-block value it encodes to (§5.4)
+      hips_height: hipsHeight,
+      h: Math.round((hipsHeight / skeleton.standing_hip_height) * 32768),
+      // joint positions relative to the hips, metres
+      expect: Object.fromEntries(joints.filter((j) => j.parent !== null).map((j) => [j.name, pos[j.name].map(r6)])),
+    };
+    writeFileSync(join(TV, 'poses', `${name}.json`), JSON.stringify(json, null, 2) + '\n');
+    console.log(`wrote  poses/${name}.json`);
+  }
+
+  // Single-axis anchors: one row of the §3.4 table each, left and right where they differ.
+  writePose('p01-hip-flexion', 'left thigh raised forward 90 deg (leftUpperLeg -X); right leg in T-pose', {
+    leftUpperLeg: rot('x', -90),
+  }, 0.93);
+  writePose('p02-knee-flexion', 'left knee bent 90 deg, shin pointing back (leftLowerLeg +X)', {
+    leftLowerLeg: rot('x', 90),
+  }, 0.93);
+  writePose('p03-hip-abduction', 'both legs spread 30 deg outward (leftUpperLeg +Z, rightUpperLeg -Z)', {
+    leftUpperLeg: rot('z', 30),
+    rightUpperLeg: rot('z', -30),
+  }, 0.823);
+  writePose('p04-hip-external-rotation', 'both legs turned out 45 deg, toes pointing outward (leftUpperLeg +Y, rightUpperLeg -Y)', {
+    leftUpperLeg: rot('y', 45),
+    rightUpperLeg: rot('y', -45),
+  }, 0.93);
+  writePose('p05-ankle-and-toes', 'standing on the right tiptoe: rightFoot +X 30 deg (plantarflexion), rightToes -X 30 deg (extension, toes flat on the floor); left foot off the floor, dorsiflexed 20 deg (leftFoot -X) with toes extended 30 deg (leftToes -X)', {
+    leftFoot: rot('x', -20),
+    leftToes: rot('x', -30),
+    rightFoot: rot('x', 30),
+    rightToes: rot('x', -30),
+  }, 0.981);
+
+  // Named poses from the 1.1.0 requirements.
+  const seatedLeft = { leftUpperLeg: rot('x', -90), leftLowerLeg: rot('x', 90) };
+  const seatedRight = { rightUpperLeg: rot('x', -90), rightLowerLeg: rot('x', 90) };
+  writePose('p06-seated-crossed-legs', 'seated, left foot on the floor, right thigh crossed over the left knee', {
+    ...seatedLeft,
+    rightUpperLeg: seq(rot('y', 25), rot('x', -100)),
+    rightLowerLeg: rot('x', 80),
+    rightFoot: rot('x', 20),
+  }, 0.53);
+  writePose('p07-seated-ankle-on-knee', 'seated, right foot on the floor, left ankle resting on the right knee', {
+    ...seatedRight,
+    leftUpperLeg: seq(rot('y', 30), rot('x', -95), rot('y', 100)),
+    leftLowerLeg: rot('x', 115),
+  }, 0.53);
+  writePose('p08-kneeling', 'kneeling upright on both knees, shins and insteps on the floor', {
+    leftLowerLeg: rot('x', 90),
+    rightLowerLeg: rot('x', 90),
+    leftFoot: rot('x', 80),
+    rightFoot: rot('x', 80),
+  }, 0.5);
+  writePose('p09-seated-feet-off-floor', 'seated on a high stool, both feet hanging clear of the floor', {
+    leftUpperLeg: rot('x', -80),
+    leftLowerLeg: rot('x', 70),
+    rightUpperLeg: rot('x', -80),
+    rightLowerLeg: rot('x', 85),
+  }, 0.75);
 }

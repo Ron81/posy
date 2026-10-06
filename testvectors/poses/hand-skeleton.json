@@ -1,0 +1,374 @@
+{
+  "description": "Finger test-fixture hand for the §5.5 pose vectors. VRM 1.0 normalized space: right-handed, Y up, +Z forward, left = +X. Both hands rest at identity (T-pose): palm down, index–little along ±X, thumb forward-and-outward in the palm plane. Tip joints are end points, not bones. A test fixture with round numbers, not a VRM standard; a check against a real model compares fingertip directions, not positions.",
+  "joints": [
+    {
+      "name": "wrist",
+      "parent": null,
+      "offset": [
+        0,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "leftIndexProximal",
+      "parent": "wrist",
+      "offset": [
+        0.085,
+        0,
+        0.03
+      ]
+    },
+    {
+      "name": "leftIndexIntermediate",
+      "parent": "leftIndexProximal",
+      "offset": [
+        0.04,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "leftIndexDistal",
+      "parent": "leftIndexIntermediate",
+      "offset": [
+        0.026,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "leftIndexTip",
+      "parent": "leftIndexDistal",
+      "offset": [
+        0.02,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "leftMiddleProximal",
+      "parent": "wrist",
+      "offset": [
+        0.085,
+        0,
+        0.01
+      ]
+    },
+    {
+      "name": "leftMiddleIntermediate",
+      "parent": "leftMiddleProximal",
+      "offset": [
+        0.045,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "leftMiddleDistal",
+      "parent": "leftMiddleIntermediate",
+      "offset": [
+        0.03,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "leftMiddleTip",
+      "parent": "leftMiddleDistal",
+      "offset": [
+        0.022,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "leftRingProximal",
+      "parent": "wrist",
+      "offset": [
+        0.085,
+        0,
+        -0.01
+      ]
+    },
+    {
+      "name": "leftRingIntermediate",
+      "parent": "leftRingProximal",
+      "offset": [
+        0.04,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "leftRingDistal",
+      "parent": "leftRingIntermediate",
+      "offset": [
+        0.028,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "leftRingTip",
+      "parent": "leftRingDistal",
+      "offset": [
+        0.02,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "leftLittleProximal",
+      "parent": "wrist",
+      "offset": [
+        0.085,
+        0,
+        -0.03
+      ]
+    },
+    {
+      "name": "leftLittleIntermediate",
+      "parent": "leftLittleProximal",
+      "offset": [
+        0.032,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "leftLittleDistal",
+      "parent": "leftLittleIntermediate",
+      "offset": [
+        0.022,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "leftLittleTip",
+      "parent": "leftLittleDistal",
+      "offset": [
+        0.018,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "leftThumbMetacarpal",
+      "parent": "wrist",
+      "offset": [
+        0.015,
+        0,
+        0.036
+      ]
+    },
+    {
+      "name": "leftThumbProximal",
+      "parent": "leftThumbMetacarpal",
+      "offset": [
+        0.022627416997969524,
+        0,
+        0.022627416997969524
+      ]
+    },
+    {
+      "name": "leftThumbDistal",
+      "parent": "leftThumbProximal",
+      "offset": [
+        0.021213203435596427,
+        0,
+        0.021213203435596427
+      ]
+    },
+    {
+      "name": "leftThumbTip",
+      "parent": "leftThumbDistal",
+      "offset": [
+        0.01767766952966369,
+        0,
+        0.01767766952966369
+      ]
+    },
+    {
+      "name": "rightIndexProximal",
+      "parent": "wrist",
+      "offset": [
+        -0.085,
+        0,
+        0.03
+      ]
+    },
+    {
+      "name": "rightIndexIntermediate",
+      "parent": "rightIndexProximal",
+      "offset": [
+        -0.04,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "rightIndexDistal",
+      "parent": "rightIndexIntermediate",
+      "offset": [
+        -0.026,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "rightIndexTip",
+      "parent": "rightIndexDistal",
+      "offset": [
+        -0.02,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "rightMiddleProximal",
+      "parent": "wrist",
+      "offset": [
+        -0.085,
+        0,
+        0.01
+      ]
+    },
+    {
+      "name": "rightMiddleIntermediate",
+      "parent": "rightMiddleProximal",
+      "offset": [
+        -0.045,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "rightMiddleDistal",
+      "parent": "rightMiddleIntermediate",
+      "offset": [
+        -0.03,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "rightMiddleTip",
+      "parent": "rightMiddleDistal",
+      "offset": [
+        -0.022,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "rightRingProximal",
+      "parent": "wrist",
+      "offset": [
+        -0.085,
+        0,
+        -0.01
+      ]
+    },
+    {
+      "name": "rightRingIntermediate",
+      "parent": "rightRingProximal",
+      "offset": [
+        -0.04,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "rightRingDistal",
+      "parent": "rightRingIntermediate",
+      "offset": [
+        -0.028,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "rightRingTip",
+      "parent": "rightRingDistal",
+      "offset": [
+        -0.02,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "rightLittleProximal",
+      "parent": "wrist",
+      "offset": [
+        -0.085,
+        0,
+        -0.03
+      ]
+    },
+    {
+      "name": "rightLittleIntermediate",
+      "parent": "rightLittleProximal",
+      "offset": [
+        -0.032,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "rightLittleDistal",
+      "parent": "rightLittleIntermediate",
+      "offset": [
+        -0.022,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "rightLittleTip",
+      "parent": "rightLittleDistal",
+      "offset": [
+        -0.018,
+        0,
+        0
+      ]
+    },
+    {
+      "name": "rightThumbMetacarpal",
+      "parent": "wrist",
+      "offset": [
+        -0.015,
+        0,
+        0.036
+      ]
+    },
+    {
+      "name": "rightThumbProximal",
+      "parent": "rightThumbMetacarpal",
+      "offset": [
+        -0.022627416997969524,
+        0,
+        0.022627416997969524
+      ]
+    },
+    {
+      "name": "rightThumbDistal",
+      "parent": "rightThumbProximal",
+      "offset": [
+        -0.021213203435596427,
+        0,
+        0.021213203435596427
+      ]
+    },
+    {
+      "name": "rightThumbTip",
+      "parent": "rightThumbDistal",
+      "offset": [
+        -0.01767766952966369,
+        0,
+        0.01767766952966369
+      ]
+    }
+  ]
+}

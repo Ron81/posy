@@ -1,0 +1,100 @@
+{
+  "name": "p09-seated-feet-off-floor",
+  "description": "seated on a high stool, both feet hanging clear of the floor",
+  "bones": [
+    {
+      "bit": 9,
+      "name": "leftUpperLeg",
+      "quat": [
+        -0.642788,
+        0,
+        0,
+        0.766044
+      ]
+    },
+    {
+      "bit": 10,
+      "name": "leftLowerLeg",
+      "quat": [
+        0.573576,
+        0,
+        0,
+        0.819152
+      ]
+    },
+    {
+      "bit": 13,
+      "name": "rightUpperLeg",
+      "quat": [
+        -0.642788,
+        0,
+        0,
+        0.766044
+      ]
+    },
+    {
+      "bit": 14,
+      "name": "rightLowerLeg",
+      "quat": [
+        0.67559,
+        0,
+        0,
+        0.737277
+      ]
+    }
+  ],
+  "hips_height": 0.75,
+  "h": 26426,
+  "expect": {
+    "leftUpperLeg": [
+      0.1,
+      -0.05,
+      0
+    ],
+    "leftLowerLeg": [
+      0.1,
+      -0.119459,
+      0.393923
+    ],
+    "leftFoot": [
+      0.1,
+      -0.513382,
+      0.463382
+    ],
+    "leftToes": [
+      0.1,
+      -0.561481,
+      0.593715
+    ],
+    "leftToeTip": [
+      0.1,
+      -0.551062,
+      0.652803
+    ],
+    "rightUpperLeg": [
+      -0.1,
+      -0.05,
+      0
+    ],
+    "rightLowerLeg": [
+      -0.1,
+      -0.119459,
+      0.393923
+    ],
+    "rightFoot": [
+      -0.1,
+      -0.517937,
+      0.359061
+    ],
+    "rightToes": [
+      -0.1,
+      -0.598129,
+      0.472503
+    ],
+    "rightToeTip": [
+      -0.1,
+      -0.603359,
+      0.532275
+    ]
+  }
+}

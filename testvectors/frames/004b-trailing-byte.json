@@ -2,6 +2,6 @@
   "name": "004b-trailing-byte",
   "description": "001-minimal with an extra trailing byte",
   "expect": "reject",
-  "bytes_hex": "01 00 01 00 00 00 00 00 01 00 00 00 00 00 00 00 00 02 08 e0 00",
+  "bytes_hex": "02 00 01 00 00 00 00 00 01 00 00 00 00 00 00 00 00 02 08 e0 00",
   "reason": "length longer than required"
 }

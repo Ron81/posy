@@ -3,6 +3,97 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
+## [1.2.0] - 2026-10-06
+
+Leg rotation conventions, VRM 0.x conversion, finger signs. **No change to the packet
+layout or the signaling.** The `version` byte now writes 2, and the meaning of
+`thumb_curl` changes (see Changed).
+
+### Added
+- Spec §3.1 items 5 and 6: rotation composition order (`q_parent · q_bone`) and the local
+  axes of a bone (+X left, +Y up, +Z forward, right-hand rule). Both followed from the
+  existing text but were not written down.
+- Spec §3.4: rotation sense of `upperLeg`, `lowerLeg`, `foot` and `toes`, per motion and
+  per side.
+- Spec §10 item 8: implementations that send or render leg bones reproduce the pose
+  vectors.
+- Spec §10 item 9: implementations that render fingers reproduce the finger pose vectors.
+  §5.5 now points at them.
+- `testvectors/poses/`: a reference skeleton and nine poses with expected joint
+  positions. Five pin the §3.4 table; four are the seated and kneeling poses a full-body
+  sender must be able to express.
+- `testvectors/poses/hand-skeleton.json` and `f01`–`f07`: finger poses that carry the
+  curl / splay / opposition bytes and every joint position a §5.5 receiver must
+  synthesise. They catch a wrong thumb axis, a flipped sign or the wrong product order,
+  none of which the frame vectors can. `f07` is half curled with splay on the same bones
+  and a thumb splay; without it the product order, the thumb splay and the linearity of
+  the curl byte were not pinned. `reference/js/scripts/finger-fk.mjs` holds the synthesis
+  and FK; five negative controls are in `test/poses.test.mjs`.
+- §5.5: splay is on the proximal bone, which for the thumb is `thumbProximal`. The text
+  said "proximal joint" and left the thumb open.
+- `reference/js`: `scripts/pose-fk.mjs` (forward kinematics used by the generator and the
+  tests) and `test/poses.test.mjs`.
+- Loopback demo: drives legs, toes and hips height `h`; tracker selector showing what the
+  tracker delivers, what the avatar can show and what is therefore declared and
+  transmitted (§2.1); the receiving view frames the declared region; a dropdown of
+  whole-body poses (standing, moving, seated) plus the pose vectors; `h` estimated with
+  the Appendix D method; all controls visible without scrolling. `?tracker=&pose=` links.
+  Fingers are synthesised from the finger block as §5.5 requires of a receiver, and the
+  face is driven from the expression block (§5.6): lids, mouth shapes, moods, gaze. The
+  stick figure has a part for every data type, including one toe piece per foot and a
+  tongue that shows direction. Hands and face fit each pose instead of running a fixed
+  wave. Three poses for the small parts (counting on the fingers, toes, face) with a
+  close-up view of hands, feet or face on both sides.
+- `reference/js`: `estimateHipsHeight` in `scripts/pose-fk.mjs`, and a test that the
+  Appendix D estimate gives the stated hips height for `p01`–`p08` and misses it for `p09`.
+- §8.2: a receiver MAY apply a light low-pass filter (e.g. One-Euro) to the interpolated
+  output; stated as optional and weak, and not a substitute for sender-side filtering
+  (§7). Clarifies the split: the sender denoises before encoding, the receiver
+  reconstructs. No wire change.
+
+### Changed
+- §3.3: an absent `upperArm` or `lowerArm` rests hanging at the side (fixed quaternions
+  in the spec), not in the T-pose. §5.5: a frame without a finger block is rendered with a
+  relaxed rest hand, not flat. Before, every sender without arm tracking, face tracking
+  with head rotation above all, was shown with the arms out. No change on the wire; a
+  sender that wants the T-pose or flat hands sends them. §7 states that a sender may
+  transmit an idle pose or animation as ordinary bones. `DECISIONS.md` 0004. The demo
+  follows.
+- §3.2: the MMD conversion is marked untested. It was never checked on an MMD/PMX model
+  and assumes a per-bone rest rotation that PMX bones do not carry. A tested PMX driver
+  is planned for 1.4.
+- §1.1: the largest v1 frame is 238 bytes, not 202. The length formula counts a
+  quaternion for each of the reserved `bone_mask` bits 55–63, and a relay passes them.
+  Behaviour is unchanged; only the stated figure was wrong.
+- §5.1, §9: the `version` byte is the minor revision of the spec release; 1.2 writes 2.
+  The spec described the byte three ways ("= 1", "the minor revision", "major v1"), and
+  1.1.0 still wrote 1. Decoders are unaffected: any value 0–15 was and is accepted. Every
+  frame vector changes in byte 0 and nowhere else. The codec exports `VERSION`.
+  `DECISIONS.md` 0003.
+- §5.5: the thumb flexes about **Y**, toward the fingers (positive on the left hand,
+  negative on the right). It was about Z like the other fingers, which bends the thumb
+  away from the palm. `docs/DECISIONS.md` 0002.
+- §5.5: signs stated per hand for splay (−Y left, +Y right) and for thumb opposition
+  (+X on both hands), and the order on the proximal joint (`q_splay · q_curl`). These
+  were prose only.
+
+### Fixed
+- §3.2 said a runtime's normalized rig of a VRM 0.x model already faces +Z. three-vrm
+  leaves it facing −Z, where X and Z rotations are inverted. §3.2 now says: the wire is
+  in avatar space for every avatar; adapting to a rig that is not is the job of the
+  avatar driver on both ends; for a −Z-facing VRM 0.x rig that is `(−x, y, −z, w)`.
+- Loopback demo showed VRM 0.x models from behind and applied X and Z rotations to them
+  inverted. It now turns them and converts.
+- Appendix D put the hips 3 cm too high when kneeling with the insteps on the floor: it
+  used the ankle's T-pose clearance, which holds only with the sole down. A foot whose
+  sole faces up now gets the shin radius. Informative text; no change on the wire.
+- `docs/DECISIONS.md` 0001: alternative D was described as still listed in §11; it was
+  removed in 1.1.0.
+- Vector 007 generator comment described bit 9 as "turned out"; by §3.4 it swings across
+  the body. Bytes unchanged.
+- Loopback demo wrote the blink weight to Standard-Sync slots 8 and 9 (`angry`, `sad`);
+  §5.6 puts `blinkLeft` / `blinkRight` in slots 0 and 1.
+
 ## [1.1.0] - 2026-10-03
 
 Full-body support: per-sender declaration, legs and toes as declared types, hips height
@@ -77,6 +168,24 @@ version bump signals that the package tracks the spec.
   1.0.0 default.
 
 ### Changed
+- §3.3: an absent `upperArm` or `lowerArm` rests hanging at the side (fixed quaternions
+  in the spec), not in the T-pose. §5.5: a frame without a finger block is rendered with a
+  relaxed rest hand, not flat. Before, every sender without arm tracking, face tracking
+  with head rotation above all, was shown with the arms out. No change on the wire; a
+  sender that wants the T-pose or flat hands sends them. §7 states that a sender may
+  transmit an idle pose or animation as ordinary bones. `DECISIONS.md` 0004. The demo
+  follows.
+- §3.2: the MMD conversion is marked untested. It was never checked on an MMD/PMX model
+  and assumes a per-bone rest rotation that PMX bones do not carry. A tested PMX driver
+  is planned for 1.4.
+- §1.1: the largest v1 frame is 238 bytes, not 202. The length formula counts a
+  quaternion for each of the reserved `bone_mask` bits 55–63, and a relay passes them.
+  Behaviour is unchanged; only the stated figure was wrong.
+- §5.1, §9: the `version` byte is the minor revision of the spec release; 1.2 writes 2.
+  The spec described the byte three ways ("= 1", "the minor revision", "major v1"), and
+  1.1.0 still wrote 1. Decoders are unaffected: any value 0–15 was and is accepted. Every
+  frame vector changes in byte 0 and nowhere else. The codec exports `VERSION`.
+  `DECISIONS.md` 0003.
 - Spec §1.1 relaxes "pose data MUST use a WebRTC (SCTP) data channel" to SHOULD, with the
   WebSocket lane as the sanctioned alternative. Reconciles the reliable/ordered WebSocket with
   the loss-tolerant pose stream: "MUST NOT retransmit" is clarified as a Posy-layer rule, and

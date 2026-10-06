@@ -16,7 +16,11 @@ export interface HandFingers {
   thumbOpposition: number;
 }
 
+/** The `version` byte this release writes: the minor revision of the spec (§9). */
+export const VERSION = 2;
+
 export interface Frame {
+  /** Senders write `VERSION`. Any value 0–15 decodes (§9). */
   version: number;
   seq: number;
   timestampMs: number;
