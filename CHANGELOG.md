@@ -3,7 +3,7 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
-## [Unreleased] - proposed as 1.2.0
+## [1.2.0] - 2026-10-06
 
 Leg rotation conventions, VRM 0.x conversion, finger signs. **No change to the packet
 layout or the signaling.** The `version` byte now writes 2, and the meaning of
