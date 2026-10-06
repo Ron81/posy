@@ -2,12 +2,14 @@
 /**
  * scripts/generate-spec-tables.mjs
  *
- * Single source of truth for the two lookup tables in the Posy spec, so nobody ever has to
- * hand-type (and mis-type) them again:
+ * Single source of truth for the lookup tables and name lists of the Posy spec, so nobody
+ * ever has to hand-type (and mis-type) them again:
  *
  *   spec/blendshape-order.json            Appendix A — the 52 ARKit blendshapes, sorted
  *   spec/bone-index-table.md              §4        — the 64-bit bone_mask bit assignments
- *   reference/js/src/tables.generated.ts  (only written if reference/js/ exists)
+ *   reference/js/src/tables.generated.ts  (only written if reference/js/ exists); also carries
+ *                                         the Standard-Sync slots (§5.6), the finger block
+ *                                         fields (§5.5) and the error codes (§2.5)
  *
  * Usage
  *   node scripts/generate-spec-tables.mjs               write the files
@@ -34,6 +36,22 @@ const APPENDIX_A = args.has('--appendix-a');
  * Finger bits MUST be 0 in v1, so this choice does not change a single v1 frame.
  */
 const FINGER_LAYOUT = 'fixed';
+
+/** §5.6: the 16 Standard-Sync slots, in wire order. */
+const STANDARD_SYNC_SLOTS = [
+  'blinkLeft', 'blinkRight', 'aa', 'ih', 'ou', 'ee', 'oh', 'happy', 'angry', 'sad', 'relaxed', 'surprised', 'neutral',
+  'tongueOut', 'tongueX', 'tongueY',
+];
+
+/** §5.5: the 12 bytes of one hand in the finger block, in wire order, as [type, name]. */
+const FINGER_BLOCK_FIELDS = [
+  ['u8', 'thumb_curl'], ['i8', 'thumb_splay'], ['u8', 'index_curl'], ['i8', 'index_splay'],
+  ['u8', 'middle_curl'], ['i8', 'middle_splay'], ['u8', 'ring_curl'], ['i8', 'ring_splay'],
+  ['u8', 'little_curl'], ['i8', 'little_splay'], ['u8', 'thumb_opposition'], ['u8', 'reserved'],
+];
+
+/** §2.5: the error codes, in the order of the spec table. */
+const ERROR_CODES = ['BAD_VERSION', 'UNAUTHORIZED_TYPE', 'MALFORMED_THRESHOLD', 'RATE_EXCEEDED', 'UNSUPPORTED_TRANSPORT'];
 
 /** The 52 ARKit ARFaceAnchor.BlendShapeLocation names — deliberately NOT in sorted order. */
 const ARKIT_BLENDSHAPES = [
@@ -165,6 +183,21 @@ function renderTs(blendshapes, info) {
     '/** Index = position in the Perfect-Sync expression block (spec Appendix A). */',
     'export const BLENDSHAPE_NAMES = [',
     q(blendshapes),
+    '] as const;',
+    '',
+    '/** Index = slot in the Standard-Sync expression block (spec §5.6). */',
+    'export const STANDARD_SYNC_NAMES = [',
+    q(STANDARD_SYNC_SLOTS),
+    '] as const;',
+    '',
+    '/** Index = byte offset within one hand of the finger block (spec §5.5). */',
+    'export const FINGER_BLOCK_FIELDS = [',
+    FINGER_BLOCK_FIELDS.map(([type, name]) => `  { type: '${type}', name: '${name}' },`).join('\n'),
+    '] as const;',
+    '',
+    '/** Error codes of the `error` message (spec §2.5). */',
+    'export const ERROR_CODES = [',
+    q(ERROR_CODES),
     '] as const;',
     '',
   ].join('\n');

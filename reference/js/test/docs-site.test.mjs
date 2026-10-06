@@ -4,7 +4,9 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
-import { BLENDSHAPE_NAMES, BONE_NAMES, encode, packQuat, unpackQuat } from '../dist/index.js';
+import {
+  BLENDSHAPE_NAMES, BONE_NAMES, ERROR_CODES, FINGER_BLOCK_FIELDS, STANDARD_SYNC_NAMES, encode, packQuat, unpackQuat,
+} from '../dist/index.js';
 
 // docs/assets/data.js and codec.js are hand-written copies of the tables and the quaternion
 // packing (the site is buildless and cannot import the codec). These tests fail when a copy
@@ -28,6 +30,32 @@ test('docs: bone table equals BONE_NAMES', () => {
 
 test('docs: blendshape order equals BLENDSHAPE_NAMES', () => {
   assert.deepEqual([...PosyData.BLENDSHAPES], [...BLENDSHAPE_NAMES]);
+});
+
+test('docs: Standard-Sync slots equal STANDARD_SYNC_NAMES', () => {
+  assert.deepEqual(Array.from(PosyData.STANDARD_EXPRESSIONS, (s) => s.name), [...STANDARD_SYNC_NAMES]);
+  assert.deepEqual(Array.from(PosyData.STANDARD_EXPRESSIONS, (s) => s.idx), STANDARD_SYNC_NAMES.map((_, i) => i));
+});
+
+test('docs: finger block rows equal FINGER_BLOCK_FIELDS', () => {
+  // The site writes the last row as "reserved (MUST be 0)".
+  const rows = Array.from(PosyData.FINGER_ROWS, ([offset, type, name]) => [Number(offset), type, name.split(' ')[0]]);
+  assert.deepEqual(rows, FINGER_BLOCK_FIELDS.map((f, i) => [i, f.type, f.name]));
+});
+
+test('docs: error rows equal ERROR_CODES', () => {
+  assert.deepEqual(Array.from(PosyData.ERROR_ROWS, (r) => r[0]), [...ERROR_CODES]);
+});
+
+// The spec is normative and hand-written; the generator's lists are checked against its tables.
+test('spec: §5.6 slot table, §5.5 hand layout and §2.5 error table match the generated lists', () => {
+  const spec = read('spec/Posy.md');
+  const slots = [...spec.matchAll(/^\| (\d+) \| `(\w+)` \| `[ui]8` \|/gm)].map((m) => [Number(m[1]), m[2]]);
+  assert.deepEqual(slots, STANDARD_SYNC_NAMES.map((n, i) => [i, n]));
+  const hand = [...spec.matchAll(/^(\d+) +1 +([ui]8) +(\w+)/gm)].map((m) => [Number(m[1]), m[2], m[3]]);
+  assert.deepEqual(hand, FINGER_BLOCK_FIELDS.map((f, i) => [i, f.type, f.name]));
+  const errors = [...spec.matchAll(/^\| `([A-Z_]+)` \| [^|]+ \| [^|]+ \|$/gm)].map((m) => m[1]);
+  assert.deepEqual(errors, [...ERROR_CODES]);
 });
 
 test('docs: typical mask equals spec/bone-index-table.md', () => {

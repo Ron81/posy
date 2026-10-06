@@ -3,6 +3,16 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
+## [Unreleased]
+
+### Added
+- `scripts/generate-spec-tables.mjs` also owns the 16 Standard-Sync slot names (§5.6), the
+  fields of the finger block (§5.5) and the error codes (§2.5). The codec exports them as
+  `STANDARD_SYNC_NAMES`, `FINGER_BLOCK_FIELDS` and `ERROR_CODES`.
+- `test/docs-site.test.mjs` compares the hand-written copies of those three lists on the
+  site with the exports, and the exports with the tables in the spec text. No change to
+  the packet format, the signaling or the site.
+
 ## [1.2.0] - 2026-10-06
 
 Leg rotation conventions, VRM 0.x conversion, finger signs. **No change to the packet
