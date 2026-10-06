@@ -21,11 +21,11 @@ for (const jf of jsonFiles) {
     assert.deepEqual([...bin], [...fromHex], 'bytes_hex must match the .bin');
 
     if (vec.expect === 'reject') {
-      assert.throws(() => decode(bin), `${vec.name} must be rejected`);
+      assert.throws(() => decode(bin, vec.extra_counts), `${vec.name} must be rejected`);
       return;
     }
 
-    const f = decode(bin);
+    const f = decode(bin, vec.frame.extra_counts);
     assert.equal(f.version, vec.frame.version);
     assert.equal(f.seq, vec.frame.seq);
     assert.equal(f.timestampMs, vec.frame.timestamp_ms);
@@ -55,6 +55,20 @@ for (const jf of jsonFiles) {
       assert.equal(f.expressions.gazePitch, vec.frame.expressions.gaze_pitch);
     }
 
+    if (vec.frame.extra) {
+      assert.deepEqual([...f.extra.values], vec.frame.extra.values);
+      vec.frame.extra.bones.forEach((b, i) => {
+        const expQ = unpackQuat(parseInt(normHex(b.u32), 16));
+        for (const k of ['x', 'y', 'z', 'w']) assert.ok(Math.abs(expQ[k] - f.extra.bones[i][k]) < 1e-5, `extra bone ${i} .${k}`);
+      });
+      // Without the declaration the block is skipped and the rest of the frame decodes.
+      const blind = decode(bin);
+      assert.equal(blind.extra, undefined);
+      assert.equal(blind.bones.size, f.bones.size);
+    } else {
+      assert.equal(f.extra, undefined);
+    }
+
     // round-trip: re-encoding an accept vector must reproduce the exact bytes.
     // Skipped for 006 (reserved bone bits can't be re-encoded by design) and for
     // 005, whose deliberate ties/boundary quaternions are angle-stable but not
@@ -70,6 +84,7 @@ for (const jf of jsonFiles) {
         root: f.root,
         fingers: f.fingers,
         expressions: f.expressions,
+        extra: f.extra,
       });
       assert.deepEqual([...re], [...bin], 're-encode must reproduce bytes');
     }

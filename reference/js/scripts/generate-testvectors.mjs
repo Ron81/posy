@@ -56,6 +56,13 @@ function writeAccept(name, description, frame, extra = {}) {
             gaze_pitch: frame.expressions.gazePitch,
           }
         : null,
+      ...(frame.extra
+        ? {
+            // The counts are not in the frame: they come from the declaration (§2.6).
+            extra_counts: { bones: frame.extra.bones.length, values: frame.extra.values.length },
+            extra: { bones: frame.extra.bones.map((q) => ({ u32: '0x' + (packQuat(q) >>> 0).toString(16).padStart(8, '0').toUpperCase() })), values: [...frame.extra.values] },
+          }
+        : {}),
     },
   };
   writeFileSync(join(TV, 'frames', `${name}.bin`), bytes);
@@ -156,6 +163,43 @@ writeReject('004d-length-too-short', 'a 15-byte buffer (< 16)', new Uint8Array(1
   const badVer = v001.slice();
   badVer[0] = 0x10; // high nibble != 0
   writeReject('004e-bad-version', 'version byte with a non-zero high nibble', badVer, 'unsupported major version');
+}
+
+/* 008-extras: hips, Standard-Sync, and a declared extras block of 2 bones and 3 values -> 49 B.
+   009: the same bytes are malformed for a declaration of 3 bones and 3 values. */
+{
+  const rot = (axis, deg) => {
+    const h = (deg * Math.PI) / 360;
+    const q = { x: 0, y: 0, z: 0, w: Math.cos(h) };
+    q[axis] = Math.sin(h);
+    return q;
+  };
+  const frame = {
+    version: VERSION,
+    seq: 8,
+    timestampMs: 5000,
+    idle: false,
+    bones: new Map([[0, idQuat]]),
+    expressions: { perfectSync: false, weights: new Uint8Array(16), gazeYaw: 0, gazePitch: 0 },
+    extra: { bones: [rot('x', 30), rot('z', -45)], values: new Uint8Array([0, 128, 255]) },
+  };
+  const bytes = writeAccept(
+    '008-extras',
+    'hips, Standard-Sync, and the extras block of a declaration with 2 bones (30 deg about +X, 45 deg about -Z) and 3 values (0, 128, 255)',
+    frame,
+    { flags: 0x28 },
+  );
+  const json = {
+    name: '009-extras-wrong-counts',
+    description: 'the bytes of 008-extras, decoded with a declaration of 3 bones and 3 values',
+    expect: 'reject',
+    bytes_hex: hex(bytes),
+    extra_counts: { bones: 3, values: 3 },
+    reason: 'length does not match the declared extras counts',
+  };
+  writeFileSync(join(TV, 'frames', '009-extras-wrong-counts.bin'), bytes);
+  writeFileSync(join(TV, 'frames', '009-extras-wrong-counts.json'), JSON.stringify(json, null, 2) + '\n');
+  console.log('wrote  frames/009-extras-wrong-counts.{bin,json}  (reject)');
 }
 
 /* 005-quat-edgecases: several bones with tricky quaternions */
@@ -364,7 +408,7 @@ writeReject('004d-length-too-short', 'a 15-byte buffer (< 16)', new Uint8Array(1
   const joints = [{ name: 'hips', parent: null, offset: [0, 0, 0] }, ...leg('left', 1), ...leg('right', -1)];
   const skeleton = {
     description:
-      'Reference skeleton for the pose vectors. VRM 1.0 normalized space: right-handed, Y up, facing +Z, left = +X. Offsets are from the parent joint in the T-pose, in metres. ToeTip joints are end points, not bones.',
+      'Reference skeleton for the pose vectors. Posy avatar space: right-handed, Y up, facing +Z, left = +X. Offsets are from the parent joint in the T-pose, in metres. ToeTip joints are end points, not bones.',
     standing_hip_height: 0.93,
     joints,
   };

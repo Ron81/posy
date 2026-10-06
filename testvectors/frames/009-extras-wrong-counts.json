@@ -1,0 +1,11 @@
+{
+  "name": "009-extras-wrong-counts",
+  "description": "the bytes of 008-extras, decoded with a declaration of 3 bones and 3 values",
+  "expect": "reject",
+  "bytes_hex": "03 28 08 00 88 13 00 00 01 00 00 00 00 00 00 00 00 02 08 e0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 b8 eb eb 00 08 e0 00 80 ff",
+  "extra_counts": {
+    "bones": 3,
+    "values": 3
+  },
+  "reason": "length does not match the declared extras counts"
+}

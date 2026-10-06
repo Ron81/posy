@@ -11,7 +11,7 @@ import { fingerPose, fkHand } from './finger-fk.mjs';
 const OUT = join(dirname(fileURLToPath(import.meta.url)), '../../../testvectors/poses');
 const R2 = Math.SQRT1_2;
 
-// A test-fixture hand, both hands, in the VRM 1.0 normalized T-pose as the demo builds it:
+// A test-fixture hand, both hands, in the T-pose of Posy avatar space as the demo builds it:
 // palm down, index-to-little along ±X (left = +X), thumb in the palm plane pointing forward
 // and outward along (±√½, 0, √½). Round numbers; not a VRM standard. Each finger ends in a
 // Tip endpoint (not a bone) so the fingertip is a measurable point, like ToeTip in skeleton.json.
@@ -42,7 +42,7 @@ function buildSkeleton() {
   }
   return {
     description:
-      'Finger test-fixture hand for the §5.5 pose vectors. VRM 1.0 normalized space: right-handed, ' +
+      'Finger test-fixture hand for the §5.5 pose vectors. Posy avatar space: right-handed, ' +
       'Y up, +Z forward, left = +X. Both hands rest at identity (T-pose): palm down, index–little ' +
       'along ±X, thumb forward-and-outward in the palm plane. Tip joints are end points, not bones. ' +
       'A test fixture with round numbers, not a VRM standard; a check against a real model compares ' +

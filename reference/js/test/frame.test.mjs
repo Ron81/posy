@@ -92,6 +92,35 @@ test('reject: high version nibble != 0', () => {
   assert.throws(() => decode(bytes), PosyDecodeError);
 });
 
+test('extras: round trip, and the counts decide the length', () => {
+  const frame = {
+    version: 3, seq: 1, timestampMs: 0, idle: false, bones: new Map([[0, idQuat]]),
+    extra: { bones: [idQuat, idQuat], values: new Uint8Array([1, 2, 3]) },
+  };
+  const bytes = encode(frame);
+  assert.equal(bytes.length, 16 + 4 + 2 * 4 + 3);
+  assert.equal(bytes[1] & 0x20, 0x20);
+  const back = decode(bytes, { bones: 2, values: 3 });
+  assert.equal(back.extra.bones.length, 2);
+  assert.deepEqual([...back.extra.values], [1, 2, 3]);
+  assert.throws(() => decode(bytes, { bones: 1, values: 3 }), PosyDecodeError);
+  assert.throws(() => decode(bytes, { bones: 2, values: 4 }), PosyDecodeError);
+  assert.equal(decode(bytes).extra, undefined); // no declaration: block skipped
+});
+
+test('extras: encoder refuses an empty block and more than 255 entries', () => {
+  const base = { version: 3, seq: 1, timestampMs: 0, idle: false, bones: new Map([[0, idQuat]]) };
+  assert.throws(() => encode({ ...base, extra: { bones: [], values: new Uint8Array(0) } }), PosyEncodeError);
+  assert.throws(() => encode({ ...base, extra: { bones: [], values: new Uint8Array(256) } }), PosyEncodeError);
+});
+
+test('extras: HAS_EXTRA without a block is rejected', () => {
+  const bytes = encode({ version: 3, seq: 1, timestampMs: 0, idle: false, bones: new Map([[0, idQuat]]) });
+  bytes[1] |= 0x20;
+  assert.throws(() => decode(bytes), PosyDecodeError);
+  assert.throws(() => decode(bytes, { bones: 1, values: 0 }), PosyDecodeError);
+});
+
 test('encoder refuses finger bone bits in bone_mask', () => {
   const m = new Map([[0, idQuat], [28, idQuat]]); // 28 is a finger bit
   assert.throws(() => encode({ version: 1, seq: 1, timestampMs: 0, idle: false, bones: m }), PosyEncodeError);
@@ -121,9 +150,9 @@ test('reserved bone bit is consumed and preserved, rest parses', () => {
   assert.equal(f.seq, 5);
 });
 
-test('reserved flag bits 5-7 are ignored, not rejected', () => {
+test('reserved flag bits 6-7 are ignored, not rejected', () => {
   const bytes = encode({ version: 1, seq: 1, timestampMs: 0, idle: false, bones: new Map([[0, idQuat]]) });
-  bytes[1] |= 0xe0; // set flags 5,6,7
+  bytes[1] |= 0xc0; // set flags 6,7
   const f = decode(bytes); // must not throw
   assert.equal(f.bones.size, 1);
 });

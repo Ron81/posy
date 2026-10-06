@@ -5,7 +5,8 @@
 //
 // The avatar interpolates toward `target()` every render tick, so the buffer only
 // has to hand over "the latest pose that survived", not drive rendering directly.
-import { decode, type Frame } from 'posy';
+import { decode, timestampOf, type Frame } from 'posy';
+import { declAt, NO_EXTRAS, type ExtraDecl } from './declare.ts';
 import type { ChannelPacket } from './channel.ts';
 
 // seq is a u16 that wraps. Compare on the shortest signed distance so 65535 → 0
@@ -16,6 +17,7 @@ function seqNewer(a: number, b: number): boolean {
 
 interface Buffered {
   frame: Frame;
+  decl: ExtraDecl;
   arrivedAt: number;
 }
 
@@ -27,13 +29,26 @@ export class Receiver {
   private newestReleasedSeq = -1;
   private current: Frame | null = null;
 
+  /**
+   * The sender's extras declarations, oldest first, as the server hands them to a peer
+   * (§2.6). The previous one is kept so that frames from before `since` still decode.
+   */
+  decls: readonly ExtraDecl[] = [NO_EXTRAS];
+  /** The declaration the current target frame follows. */
+  currentDecl: ExtraDecl = NO_EXTRAS;
+
   decodeErrors = 0;
 
   /** Feed a delivered packet. Malformed frames are counted and dropped. */
   receive(packet: ChannelPacket, nowMs: number): void {
     let frame: Frame;
+    let decl = NO_EXTRAS;
     try {
-      frame = decode(packet.bytes);
+      // The extras block has no counts of its own: the frame's timestamp selects the
+      // declaration, and the declaration gives the size (§5.8).
+      decl = declAt(this.decls, timestampOf(packet.bytes));
+      const any = decl.bones.length + decl.values.length > 0;
+      frame = decode(packet.bytes, any ? { bones: decl.bones.length, values: decl.values.length } : undefined);
     } catch {
       this.decodeErrors++;
       return;
@@ -47,7 +62,7 @@ export class Receiver {
     // Insert keeping the buffer ordered by seq (§8.1 reordering).
     let i = this.buffer.length;
     while (i > 0 && seqNewer(this.buffer[i - 1].frame.seq, frame.seq)) i--;
-    this.buffer.splice(i, 0, { frame, arrivedAt: nowMs });
+    this.buffer.splice(i, 0, { frame, decl, arrivedAt: nowMs });
   }
 
   /** Release any frames whose hold time has elapsed; returns the latest pose. */
@@ -57,6 +72,7 @@ export class Receiver {
       if (this.newestReleasedSeq < 0 || seqNewer(released.frame.seq, this.newestReleasedSeq)) {
         this.newestReleasedSeq = released.frame.seq;
         this.current = released.frame;
+        this.currentDecl = released.decl;
       }
     }
     return this.current;

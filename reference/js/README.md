@@ -14,6 +14,10 @@ const bytes = encode({
   bones: new Map([[0, { x: 0, y: 0, z: 0, w: 1 }]]), // hips, identity
 });
 const frame = decode(bytes); // throws on any malformed frame
+
+// A sender with declared extras (spec §2.6): the block size is not in the frame.
+// Pass the list lengths of the declaration that applies at timestampOf(bytes).
+const withExtras = decode(bytes, { bones: 4, values: 3 });
 ```
 
 Build and test:

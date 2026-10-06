@@ -6,6 +6,61 @@ that commit messages and the spec text do not keep in one place.
 
 ---
 
+## 0005 — Declared extras for everything beyond the humanoid core
+
+**Date:** 2026-10-06 · **Status:** Proposed · **Affects:** §2.1, §2.3, §2.6, §5.1, §5.2, §5.8, §1.2, §9 (flag bit 5, signaling)
+
+### Context
+
+Avatars with a tail, animal ears, wings, four arms or single toes are a requirement, and
+so are MMD/PMX avatars. No humanoid standard with wide use defines any of these parts;
+production rigs that have them each use their own names. In avatar files they are bones:
+passive motion comes from secondary motion on the receiver (VRM spring bones, MMD rigid
+bodies), deliberate motion from an animation or mechanism on the sender, or from a
+control the file defines (an expression, an MMD bone morph).
+
+### Decision
+
+The humanoid core stays fixed. Everything else is declared by the sender, by the names
+in its own avatar file, as two lists: bones (a rotation each) and values (a byte each).
+One block at the end of the frame carries them in declaration order, behind flag bit 5.
+
+- Both lanes are required from the first release. A values-only first step has no path
+  for a sender-driven tail or ear.
+- The block carries neither counts nor an identifier. The declaration has both, and it
+  states the session time from which it applies; the frame's timestamp selects it.
+- One grant, `"extra"`, all or nothing, with server-stated limits for the two lists. The
+  server reads two numbers at the handshake and no names.
+- A name must be unique in the avatar file. No index fallback.
+- A declared extra bone is driven by the sender and leaves receiver physics.
+- The `app:` prefix is reserved for values that are not avatar data.
+
+### Alternatives rejected
+
+- **Fixed blocks per body part** (five toes, a tail chain, ears). Any list is wrong for
+  the next avatar, and there is no standard to copy.
+- **Values first, bones later.** It was argued that no tracker delivers extra bones.
+  Animations and sender-side mechanisms do, and they are the common case for ears and
+  tails.
+- **Counts and an identifier in every frame** (3 bytes). Self-describing frames, but the
+  bytes repeat the declaration, and the relay already keeps state per sender.
+- **An identifier only** (1 byte). Removes the avatar-switch ambiguity; `since` does the
+  same with no bytes per frame.
+- **A fixed limit in the spec instead of a grant.** Realistic extras add 6 to 20 kbit/s
+  per sender, which does not need a limit; a room should still be able to state one.
+- **Two grants**, one per lane. A limit of 0 does the same.
+
+### Consequences
+
+- A frame with extras cannot be sized from its header alone. A relay needs the declared
+  counts, a recording needs the declaration.
+- Flag bit 5 is spent. Flag-bit extensions are not transparent to relays; §9 says so now.
+- "Play animation X" can later be a value, once a way exists for both ends to hold X.
+- Tongue direction and further expressions can move into values in the release that
+  closes the soft lock.
+
+---
+
 ## 0004 — Rest rotation of absent arm bones and the rest hand
 
 **Date:** 2026-10-05 · **Status:** Proposed · **Affects:** §3.3, §5.5, §2.3, §7 (receiver behaviour; nothing on the wire)

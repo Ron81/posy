@@ -4,7 +4,7 @@
 export type { Quat } from './quat.js';
 export { packQuat, unpackQuat } from './quat.js';
 export { encode, PosyEncodeError } from './encode.js';
-export { decode, PosyDecodeError } from './decode.js';
+export { decode, timestampOf, PosyDecodeError } from './decode.js';
 export { BONE_NAMES, BLENDSHAPE_NAMES, STANDARD_SYNC_NAMES, FINGER_BLOCK_FIELDS, ERROR_CODES } from './tables.generated.js';
 
 import type { Quat } from './quat.js';
@@ -17,7 +17,7 @@ export interface HandFingers {
 }
 
 /** The `version` byte this release writes: the minor revision of the spec (§9). */
-export const VERSION = 2;
+export const VERSION = 3;
 
 export interface Frame {
   /** Senders write `VERSION`. Any value 0–15 decodes (§9). */
@@ -41,6 +41,14 @@ export interface Frame {
     gazeYaw: number;
     gazePitch: number;
   };
+  /** Declared extras (§5.8), both in the order of the declaration. Values are raw bytes 0..255. */
+  extra?: { bones: Quat[]; values: Uint8Array };
+}
+
+/** Lengths of the `bones` and `values` lists of a declaration (§2.6). */
+export interface ExtraCounts {
+  bones: number;
+  values: number;
 }
 
 // Flag bits (§5.2).
@@ -49,6 +57,7 @@ export const FLAG_HAS_ROOT = 1 << 1;
 export const FLAG_HAS_FINGERS = 1 << 2;
 export const FLAG_HAS_EXPRESSIONS = 1 << 3;
 export const FLAG_IDLE = 1 << 4;
+export const FLAG_HAS_EXTRA = 1 << 5;
 
 /** Lowest / highest finger bone bit — MUST be 0 in v1 (§4). */
 export const FINGER_BIT_LOW = 25;

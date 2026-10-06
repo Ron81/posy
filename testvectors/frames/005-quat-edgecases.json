@@ -2,9 +2,9 @@
   "name": "005-quat-edgecases",
   "description": "identity, its negation, ties, near 1/sqrt2, 180 deg, tiny angle",
   "expect": "accept",
-  "bytes_hex": "02 00 05 00 00 00 00 00 3f 00 02 00 00 00 00 00 00 02 08 e0 00 02 08 e0 ff 03 08 60 69 a7 9d 36 ff 03 08 20 00 02 08 20 5e 02 08 e0",
+  "bytes_hex": "03 00 05 00 00 00 00 00 3f 00 02 00 00 00 00 00 00 02 08 e0 00 02 08 e0 ff 03 08 60 69 a7 9d 36 ff 03 08 20 00 02 08 20 5e 02 08 e0",
   "frame": {
-    "version": 2,
+    "version": 3,
     "flags": 0,
     "seq": 5,
     "timestamp_ms": 0,

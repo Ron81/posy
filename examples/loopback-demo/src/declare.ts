@@ -84,3 +84,24 @@ export function crop(frame: Frame, tracker: Tracker, sends: ReadonlySet<DataType
   }
   return out;
 }
+
+/**
+ * A declaration of extras (spec §2.6): the avatar's own names, in the order of the block,
+ * and the session time from which it applies.
+ */
+export interface ExtraDecl {
+  bones: string[];
+  values: string[];
+  since: number;
+}
+
+export const NO_EXTRAS: ExtraDecl = { bones: [], values: [], since: 0 };
+
+/**
+ * The declaration a frame follows: the newest one whose `since` is not after the frame's
+ * timestamp. `decls` is ordered oldest first. The frame carries no identifier (§5.8).
+ */
+export function declAt(decls: readonly ExtraDecl[], timestampMs: number): ExtraDecl {
+  for (let i = decls.length - 1; i >= 0; i--) if (timestampMs >= decls[i].since) return decls[i];
+  return NO_EXTRAS;
+}

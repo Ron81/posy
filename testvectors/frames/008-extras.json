@@ -1,0 +1,64 @@
+{
+  "name": "008-extras",
+  "description": "hips, Standard-Sync, and the extras block of a declaration with 2 bones (30 deg about +X, 45 deg about -Z) and 3 values (0, 128, 255)",
+  "expect": "accept",
+  "bytes_hex": "03 28 08 00 88 13 00 00 01 00 00 00 00 00 00 00 00 02 08 e0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 b8 eb eb 00 08 e0 00 80 ff",
+  "frame": {
+    "version": 3,
+    "flags": 40,
+    "seq": 8,
+    "timestamp_ms": 5000,
+    "bone_mask": "0x0000000000000001",
+    "bones": [
+      {
+        "bit": 0,
+        "name": "hips",
+        "u32": "0xE0080200"
+      }
+    ],
+    "root": null,
+    "fingers": null,
+    "expressions": {
+      "perfect_sync": false,
+      "weights": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "gaze_yaw": 0,
+      "gaze_pitch": 0
+    },
+    "extra_counts": {
+      "bones": 2,
+      "values": 3
+    },
+    "extra": {
+      "bones": [
+        {
+          "u32": "0xEBB80200"
+        },
+        {
+          "u32": "0xE00800EB"
+        }
+      ],
+      "values": [
+        0,
+        128,
+        255
+      ]
+    }
+  }
+}
