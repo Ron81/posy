@@ -125,9 +125,10 @@ If the spec, the reference code and the test vectors ever disagree, **the spec w
 no implementation has shipped yet, so they can still change in a 1.x revision, but every change needs
 a stated justification.
 
-Since 1.1.0:
-- **1.2** added the full-body profile with leg/foot/toe and finger conventions, on-wire hips height,
-  and tongue tracking.
+Since 1.1.0 (which brought the full-body profile with leg/foot/toe bones, on-wire hips height, and
+tongue tracking):
+- **1.2** pinned the leg/foot/toe rotation conventions, added a VRM 0.x driver, and fixed the finger
+  rotation signs — no change to the frame layout.
 - **1.3** added **declared avatar-specific extras** — a sender names further bones (tail, ears, wings,
   extra limbs, single toes) and scalar values (its own expressions, MMD morphs) from its own avatar
   file and sends them in one block at the end of the frame. It's additive: a sender that declares no
@@ -141,12 +142,11 @@ here.
 A quick look at where 1.x is going. These are plans, scoped to 1.x — nothing here changes the wire
 unless it says so.
 
-- **1.3.5 (in progress)** — demo polish and PMX groundwork. A richer loopback demo: orbit the camera
-  to see back-of-avatar extras like tails and wings, clearer extras and expression pickers, and pose
-  presets grouped by body area. Plus a `.pmx` loader so MMD-style avatars can be previewed. Demo and
-  tooling only — no wire change.
-- **1.4** — a tested PMX driver and normative per-type driver sections (§3.2), so MMD avatars are
-  first-class rather than just previewable.
+- **1.3.5 (in progress)** — demo polish. A richer loopback demo: orbit the camera to see
+  back-of-avatar extras like tails and wings, clearer extras and expression pickers, and pose presets
+  grouped by body area. Demo only — no wire change.
+- **1.4** — a tested PMX driver and normative per-type driver sections (§3.2), so MMD/PMX avatars are
+  first-class, verified against the pose vectors in a real MMD runtime.
 - **A later 1.x clean-up release** — one "soft-lock-closing" revision that batches the last small
   breaking tidy-ups (mask width, a couple of spec fixes, some naming) before the first real
   integration. After that, a long calm run of additive-only 1.x.
