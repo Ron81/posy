@@ -162,7 +162,7 @@ Huge thank you to:
 
 - **[VRM](https://vrm.dev/) (@pixiv & the VRM Consortium)** — for making and keeping humanoid avatars an actually open standard. Posy's bones and expressions just speak VRM 1.0 natively, no translation needed. The fact that avatars *can* be open like this is a big reason any of this works.
 
-- **ARKit blendshapes** — for that 52-name facial vocabulary everyone uses now. I reused it verbatim for the Perfect-Sync face block, so it just drops straight in. Boring in the best way.
+- **ARKit blendshapes** — for that 52-name facial vocabulary everyone uses now. I reused it verbatim for the face block, so it just drops straight in. Boring in the best way.
 
 - **The folks behind the [VMC protocol](https://protocol.vmc.info/)** — you already nailed local pose streaming. Posy is really just asking "what if we did that VMC thing, but with a bunch of friends over the internet?" Thanks for the blueprint and the inspiration — hope you don't mind me borrowing your idea ;)
 
