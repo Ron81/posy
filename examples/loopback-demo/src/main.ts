@@ -10,7 +10,7 @@
 import * as THREE from 'three';
 import { encode, type Frame } from 'posy';
 import { poseAt, extrasAt } from './animator.ts';
-import { POSES, bodyPoseAt } from './poses.ts';
+import { POSES, GROUPS, bodyPoseAt } from './poses.ts';
 import { TRACKERS, FEATURES, computeSends, crop, region, declAt, NO_EXTRAS, type DataType, type ExtraDecl, type Tracker } from './declare.ts';
 import { LossyChannel } from './channel.ts';
 import { Receiver } from './receiver.ts';
@@ -65,13 +65,20 @@ const FRAMING = {
   head: [0.42, 0.915],
 } as const;
 
+// Where the cameras stand around the look-at point, in radians: `yaw` about the vertical
+// from straight ahead, `pitch` above the horizontal. Both views share it, so the two sides
+// stay comparable. Home is slightly off-axis, so a leg moving forward or back is visible
+// as such.
+const ORBIT_HOME = { yaw: Math.atan2(0.3, 0.95), pitch: Math.asin(0.08) };
+const orbit = { ...ORBIT_HOME, turning: false, dragging: false };
+
 function frameCamera(view: View, r: keyof typeof FRAMING, ease: number): void {
   const [dist, at] = FRAMING[r];
   const height = view.avatar.height;
   view.dist += (dist * height - view.dist) * ease;
   view.lookY += (at * height - view.lookY) * ease;
-  // Slightly off-axis, so a leg moving forward or back is visible as such.
-  view.camera.position.set(0.3 * view.dist, view.lookY + 0.08 * view.dist, 0.95 * view.dist);
+  const flat = view.dist * Math.cos(orbit.pitch);
+  view.camera.position.set(flat * Math.sin(orbit.yaw), view.lookY + view.dist * Math.sin(orbit.pitch), flat * Math.cos(orbit.yaw));
   view.camera.lookAt(0, view.lookY, 0);
 }
 
@@ -123,6 +130,34 @@ function makeView(canvas: HTMLCanvasElement, initial: Avatar): View {
 
 const senderView = makeView(document.getElementById('sender') as HTMLCanvasElement, new StickFigure());
 const receiverView = makeView(document.getElementById('receiver') as HTMLCanvasElement, new StickFigure());
+
+// Dragging on either view turns both cameras around the avatar; a double-click puts them
+// back. The turntable does the same on its own, for what is behind the avatar.
+const turnButton = document.getElementById('turn') as HTMLButtonElement;
+const setTurning = (on: boolean) => {
+  orbit.turning = on;
+  turnButton.classList.toggle('active', on);
+  turnButton.setAttribute('aria-pressed', String(on));
+};
+turnButton.addEventListener('click', () => setTurning(!orbit.turning));
+for (const { renderer } of [senderView, receiverView]) {
+  const canvas = renderer.domElement;
+  canvas.addEventListener('pointerdown', (e) => {
+    canvas.setPointerCapture(e.pointerId);
+    orbit.dragging = true;
+  });
+  canvas.addEventListener('pointermove', (e) => {
+    if (!canvas.hasPointerCapture(e.pointerId)) return;
+    orbit.yaw -= e.movementX * 0.008;
+    // From a little below the floor to nearly overhead.
+    orbit.pitch = Math.min(1.4, Math.max(-0.25, orbit.pitch + e.movementY * 0.006));
+  });
+  for (const type of ['pointerup', 'pointercancel'] as const) canvas.addEventListener(type, () => (orbit.dragging = false));
+  canvas.addEventListener('dblclick', () => {
+    Object.assign(orbit, ORBIT_HOME);
+    setTurning(false);
+  });
+}
 
 // --- channel / receiver / stats -------------------------------------------
 
@@ -197,7 +232,7 @@ for (const id of ['loss', 'jitter']) {
 }
 
 // Declaration: the tracker the user picks, cut down to what the loaded avatar can show.
-// `?tracker=<id>&pose=<index>` preselects both, so a specific check can be linked to.
+// `?tracker=<id>&pose=<id>` preselects both, so a specific check can be linked to.
 const params = new URLSearchParams(location.search);
 let tracker: Tracker = TRACKERS.find((t) => t.id === params.get('tracker')) ?? TRACKERS[0];
 let sends: ReadonlySet<DataType> = new Set();
@@ -274,25 +309,40 @@ for (const t of TRACKERS) {
 }
 renderDeclaration();
 
-// Pose: one dropdown. 'auto' cycles through the whole-body poses.
+// Pose: first the part of the body, then one pose of that group or a cycle through all of
+// them. 'All' cycles through every pose there is.
+const groupSelect = document.getElementById('pose-group') as HTMLSelectElement;
 const poseSelect = document.getElementById('pose') as HTMLSelectElement;
 const poseNow = document.getElementById('pose-now')!;
 let shownPose = '';
 
-poseSelect.append(new Option('Auto — cycle through the poses', 'auto'));
-for (const group of new Set(POSES.map((p) => p.group))) {
-  const og = document.createElement('optgroup');
-  og.label = group;
-  for (const p of POSES.filter((x) => x.group === group)) og.append(new Option(p.label, p.id));
-  poseSelect.append(og);
+groupSelect.append(new Option(`All — cycle through all ${POSES.length} poses`, 'all'));
+for (const group of GROUPS) groupSelect.append(new Option(group, group));
+
+function listPoses(): void {
+  const inGroup = POSES.filter((p) => p.group === groupSelect.value);
+  poseSelect.replaceChildren(new Option(`Cycle through these ${inGroup.length}`, 'cycle'), ...inGroup.map((p) => new Option(p.label, p.id)));
+  // Nothing to choose in 'All' or in a group of one.
+  poseSelect.hidden = inGroup.length < 2;
+  shownPose = '';
 }
-{
-  // A bare number selects that conformance vector (7 → p07); 0 is the idle stand.
-  const wanted = params.get('pose') ?? 'auto';
-  const id = /^\d+$/.test(wanted) ? (wanted === '0' ? 'idle' : `p${wanted.padStart(2, '0')}`) : wanted;
-  poseSelect.value = POSES.some((p) => p.id === id) ? id : 'auto';
-}
+/** What `bodyPoseAt` is asked for: a pose id, a group to cycle through, or 'all'. */
+const selectedPose = (): string =>
+  groupSelect.value === 'all' ? 'all' : poseSelect.hidden || poseSelect.value === 'cycle' ? `group:${groupSelect.value}` : poseSelect.value;
+
+groupSelect.addEventListener('change', listPoses);
 poseSelect.addEventListener('change', () => (shownPose = ''));
+{
+  // A bare number selects that conformance vector (7 → p07); 0 is the idle stand. A group
+  // name cycles through that group.
+  const wanted = params.get('pose') ?? '';
+  const id = /^\d+$/.test(wanted) ? (wanted === '0' ? 'idle' : `p${wanted.padStart(2, '0')}`) : wanted;
+  const pose = POSES.find((p) => p.id === id);
+  if (pose) groupSelect.value = pose.group;
+  else if (GROUPS.includes(wanted)) groupSelect.value = wanted;
+  listPoses();
+  if (pose) poseSelect.value = pose.id;
+}
 
 // Close-up: 'auto' follows the pose (most poses ask for none), or hold one by hand.
 const lookSelect = document.getElementById('look') as HTMLSelectElement;
@@ -304,14 +354,16 @@ const vrmInput = document.getElementById('vrm') as HTMLInputElement;
 const vrmNote = document.getElementById('vrm-note')!;
 const vrmUnload = document.getElementById('vrm-unload') as HTMLButtonElement;
 
+const STICK_FIGURE_NOTE = vrmNote.textContent;
+
 function backToStickFigure(): void {
   senderView.setAvatar(new StickFigure());
   receiverView.setAvatar(new StickFigure());
   vrmUnload.hidden = true;
   vrmInput.value = ''; // let the same file be picked again later
-  vrmNote.textContent = 'Optional. Built-in stick figure is used by default. Nothing is uploaded.';
+  vrmNote.textContent = STICK_FIGURE_NOTE;
   renderDeclaration();
-  declareExtras();
+  resetExtras();
 }
 
 vrmInput.addEventListener('change', async () => {
@@ -325,12 +377,12 @@ vrmInput.addEventListener('change', async () => {
     senderView.setAvatar(a);
     receiverView.setAvatar(b);
     vrmUnload.hidden = false;
-    vrmNote.textContent = `showing ${file.name}. Nothing was uploaded.`;
+    vrmNote.textContent = `Showing ${file.name}.`;
     renderDeclaration();
-    declareExtras();
+    resetExtras();
   } catch (err) {
     backToStickFigure();
-    vrmNote.textContent = `couldn't load that file (${(err as Error).message}). Back to the stick figure.`;
+    vrmNote.textContent = `Could not load ${file.name} (${(err as Error).message}). Showing the stick figure.`;
   }
 });
 
@@ -338,40 +390,95 @@ vrmUnload.addEventListener('click', backToStickFigure);
 
 // --- extras (spec §2.6) ----------------------------------------------------
 
-// The names typed here are declared if the loaded avatar has them. `?extra=a,b&values=c`
-// presets both fields. Declarations are kept oldest first; the receiver shares the list,
-// as a peer gets it from the server.
-const extraBonesInput = document.getElementById('extra-bones') as HTMLInputElement;
-const extraValuesInput = document.getElementById('extra-values') as HTMLInputElement;
+// The sender declares names from the loaded avatar, picked from two lists of what that
+// avatar has. `?extra=a,b&values=c` picks those names on every avatar that has them.
+// Declarations are kept oldest first; the receiver shares the list, as a peer gets it from
+// the server.
+const extraBonesSelect = document.getElementById('extra-bones') as HTMLSelectElement;
+const extraValuesSelect = document.getElementById('extra-values') as HTMLSelectElement;
+const extraChain = document.getElementById('extra-chain') as HTMLInputElement;
+const extraClear = document.getElementById('extra-clear') as HTMLButtonElement;
+const extraChips = document.getElementById('extra-chips')!;
 const extraNote = document.getElementById('extra-note')!;
-extraBonesInput.value = params.get('extra') ?? '';
-extraValuesInput.value = params.get('values') ?? '';
+const MAX_EXTRAS = 255; // per list: the block has no room for more (§5.8)
+
+const named = (param: string): string[] => [...new Set((params.get(param) ?? '').split(',').map((s) => s.trim()).filter((s) => s !== ''))];
+const linked = { bones: named('extra'), values: named('values') };
+const picked: { bones: string[]; values: string[] } = { bones: [], values: [] };
 let decls: ExtraDecl[] = [NO_EXTRAS];
 receiver.decls = decls;
 
+/** A new avatar starts with nothing declared but what the link asks for. */
+function resetExtras(): void {
+  const has = receiverView.avatar.extras;
+  // An `app:` name is not avatar data, so no avatar has to know it (§2.6).
+  picked.bones = linked.bones.filter((n) => has.bones.includes(n) || n.startsWith('app:')).slice(0, MAX_EXTRAS);
+  picked.values = linked.values.filter((n) => has.values.includes(n) || n.startsWith('app:')).slice(0, MAX_EXTRAS);
+  declareExtras();
+}
+
+/** The select offers what the avatar has and is not declared yet; `levels` indents chains. */
+function offer(select: HTMLSelectElement, add: string, none: string, names: string[], taken: string[], levels?: number[]): void {
+  const open = names.map((name, i) => ({ name, level: levels?.[i] ?? 0 })).filter(({ name }) => !taken.includes(name));
+  const full = taken.length >= MAX_EXTRAS;
+  const first = names.length === 0 ? none : full ? `${MAX_EXTRAS} declared, the most a frame takes` : open.length === 0 ? 'all declared' : `${add} (${open.length})`;
+  select.replaceChildren(new Option(first, ''), ...open.map(({ name, level }) => new Option('\u00a0\u00a0'.repeat(level) + name, name)));
+  select.disabled = open.length === 0 || full;
+}
+
 function declareExtras(): void {
   const has = receiverView.avatar.extras;
-  const pick = (input: HTMLInputElement, known: string[]) =>
-    [...new Set(input.value.split(',').map((s) => s.trim()).filter((s) => s !== ''))].filter((s) => known.includes(s) || s.startsWith('app:'));
-  const bones = pick(extraBonesInput, has.bones).slice(0, 255);
-  const values = pick(extraValuesInput, has.values).slice(0, 255);
+  const { bones, values } = picked;
   // `since` lies half a second ahead, so the peer holds the lists before the first frame
   // that uses them; frames already under way still follow the previous declaration.
-  decls = [decls[decls.length - 1], { bones, values, since: Math.floor(performance.now()) + 500 }];
+  decls = [decls[decls.length - 1], { bones: [...bones], values: [...values], since: Math.floor(performance.now()) + 500 }];
   receiver.decls = decls;
 
-  for (const [id, names] of [['extra-bone-names', has.bones], ['extra-value-names', has.values]] as const) {
-    document.getElementById(id)!.replaceChildren(...names.map((n) => Object.assign(document.createElement('option'), { value: n })));
-  }
+  offer(extraBonesSelect, 'Add a bone…', 'no further bones', has.bones, bones, has.boneLevels);
+  offer(extraValuesSelect, 'Add an expression…', 'no expressions of its own', has.values, values);
+  const chip = (list: string[], name: string, what: string) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip on';
+    b.textContent = `${name} ✕`;
+    b.title = `declared ${what}; click to take it out`;
+    b.addEventListener('click', () => {
+      list.splice(list.indexOf(name), 1);
+      declareExtras();
+    });
+    return b;
+  };
+  extraChips.replaceChildren(...bones.map((n) => chip(bones, n, 'bone')), ...values.map((n) => chip(values, n, 'value')));
+  extraChips.hidden = extraClear.hidden = bones.length + values.length === 0;
   extraNote.textContent =
     has.bones.length + has.values.length === 0
       ? 'Extras need a loaded avatar: the stick figure is the humanoid body and nothing else.'
       : `This avatar has ${has.bones.length} further bones and ${has.values.length} expressions of its own. ` +
         `Declared: ${bones.length} bones, ${values.length} values = ${4 * bones.length + values.length} B per frame. ` +
-        'Declared bones are moved by a sender-side animation; the others stay with the spring bones. To move a whole ear or tail, declare every bone of it.';
+        'Declared bones are moved by a sender-side animation; the others stay with the spring bones.';
 }
-extraBonesInput.addEventListener('change', declareExtras);
-extraValuesInput.addEventListener('change', declareExtras);
+
+extraBonesSelect.addEventListener('change', () => {
+  const has = receiverView.avatar.extras;
+  const i = has.bones.indexOf(extraBonesSelect.value);
+  if (i < 0) return;
+  // A tail or an ear is a chain of bones; one bone of it moves next to nothing.
+  let end = i + 1;
+  if (extraChain.checked) while (end < has.bones.length && has.boneLevels[end] > has.boneLevels[i]) end++;
+  picked.bones = [...new Set([...picked.bones, ...has.bones.slice(i, end)])].slice(0, MAX_EXTRAS);
+  declareExtras();
+});
+extraValuesSelect.addEventListener('change', () => {
+  if (extraValuesSelect.value === '') return;
+  picked.values = [...picked.values, extraValuesSelect.value].slice(0, MAX_EXTRAS);
+  declareExtras();
+});
+extraClear.addEventListener('click', () => {
+  picked.bones = [];
+  picked.values = [];
+  declareExtras();
+});
+resetExtras();
 
 // --- loops -----------------------------------------------------------------
 
@@ -382,11 +489,13 @@ function maybeSend(nowMs: number): void {
   if (nowMs - lastSend < interval) return;
   lastSend = nowMs;
 
-  const body = bodyPoseAt(nowMs / 1000, poseSelect.value);
+  const selected = selectedPose();
+  const body = bodyPoseAt(nowMs / 1000, selected);
   poseLook = body.look;
-  // In Auto, say which pose is on; a held pose is already named by the dropdown, so it
-  // shows the step the pose is at, if it has steps.
-  const now = poseSelect.value === 'auto' ? `now: ${POSES.find((p) => p.id === body.id)?.label ?? ''}` : (body.note ?? '');
+  // In a cycle, say which pose is on; a held pose is already named by the dropdown. Either
+  // way, show the step the pose is at, if it has steps.
+  const label = selected === body.id ? '' : `now: ${POSES.find((p) => p.id === body.id)?.label ?? ''}`;
+  const now = [label, body.note].filter(Boolean).join(' — ');
   if (now !== shownPose) poseNow.textContent = shownPose = now;
 
   const performance = poseAt(nowMs / 1000, body);
@@ -406,6 +515,7 @@ function tick(nowMs: number): void {
   last = nowMs;
 
   maybeSend(nowMs);
+  if (orbit.turning && !orbit.dragging) orbit.yaw += delta * 0.5; // one turn in about 13 s
 
   const target: Frame | null = receiver.target(nowMs);
   if (target) receiverView.avatar.applyPose(target, 0.2, receiver.currentDecl); // smooth over jitter
