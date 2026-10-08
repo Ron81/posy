@@ -6,9 +6,9 @@
 [![npm](https://img.shields.io/npm/v/posy-protocol.svg)](https://www.npmjs.com/package/posy-protocol)
 [![runtime deps](https://img.shields.io/badge/runtime%20deps-0-brightgreen.svg)](https://www.npmjs.com/package/posy-protocol?activeTab=dependencies)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-![Spec: 1.2.0](https://img.shields.io/badge/spec-1.2.0-brightgreen.svg)
+![Spec: 1.3.0](https://img.shields.io/badge/spec-1.3.0-brightgreen.svg)
 
-Posy (**Po**se **Sy**nchronization) is an open, compact protocol for syncing humanoid avatar poses between lots of people in real time. It works over WebRTC data channels for direct and browser-to-browser links, and over a reliable WebSocket for server-relay deployments — each transport is the right tool for its deployment context, not a fallback for the other. A typical upper-body frame with fingers and face is ~118 bytes — roughly 70× smaller than VMC — so a whole room can move at once without anybody's upload crying.
+Posy (**Po**se **Sy**nchronization) is an open, compact protocol for syncing humanoid avatar poses between lots of people in real time. It runs over WebRTC data channels for direct and browser-to-browser links, and over a reliable WebSocket for server-relay deployments — each transport is the right tool for its context, not a fallback for the other. A typical upper-body frame with fingers and face is ~118 bytes — roughly 70× smaller than VMC — so a whole room can move at once without anybody's upload crying.
 
 ---> 🧪 **Try out the [interactive site](https://ron81.github.io/posy/)** <---
 It lets you build a frame byte by byte, play with the **[bandwidth calculator](https://ron81.github.io/posy/#bandwidth)** and browse the tables. Or try the **[loopback demo](https://ron81.github.io/posy/demo/)** to watch how an avatar looks on different connections from premium Fibre to the last copper cable, in a cave, at the end of the world.
@@ -102,7 +102,7 @@ A stick figure works out of the box; you can also load your own `.vrm`. Nothing 
 2. Validate against [`testvectors/`] — if those pass, you're conformant.
 3. Grab code from [`reference/js/`] freely — or use it as a cross-check for your own.
 
-If the spec, the reference code and the test vectors ever disagree, **the spec wins** and the other two get fixed. Please report the problem, so i actually know about it.
+If the spec, the reference code and the test vectors ever disagree, **the spec wins** and the other two get fixed. Please report it so I actually find out.
 
 ## What's where
 
@@ -120,8 +120,37 @@ If the spec, the reference code and the test vectors ever disagree, **the spec w
 
 ## Status
 
-**1.1.0 — released.** The packet format (§5) and signaling (§2) are soft-locked rather than frozen: no implementation has shipped yet, so they can still change in a 1.x revision, but every change needs a stated justification. 1.1.0 adds the full-body profile, a per-sender declaration of what is transmitted, hips height and tongue tracking.
-Other-language implementations (Rust, C#, Python, …) are very welcome — please open a PR adding a link here.
+**1.3.0 — released.** The packet format (§5) and signaling (§2) are soft-locked rather than frozen:
+no implementation has shipped yet, so they can still change in a 1.x revision, but every change needs
+a stated justification.
+
+Since 1.1.0:
+- **1.2** added the full-body profile with leg/foot/toe and finger conventions, on-wire hips height,
+  and tongue tracking.
+- **1.3** added **declared avatar-specific extras** — a sender names further bones (tail, ears, wings,
+  extra limbs, single toes) and scalar values (its own expressions, MMD morphs) from its own avatar
+  file and sends them in one block at the end of the frame. It's additive: a sender that declares no
+  extras produces the same frames as 1.2, so these cost 0 bytes when unused.
+
+Other-language implementations (Rust, C#, Python, …) are very welcome — please open a PR adding a link
+here.
+
+## What's next
+
+A quick look at where 1.x is going. These are plans, scoped to 1.x — nothing here changes the wire
+unless it says so.
+
+- **1.3.5 (in progress)** — demo polish and PMX groundwork. A richer loopback demo: orbit the camera
+  to see back-of-avatar extras like tails and wings, clearer extras and expression pickers, and pose
+  presets grouped by body area. Plus a `.pmx` loader so MMD-style avatars can be previewed. Demo and
+  tooling only — no wire change.
+- **1.4** — a tested PMX driver and normative per-type driver sections (§3.2), so MMD avatars are
+  first-class rather than just previewable.
+- **A later 1.x clean-up release** — one "soft-lock-closing" revision that batches the last small
+  breaking tidy-ups (mask width, a couple of spec fixes, some naming) before the first real
+  integration. After that, a long calm run of additive-only 1.x.
+
+2.0 is deliberately far off — 1.x is where the work is.
 
 ## Thanks — standing on a lot of shoulders
 
@@ -139,10 +168,10 @@ Huge thank you to:
 
 ## But why?
 
-That VMC nod above deserves the full story. I love the VMC protocol, its awesome for its intended use, but it's fundamentally a local-machine protocol. 
-What I needed / wanted was lightweight pose sync over the internet that doesn't break with multiple users. 
-The ones that already do this or lets say most likely do have a own protocol (e.g Vupechat or VRChat) are closed source.
-So here we are...
+For most things you can just reach for VMC and call it a day — it's great at what it was built for.
+But it's a local-machine protocol at heart, and what I kept wanting was something just as light that
+survives the trip over the internet to more than one person. The tools that already pull that off
+(Vupechat, VRChat, …) are all closed source. So here we are.
 
 ## Contributing
 
