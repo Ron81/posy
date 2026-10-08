@@ -3,6 +3,31 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
+## [Unreleased]
+
+Loopback demo only. **No change to the spec, the codec or the test vectors.**
+
+### Changed
+- Extras are picked from two lists of what the loaded avatar has, its further bones and
+  its own expressions, instead of typed as comma-separated text. A picked bone is declared
+  with the bones below it (can be switched off); each declared name can be taken out again.
+  The typed fields offered suggestions only for the first name and did not say what an
+  expression name was.
+- Loading another avatar, or going back to the stick figure, starts with nothing declared.
+  Names of the previous avatar used to stay in the fields.
+- Poses are grouped by the part of the body they show (standing and arms, legs, hands,
+  feet, face, leg test vectors). A group is chosen first, then one pose of it or a cycle
+  through the group. "All" cycles through every pose; the cycle used to leave out the
+  hand, feet and face poses and the test vectors. A pose that runs through a sequence gets
+  the length of that sequence in a cycle.
+- The note next to the avatar picker says what is shown. It used to end in "Nothing was
+  uploaded." in every state, which read as a failed upload.
+
+### Added
+- Dragging on either view turns both cameras around the avatar, "Turn" does it
+  continuously, a double-click resets. Both views keep one camera position.
+- `?pose=<group name>` cycles through that group.
+
 ## [1.3.0] - 2026-10-06
 
 Declared extras: avatar-specific bones and values. **Additive: a sender that declares no

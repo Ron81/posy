@@ -1,6 +1,7 @@
 // What the performer does: a small set of whole-body poses, written as joint angles
 // in the conventions of spec §3.1 / §3.4, plus the conformance pose vectors
-// (testvectors/poses) so those stay one click away.
+// (testvectors/poses) so those stay one click away. The poses are grouped by the part of
+// the body they are there to show; a group, or all of them, can be played as a cycle.
 //
 // A pose also says what the hands and the face do in it. A part that a person would
 // keep still in that situation stays still: the hands hang relaxed, the mouth is shut.
@@ -53,6 +54,8 @@ export interface Pose {
   group: string;
   /** Where the cameras should look while this pose is on; omit for the usual framing. */
   look?: 'hands' | 'feet' | 'head';
+  /** Seconds the pose gets in a cycle; omit for HOLD_SEC. */
+  hold?: number;
   /** `since` is the time in seconds since the pose was selected. */
   at(tSec: number, since: number): Shape;
 }
@@ -156,11 +159,11 @@ const seatedRight: Bones = { rightUpperLeg: [['x', -90]], rightLowerLeg: [['x', 
 // ---------------------------------------------------------------------------
 
 const BODY: Pose[] = [
-  { id: 'idle', label: 'Idle', group: 'Standing', at: (t) => ({ bones: merge(armsDown(), alive(t)) }) },
+  { id: 'idle', label: 'Idle', group: 'Standing and arms', at: (t) => ({ bones: merge(armsDown(), alive(t)) }) },
   {
     id: 'wave',
     label: 'Wave',
-    group: 'Standing',
+    group: 'Standing and arms',
     at: (t) => ({
       bones: merge(
         armsDown(),
@@ -175,7 +178,7 @@ const BODY: Pose[] = [
   {
     id: 'hands-on-hips',
     label: 'Hands on hips',
-    group: 'Standing',
+    group: 'Standing and arms',
     at: (t) => ({
       bones: merge(
         { leftUpperArm: [['z', -50]], rightUpperArm: [['z', 50]], leftLowerArm: [['z', -85]], rightLowerArm: [['z', 85]] },
@@ -189,7 +192,7 @@ const BODY: Pose[] = [
   {
     id: 'cheer',
     label: 'Cheer on tiptoes',
-    group: 'Standing',
+    group: 'Standing and arms',
     at: (t) => {
       const up = 0.5 + 0.5 * wave(t, 1.2); // 0..1: heels down .. full tiptoe
       return {
@@ -207,7 +210,7 @@ const BODY: Pose[] = [
   {
     id: 'bow',
     label: 'Bow',
-    group: 'Standing',
+    group: 'Standing and arms',
     at: (t) => {
       const k = 0.5 - 0.5 * Math.cos(t * 1.6); // 0..1, slow down and up
       return {
@@ -220,7 +223,7 @@ const BODY: Pose[] = [
   {
     id: 'walk',
     label: 'Walk in place',
-    group: 'Moving',
+    group: 'Legs',
     at: (t) => {
       const s = wave(t, 0.9);
       const lift = (v: number) => Math.max(0, v);
@@ -240,7 +243,7 @@ const BODY: Pose[] = [
   {
     id: 'squat',
     label: 'Squat',
-    group: 'Moving',
+    group: 'Legs',
     at: (t) => {
       const k = 0.5 - 0.5 * Math.cos(t * 2.2); // 0..1
       const a = 72 * k;
@@ -263,7 +266,7 @@ const BODY: Pose[] = [
   {
     id: 'jump',
     label: 'Small jump',
-    group: 'Moving',
+    group: 'Legs',
     at: (t) => {
       const u = (t % 1.7) / 1.7;
       const crouch = u < 0.35 ? Math.sin((Math.PI * u) / 0.35) : 0;
@@ -286,7 +289,7 @@ const BODY: Pose[] = [
   {
     id: 'sit-crossed',
     label: 'Chair, legs crossed',
-    group: 'Seated',
+    group: 'Legs',
     at: (t) => ({
       bones: merge(
         seatedLeft,
@@ -300,7 +303,7 @@ const BODY: Pose[] = [
   {
     id: 'sit-ankle-on-knee',
     label: 'Chair, ankle on knee',
-    group: 'Seated',
+    group: 'Legs',
     at: (t) => ({
       bones: merge(
         seatedRight,
@@ -315,7 +318,7 @@ const BODY: Pose[] = [
   {
     id: 'stool',
     label: 'High stool, feet off the floor',
-    group: 'Seated',
+    group: 'Legs',
     at: (t) => ({
       bones: merge(
         { leftUpperLeg: [['x', -80]], leftLowerLeg: [['x', 78 + 14 * wave(t, 0.6)]] },
@@ -329,7 +332,7 @@ const BODY: Pose[] = [
   {
     id: 'kneel',
     label: 'Kneeling',
-    group: 'Seated',
+    group: 'Legs',
     at: (t) => ({
       bones: merge(
         { leftLowerLeg: [['x', 90]], rightLowerLeg: [['x', 90]], leftFoot: [['x', 80]], rightFoot: [['x', 80]] },
@@ -342,7 +345,7 @@ const BODY: Pose[] = [
   {
     id: 'floor-crossed',
     label: 'Floor, cross-legged',
-    group: 'Seated',
+    group: 'Legs',
     at: (t) => ({
       bones: merge(
         { leftUpperLeg: [['y', 42], ['x', -86], ['y', 82]], leftLowerLeg: [['x', 132]] },
@@ -355,7 +358,8 @@ const BODY: Pose[] = [
   },
 ];
 
-// Poses for the small parts. Not in the Auto cycle: they run longer than one slot of it.
+// Poses for the small parts. Each runs through a sequence, so its `hold` is the length of
+// that sequence.
 
 const COUNT_HALF = 7.5; // seconds per hand
 const COUNT_SWAP = 1.2; // one arm comes down while the other goes up
@@ -405,8 +409,9 @@ const DETAIL: Pose[] = [
   {
     id: 'count',
     label: 'Count to ten on the fingers',
-    group: 'Hands and feet',
+    group: 'Hands',
     look: 'hands',
+    hold: 2 * COUNT_HALF,
     at: (t, since) => {
       const u = since % (2 * COUNT_HALF);
       const leftTurn = u < COUNT_HALF;
@@ -442,8 +447,9 @@ const DETAIL: Pose[] = [
   {
     id: 'toes',
     label: 'Toes up: left, right, then both on tiptoe',
-    group: 'Hands and feet',
+    group: 'Feet',
     look: 'feet',
+    hold: 6,
     at: (t, since) => {
       const u = since % 6;
       const lift = (from: number) => Math.max(0, Math.sin(Math.PI * (u - from))) * (u >= from && u < from + 2 ? 1 : 0);
@@ -464,8 +470,9 @@ const DETAIL: Pose[] = [
   {
     id: 'face',
     label: 'Face: lids, mouth, tongue, gaze',
-    group: 'Hands and feet',
+    group: 'Face',
     look: 'head',
+    hold: FACE_STEP * FACE.length,
     at: (_t, since) => {
       const u = since % (FACE_STEP * FACE.length);
       const i = Math.floor(u / FACE_STEP);
@@ -491,12 +498,15 @@ const TEST: Pose[] = Object.keys(vectors)
     return {
       id: v.name.slice(0, 3),
       label: v.name.replace(/^(p\d+)-/, '$1 ').replaceAll('-', ' '),
-      group: 'Test vectors (legs only)',
+      group: 'Leg test vectors',
+      hold: 3, // nothing moves in a vector
       at: (): Shape => ({ bones: { ...armsDown(), ...legs }, hips: v.hips_height }),
     };
   });
 
 export const POSES: Pose[] = [...BODY, ...DETAIL, ...TEST];
+/** The groups in the order they are offered. */
+export const GROUPS: string[] = [...new Set(POSES.map((p) => p.group))];
 
 // ---------------------------------------------------------------------------
 // Sampling
@@ -559,20 +569,42 @@ export interface BodyPose {
   look?: Pose['look'];
 }
 
-const HOLD_SEC = 5; // per pose in Auto
+const HOLD_SEC = 5; // per pose in a cycle, unless the pose says otherwise
 const BLEND_SEC = 0.7; // glide from the previous pose instead of teleporting
 
 let currentId = '';
 let changedAt = 0;
+let cycled = '';
+let cycleFrom = 0;
+
+/** The pose that is on at `tSec` when `list` is played in order, starting at `cycleFrom`. */
+function cycle(list: Pose[], tSec: number): Pose {
+  let u = (tSec - cycleFrom) % list.reduce((sum, p) => sum + (p.hold ?? HOLD_SEC), 0);
+  for (const p of list) {
+    if (u < (p.hold ?? HOLD_SEC)) return p;
+    u -= p.hold ?? HOLD_SEC;
+  }
+  return list[0];
+}
 let from: { quats: Map<BoneName, THREE.Quaternion>; hips: number } | null = null;
 let last: { quats: Map<BoneName, THREE.Quaternion>; hips: number } | null = null;
 
-/** `selected` is a pose id, or 'auto' to cycle through the whole-body poses. */
+/**
+ * `selected` is a pose id to hold that pose, `group:<name>` to cycle through that group,
+ * or 'all' to cycle through every pose. A cycle starts at its first pose.
+ */
 export function bodyPoseAt(tSec: number, selected: string): BodyPose {
+  if (selected !== cycled) {
+    cycled = selected;
+    cycleFrom = tSec;
+  }
+  const group = selected.startsWith('group:') ? POSES.filter((p) => p.group === selected.slice(6)) : [];
   const pose =
-    selected === 'auto'
-      ? BODY[Math.floor(tSec / HOLD_SEC) % BODY.length]
-      : (POSES.find((p) => p.id === selected) ?? BODY[0]);
+    selected === 'all'
+      ? cycle(POSES, tSec)
+      : group.length > 0
+        ? cycle(group, tSec)
+        : (POSES.find((p) => p.id === selected) ?? BODY[0]);
   if (pose.id !== currentId) {
     from = last;
     changedAt = tSec;

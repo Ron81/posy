@@ -122,7 +122,14 @@
         background: #242736; color: var(--ink); border: 1px solid var(--line);
         border-radius: 8px; padding: 5px 8px; font-size: 13px; max-width: 100%;
       }
-      .row #pose { flex: 1 1 0; min-width: 0; }
+      .row #pose, .row #pose-group { flex: 1 1 0; min-width: 0; }
+      .row select:disabled { color: var(--muted); }
+      .row .chk { color: var(--muted); font-size: 12px; white-space: nowrap; }
+      .panel canvas { cursor: grab; touch-action: pan-y; }
+      .panel canvas:active { cursor: grabbing; }
+      .panel .hint { position: absolute; bottom: 8px; right: 12px; font-size: 11.5px; color: var(--muted); pointer-events: none; }
+      button.chip { cursor: pointer; background: none; font-family: inherit; }
+      button.chip:hover { border-color: var(--warn); color: var(--warn); }
       .row .now { color: var(--accent); font-size: 12px; }
       .chip {
         font-size: 11.5px; line-height: 1; padding: 4px 8px; border-radius: 999px;
@@ -155,6 +162,7 @@
       <div class="panel">
         <span class="tag">the room · what you declared, after the channel</span>
         <canvas id="receiver"></canvas>
+        <span class="hint">drag to turn both views · double-click to reset</span>
       </div>
     </div>
 
@@ -163,8 +171,9 @@
         <h2>Send</h2>
         <div class="row" id="trackers"><span class="lbl">Tracker</span></div>
         <div class="row">
-          <label class="lbl" for="pose">Pose</label>
-          <select id="pose"></select>
+          <label class="lbl" for="pose-group">Pose</label>
+          <select id="pose-group" title="Part of the body the poses are there to show"></select>
+          <select id="pose" aria-label="Pose of this group"></select>
           <select id="look" title="Camera close-up, both views" aria-label="Camera close-up">
             <option value="auto">View: auto</option>
             <option value="full">Whole body</option>
@@ -172,6 +181,7 @@
             <option value="feet">Feet</option>
             <option value="head">Face</option>
           </select>
+          <button type="button" class="preset" id="turn" aria-pressed="false" title="Turn both cameras slowly around the avatar">Turn</button>
           <span class="now" id="pose-now"></span>
         </div>
         <div class="row" id="chips"><span class="lbl" id="chips-label">Sent</span></div>
@@ -204,18 +214,19 @@
       <section>
         <h2>Avatar and result</h2>
         <div class="row file">
-          <label class="fake" for="vrm">Load your own .vrm…</label>
+          <label class="fake" for="vrm" title="The file is read by this page and sent nowhere">Load your own .vrm…</label>
           <input id="vrm" type="file" accept=".vrm,model/gltf-binary" />
           <button type="button" class="fake" id="vrm-unload" hidden>Back to stick figure</button>
-          <span class="note" id="vrm-note">Optional. Built-in stick figure is used by default. Nothing is uploaded.</span>
+          <span class="note" id="vrm-note">Showing the built-in stick figure. A model you load stays in this tab.</span>
         </div>
         <div class="row">
           <span class="lbl" title="Spec §2.6: parts beyond the humanoid body, declared by the names in the avatar file">Extras</span>
-          <input id="extra-bones" type="text" list="extra-bone-names" placeholder="bones, by name, comma separated" aria-label="Extra bones to declare" />
-          <input id="extra-values" type="text" list="extra-value-names" placeholder="expressions, by name" aria-label="Extra values to declare" />
-          <datalist id="extra-bone-names"></datalist>
-          <datalist id="extra-value-names"></datalist>
+          <select id="extra-bones" aria-label="Declare a further bone of this avatar"></select>
+          <label class="chk" title="A tail or an ear is a chain of bones: take the picked bone together with every bone below it"><input id="extra-chain" type="checkbox" checked /> with the bones below it</label>
+          <select id="extra-values" aria-label="Declare an expression of this avatar that the face block does not carry"></select>
+          <button type="button" class="preset" id="extra-clear" hidden>Clear</button>
         </div>
+        <div class="row" id="extra-chips" hidden></div>
         <p class="note" id="extra-note">Extras need a loaded avatar: the stick figure is the humanoid body and nothing else.</p>
         <div class="stats">
           <span>frame: <b><span id="stat-bytes">–</span> B</b></span>
@@ -248,9 +259,19 @@
     <details>
       <summary>About the poses, hips height and send rate</summary>
       <p>
-        <b>Poses.</b> Whole-body poses written as joint angles in the spec's conventions (§3.4).
-        "Auto" cycles through them. The last group holds the conformance pose vectors from
-        <code>testvectors/poses</code>, legs only.
+        <b>Poses.</b> Written as joint angles in the spec's conventions (§3.4) and grouped by
+        the part of the body they show. Pick a group, then one pose of it or a cycle through
+        the group; "All" cycles through every pose. The last group holds the conformance pose
+        vectors from <code>testvectors/poses</code>, legs only.
+      </p>
+      <p>
+        <b>Turning.</b> Drag on either view to turn both cameras around the avatar, or let
+        "Turn" do it; a double-click puts them back. That is how a tail or wings get seen.
+      </p>
+      <p>
+        <b>Extras.</b> With a model loaded, the two lists hold its further bones and the
+        expressions of its own that the face block does not carry (spec §2.6). Picking a name
+        declares it; a chip takes it out again. Another avatar starts with nothing declared.
       </p>
       <p>
         <b>Hands, feet and face.</b> "Count to ten" raises one hand and opens it finger by

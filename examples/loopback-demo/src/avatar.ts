@@ -23,8 +23,12 @@ export interface Avatar {
   readonly caps: ReadonlySet<DataType>;
   /** Top of the head above the floor in metres, for camera framing. */
   readonly height: number;
-  /** What a sender with this avatar can declare as extras (spec §2.6): the file's own names. */
-  readonly extras: { bones: string[]; values: string[] };
+  /**
+   * What a sender with this avatar can declare as extras (spec §2.6): the file's own names.
+   * `bones` lists a bone before the bones below it, and `boneLevels` gives for each how
+   * many of the listed bones it hangs under, so a picker can show and take a whole chain.
+   */
+  readonly extras: { bones: string[]; boneLevels: number[]; values: string[] };
   /**
    * Move rendered bones a fraction toward the decoded pose. `extra` is the declaration the
    * frame's extras block follows.
@@ -152,7 +156,7 @@ export class StickFigure implements Avatar {
   readonly object = new THREE.Group();
   readonly caps: ReadonlySet<DataType> = new Set<DataType>(['bones', 'legs', 'toes', 'root', 'fingers', 'expressions', 'tongue']);
   /** The figure is the humanoid core and nothing else. */
-  readonly extras = { bones: [], values: [] };
+  readonly extras = { bones: [], boneLevels: [], values: [] };
   readonly height = 1.75;
   private static readonly HIP_HEIGHT = 0.9;
   private readonly hips = new THREE.Group();
@@ -397,7 +401,7 @@ interface ExtraBone {
 export class VrmAvatar implements Avatar {
   readonly object: THREE.Object3D;
   readonly caps: ReadonlySet<DataType>;
-  readonly extras: { bones: string[]; values: string[] };
+  readonly extras: { bones: string[]; boneLevels: number[]; values: string[] };
   private readonly extraBones = new Map<string, ExtraBone>();
   /** Spring bone joints taken out while their bone is driven by the sender (§5.8). */
   private readonly parked = new Map<string, VRMSpringBoneJoint[]>();
@@ -469,13 +473,20 @@ export class VrmAvatar implements Avatar {
       seen.set(fileName(o), (seen.get(fileName(o)) ?? 0) + 1);
       if (!humanoid.has(o)) bones.push(o);
     });
+    const listed = new Set<THREE.Object3D>();
+    const boneLevels: number[] = [];
     for (const o of bones) {
       // A name that is not unique in the file cannot be declared (§2.6).
       if (seen.get(fileName(o)) !== 1) continue;
       this.extraBones.set(fileName(o), { node: o, rest: o.quaternion.clone(), w: o.getWorldQuaternion(new THREE.Quaternion()) });
+      let level = 0;
+      for (let p = o.parent; p; p = p.parent) if (listed.has(p)) level++;
+      listed.add(o);
+      boneLevels.push(level);
     }
     this.extras = {
       bones: [...this.extraBones.keys()],
+      boneLevels,
       values: (em?.expressions ?? []).map((e) => e.expressionName).filter((n) => !CORE_EXPRESSIONS.has(n.toLowerCase())),
     };
   }
