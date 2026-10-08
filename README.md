@@ -80,13 +80,14 @@ Want your own numbers? The [interactive bandwidth calculator](https://ron81.gith
 - let non-performers join as receive-only viewers,
 - or hand the routing role to whoever has the best upstream.
 
-Bigger rooms want a cheap VPS, and public ones a hosted SFU (mediasoup does data-channel forwarding natively). A ready-made example server is planned as a separate repo.
+Bigger rooms want a cheap VPS, and public ones a hosted SFU (mediasoup does data-channel forwarding natively). A ready-made chat and collaboration system, full implementation of posy with client and server, is currently in the making in a separate repo. Stay tuned, release is not far away!
 
-## Try it in 2 minutes
+## Try the demo-implementation
 
-A no-server loopback demo lives in [`examples/loopback-demo`]. It animates a pose, `encode()`s it to Posy bytes, sends it through a fake channel with packet-loss and jitter sliders, `decode()`s it and drives two avatars side by side — the sender and what actually survived the trip. All local, all in the browser.
+The no-server loopback demo animates a pose, `encode()`s it to Posy bytes, sends it through a fake channel with packet-loss and jitter sliders, `decode()`s it and drives two avatars side by side — the sender and what actually survived the trip. All local, all in the browser.
 
-The quickest look is the [hosted version](https://ron81.github.io/posy/demo/) — nothing to install. To run or hack on it yourself:
+The quickest look is the [hosted version](https://ron81.github.io/posy/demo/) — nothing to install. If you fear me stealing your model, rest assured, nothing is uploaded it all - it stays in your browser only. You can check the sourcecode in [`examples/loopback-demo`]. 
+Or run or hack on it yourself:
 
 ```sh
 cd examples/loopback-demo
@@ -94,7 +95,8 @@ npm install
 npm start
 ```
 
-A stick figure works out of the box; you can also load your own `.vrm`. Nothing is uploaded anywhere.
+NPM handels the installation of three.js, three-vrm, etc on your machine so you can run it localy. The pure version is 'npm install posy-protocol'.
+A stick figure works out of the box and you can also load your own `.vrm`. Again, nothing is uploaded anywhere.
 
 ## Implement it
 
