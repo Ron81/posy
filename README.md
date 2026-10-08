@@ -95,8 +95,7 @@ npm install
 npm start
 ```
 
-NPM handels the installation of three.js, three-vrm, etc on your machine so you can run it localy. The pure version is 'npm install posy-protocol', but just to be clear - the npm package is an implementation of the Posy protocol, not a requirement of the protocol itself.
-A stick figure works out of the box and you can also load your own `.vrm`. Again, nothing is uploaded anywhere.
+NPM handels the installation of dependencies on your machine so you can run it localy. That can also be done by 'npm install posy-protocol', but just to be clear - the npm package is only required for the demo's JavaScript/TypeScript tooling, not for implementing or using the Posy protocol itself.
 
 ## Implement it
 
