@@ -6,7 +6,7 @@
 [![npm](https://img.shields.io/npm/v/posy-protocol.svg)](https://www.npmjs.com/package/posy-protocol)
 [![runtime deps](https://img.shields.io/badge/runtime%20deps-0-brightgreen.svg)](https://www.npmjs.com/package/posy-protocol?activeTab=dependencies)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-![Spec: 1.3.0](https://img.shields.io/badge/spec-1.3.0-brightgreen.svg)
+![Spec: 1.3.1](https://img.shields.io/badge/spec-1.3.1-brightgreen.svg)
 
 Posy (**Po**se **Sy**nchronization) is an open, compact protocol for syncing humanoid avatar poses between lots of people in real time. It runs over WebRTC data channels for direct and browser-to-browser links, and over a reliable WebSocket for server-relay deployments — each transport is the right tool for its context, not a fallback for the other. A typical upper-body frame with fingers and face is ~118 bytes — roughly 70× smaller than VMC — so a whole room can move at once without anybody's upload crying.
 
@@ -121,9 +121,10 @@ If the spec, the reference code and the test vectors ever disagree, **the spec w
 
 ## Status
 
-**1.3.0 — released.** The packet format (§5) and signaling (§2) are soft-locked rather than frozen:
-no implementation has shipped yet, so they can still change in a 1.x revision, but every change needs
-a stated justification.
+**1.3.1 — released.** The packet format (§5) and signaling messages (§2) are soft-locked rather than
+frozen: no implementation has shipped yet, so they can still change in a 1.x revision, but every change
+needs a stated justification. 1.3.1 is an editorial clarification of the transport and receiver sections
+(§1.1–§1.3, §8.3) from the first real server-relay deployment — no wire or codec change.
 
 Since 1.1.0 (which brought the full-body profile with leg/foot/toe bones, on-wire hips height, and
 tongue tracking):

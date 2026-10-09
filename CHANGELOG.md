@@ -3,6 +3,32 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
+## [1.3.1] - 2026-10-09
+
+Editorial clarifications from the first client to run Posy over a real server relay. **No
+wire or codec change** — frames, vectors and the published package behave exactly as in
+1.3.0; only normative text is clarified.
+
+### Clarified
+- Spec §1.3: how a single WebSocket carries pose frames from **more than one sender**. The
+  default stays one sender per connection; when a server multiplexes several senders onto
+  one socket it MUST prefix each forwarded binary message with the sender's `uid` (§2.3) as
+  a routing header *outside* the frame (1-byte length + UTF-8 `uid` + the unmodified frame),
+  so §1.2's no-modify rule still holds. The header appears only on a shared multi-sender
+  socket; direct, one-socket-per-sender and single-client-loop deployments never carry it.
+  No new identifier is introduced — the existing `uid` is reused, and how far it may be
+  trusted (unforgeable when the server stamps it from the authenticated session) is a
+  deployment property.
+- Spec §1.2 check 2: a relay MAY validate extras length against the sender's **current**
+  declaration and need not retain superseded ones; the two differ only for frames in flight
+  across a re-declaration, which §2.6 already has the sender avoid.
+- Spec §8.3: loss concealment is **required at working frame rates, not optional polish** —
+  at 12–15 Hz the §8.1 buffer margin (20–33 ms) is too small to hide one late frame, so a
+  receiver at these rates MUST implement at least step 1.
+- Spec §1.1: an informational privacy note — a direct peer-to-peer link exposes each
+  participant's IP to the others; a server relay hides it, and forced TURN mitigates it for
+  P2P. Posy stays topology-agnostic; this is guidance, not a restriction.
+
 ## [1.3.0] - 2026-10-06
 
 Declared extras: avatar-specific bones and values. **Additive: a sender that declares no

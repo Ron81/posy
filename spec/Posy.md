@@ -1,5 +1,5 @@
 # POSY — Pose Synchronization
-**Version:** 1.3.0
+**Version:** 1.3.1
 **Status:** Released — packet format (§5) and signaling (§2) are soft-locked: they may change in a 1.x revision, and every change needs a stated justification
 **Channel label:** `avatar-pose`
 **Channel protocol string:** `posy/1`
@@ -57,6 +57,17 @@ physics, props, scene state.
 
   Neither lane is a "fallback" for the other — each is primary in its deployment context.
 
+  > **A note on privacy (informational).** Posy does not mind how you move its frames,
+  > and this spec ties it to no single topology. One thing is worth keeping in mind: a
+  > direct peer-to-peer link reveals each participant's IP address to the others — WebRTC
+  > signals the public address in its ICE candidates. Among people who already know and
+  > trust each other that is usually fine; in a room that strangers can join it is an easy
+  > thing to misuse. A server-relay deployment handles this for you, since peers only ever
+  > see the server. If you stay peer-to-peer in a space open to strangers, consider forcing
+  > a TURN relay so no one's address is on display. Pose frames are small, so relaying them
+  > through a server costs very little — which often makes it the simplest *and* the kindest
+  > choice for public, multi-user rooms.
+
 - A lost pose frame MUST NOT be retransmitted. Late frames are useless by definition.
 - Every pose frame MUST fit in a single datagram (SCTP) or single WebSocket message (WS).
   Implementations MUST NOT emit a pose frame larger than 1100 bytes. v1 frames are
@@ -92,7 +103,10 @@ needs the §5.1 header and, for a sender that was granted `"extra"`, the two lis
 of its declaration (§2.6), which it has from the handshake. It checks:
 1. `version` byte: `version >> 4 == 0` (a 1.x frame; the value is the minor revision, §9).
 2. Frame length exactly equals `16 + 4·popcount(bone_mask) + 8·b1 + 24·b2 + (b3 ? (b0 ? 54 : 18) : 0) + (b5 ? 4·B + V : 0)`,
-   with `B` and `V` from the declaration that applies at the frame's `timestamp_ms`.
+   with `B` and `V` from the declaration that applies at the frame's `timestamp_ms`. A
+   relay MAY instead use the sender's **current** declaration and need not retain superseded
+   ones; the two differ only for frames in flight across a re-declaration, which the sender
+   avoids by holding new extras until peers hold the new lists (§2.6).
 3. `bone_mask` bits 25–54 (finger bones) are 0 (§4).
 4. The frame stays within the sender's granted set (§2.1): none of flag bits 0–3 and 5 is set
    for a type that was not granted, and `bone_mask & 0x01FFFFFF & ~granted_mask == 0`,
@@ -113,6 +127,24 @@ exist for session control. All control messages in §2 travel there as UTF-8 JSO
 the WebSocket lane (§1.1) is in use, pose frames and this signaling channel MAY share
 the same WebSocket connection — distinguished by frame type (binary pose frames vs.
 UTF-8 JSON control messages) — or use separate WebSocket connections; both are conformant.
+
+A single WebSocket MAY also carry pose frames from **more than one sender** toward a
+receiver — a server multiplexing a room onto one connection. The default is one sender
+per connection, where the connection itself identifies the sender (§2.3) and nothing extra
+is needed. When a server does multiplex several senders onto one socket, the receiver can
+no longer tell them apart by connection, so the server MUST prefix each forwarded binary
+pose message with the sender's `uid` (§2.3) as a routing header **outside** the Posy frame:
+one byte unsigned length `L` (1–255), then `L` bytes of the `uid` as UTF-8, then the
+unmodified frame. The frame bytes are untouched — the header is transport envelope, not
+frame content, so §1.2 still holds — and the receiver strips the header, matches the `uid`
+to the peer it announced in `peers` (§2.3), and decodes the frame as usual. This header
+appears **only** on a shared multi-sender socket; a direct SCTP consumer, a
+one-sender-per-socket WebSocket and a single-client loop (where the receiver is the sender)
+never carry it. How much a receiver may trust the `uid` is a property of the deployment,
+not of this format: a server that stamps it from the sender's authenticated session (§2.3,
+"the server MUST reject frames arriving on an unauthenticated producer") makes it
+unforgeable, which
+is why no separate per-frame sender tag is defined here.
 
 ---
 
@@ -937,6 +969,10 @@ datacentre or fibre-grade uplink, not a home connection.
   optional.
 
 ### 8.3 Packet-loss concealment
+Concealment is **required behaviour at working frame rates, not optional polish**: at
+12–15 Hz the §8.1 jitter buffer leaves only 20–33 ms of margin, so a single late or lost
+frame is visible as a freeze-and-jump unless step 1 carries the motion across the gap. A
+receiver that renders at these rates MUST implement at least step 1.
 1. **0 – 250 ms gap:** continue the last motion with decaying angular velocity
    (exponential decay, ~150 ms half-life).
 2. **250 ms – 1 s:** hold the last received pose.
