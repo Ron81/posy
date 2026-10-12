@@ -1,5 +1,5 @@
 # POSY — Pose Synchronization
-**Version:** 1.3.2
+**Version:** 1.4.0
 **Status:** Released — packet format (§5) and signaling (§2) are soft-locked: they may change in a 1.x revision, and every change needs a stated justification
 **Channel label:** `avatar-pose`
 **Channel protocol string:** `posy/1`
@@ -70,10 +70,12 @@ physics, props, scene state.
 
 - A lost pose frame MUST NOT be retransmitted. Late frames are useless by definition.
 - Every pose frame MUST fit in a single datagram (SCTP) or single WebSocket message (WS).
-  Implementations MUST NOT emit a pose frame larger than 1100 bytes. v1 frames are
-  ≤ 238 bytes, so fragmentation never occurs: 202 bytes with every defined bone and
-  block, plus 4 bytes for each reserved `bone_mask` bit 55–63 that is set, which a relay
-  passes (§1.2).
+  Implementations MUST NOT emit a pose frame larger than 1100 bytes. v1 frames with the
+  defined bones and blocks are ≤ 298 bytes: 202 bytes with the compact finger block and every
+  other block, or 298 bytes when fingers are carried per-joint (`finger_bones`, §4) instead of
+  the compact block — the two are mutually exclusive. Declared extras (§5.8) add their declared
+  size on top. Fragmentation never occurs at these sizes. Reserved `bone_mask` bits 55–63 add
+  nothing: a relay rejects a frame that sets one (§1.2).
 
 #### Reconciling WebSocket with the loss-tolerant design
 
@@ -107,19 +109,23 @@ of its declaration (§2.6), which it has from the handshake. It checks:
    relay MAY instead use the sender's **current** declaration and need not retain superseded
    ones; the two differ only for frames in flight across a re-declaration, which the sender
    avoids by holding new extras until peers hold the new lists (§2.6).
-3. `bone_mask` bits 25–54 (finger bones) are 0 (§4).
-4. The frame stays within the sender's granted set (§2.1): none of flag bits 0–3 and 5 is set
-   for a type that was not granted, and `bone_mask & 0x01FFFFFF & ~granted_mask == 0`,
-   where `granted_mask` is the OR of the bone masks of the granted types.
+3. The frame stays within the sender's granted set (§2.1). Over the whole 64-bit mask,
+   `bone_mask & ~granted_mask == 0`, where `granted_mask` is the OR of the bone masks of the
+   granted types (§4). A bit set outside `granted_mask` fails this check — whether it is a
+   bone bit of an ungranted type, or one of the reserved bits 55–63, which belong to no type
+   and so are never granted. For the flag-driven blocks, none of flag bits 0–3 and 5 is set
+   for a type that was not granted. A frame with `HAS_FINGERS` set and any of bits 25–54 also
+   set is malformed (the two finger carriages are mutually exclusive, §4, §5.5).
 
-A relay MUST NOT reject a frame because reserved flag bits 6–7 or reserved `bone_mask`
-bits 55–63 are set. Those bits are reserved for extensions (§9) and are ignored on
-receive (§5.2); the length check already accounts for a quaternion per set mask bit.
-
-A frame failing check 1, 2 or 3 is invalid: the relay drops it and counts it toward
-`MALFORMED_THRESHOLD` (§2.5), which is reported once the threshold is crossed, not per
-frame. A frame failing check 4 is dropped and counted as `UNAUTHORIZED_TYPE`. The relay
-still MUST NOT modify the byte content of frames it does forward.
+A frame failing check 1, 2 or 3 is dropped. A violation of the frame-structure rules
+(a bad version, a length mismatch, a reserved bit 55–63 set, or both finger carriages at
+once) counts toward `MALFORMED_THRESHOLD` (§2.5), reported once the threshold is crossed, not
+per frame. A bone or flag bit set for a type the sender was not granted is counted as
+`UNAUTHORIZED_TYPE` instead. Reserved flag bits 6–7 MUST NOT cause rejection: they are
+reserved for extensions (§9) and ignored on receive (§5.2). A receiver likewise still
+decodes a frame whose mask carries an unknown bit (§5.2, §9) — the grant check above is the
+relay's, not the receiver's. The relay still MUST NOT modify the byte content of frames it
+does forward.
 
 ### 1.3 Signaling channel
 A separate **reliable, ordered** channel (WebSocket or a reliable data channel) MUST
@@ -225,15 +231,18 @@ Server → Client:
   | `"legs"` | upper leg, lower leg, foot, both sides (§4) | `bone_mask` bits 9–11, 13–15 — mask `0x0000EE00` |
   | `"toes"` | toes, both sides (§4) | `bone_mask` bits 12, 16 — mask `0x00011000` |
   | `"root"` | root block (§5.4) | flag `HAS_ROOT` |
-  | `"fingers"` | finger block (§5.5) | flag `HAS_FINGERS` |
+  | `"fingers"` | compact finger block (§5.5) | flag `HAS_FINGERS` |
+  | `"finger_bones"` | per-joint finger bones (§4, §5.5) | `bone_mask` bits 25–54 — mask `0x007FFFFFFE000000` |
   | `"expressions"` | expression block (§5.6) | flag `HAS_EXPRESSIONS` |
   | `"perfect_sync"` | 52-slot ARKit mode (§5.6) | flag `PERFECT_SYNC` |
   | `"tongue"` | tongue values (§5.6) | not visible in the header; the sender sends 0 when not granted |
   | `"extra"` | declared extras: avatar-specific bones and values (§2.6, §5.8) | flag `HAS_EXTRA` |
 
-  `"legs"` requires `"bones"`; `"toes"` requires `"legs"`; `"perfect_sync"` and
-  `"tongue"` require `"expressions"`. A declaration that violates this is rejected with
-  `UNAUTHORIZED_TYPE`.
+  `"legs"` requires `"bones"`; `"toes"` requires `"legs"`; `"finger_bones"` requires
+  `"bones"` (the hands anchor the finger chains); `"perfect_sync"` and `"tongue"` require
+  `"expressions"`. `"finger_bones"` and `"fingers"` are **mutually exclusive** — a
+  declaration carries one or the other, never both. A declaration that violates any of these
+  is rejected with `UNAUTHORIZED_TYPE`.
 
   Leg and toe bits follow the per-side order of §4 (left chain 9–12, right chain 13–16),
   which is why the two masks interleave.
@@ -534,7 +543,9 @@ no `"bones"` at all and to one that sends `"bones"` without the arms (face track
 head rotation). Without it both are rendered with the arms held out sideways. A sender
 that wants an arm in the T-pose sends the identity quaternion for it.
 
-A frame without a finger block is rendered with the rest hand of §5.5.
+A frame with no finger data at all — no compact block and no finger bones — is rendered
+with the rest hand of §5.5. Under `finger_bones`, a single finger bone whose bit is clear
+takes its rest-hand value for that joint (§5.5), consistent with this rule.
 
 ### 3.4 Rotation sense of the leg bones (Normative)
 
@@ -615,17 +626,27 @@ Quaternions appear in the payload in **ascending bit order**.
 | 26 | leftThumbProximal | 54 | rightLittleDistal |
 | 27 | leftThumbDistal | 55–63 | *reserved, MUST be 0* |
 
-**v1 constraint:** bits **25–54** (all finger bones) MUST be 0. Fingers are carried by
-the compact finger block (§5.5).
+**Finger bones (bits 25–54).** These are the 30 per-joint finger bones. A sender carries
+fingers in **one** of two ways, never both (§2.1, §5.5):
+- the compact finger block (§5.5), flag `HAS_FINGERS` — curl/splay/opposition parameters a
+  receiver expands to the 30 bones; or
+- the `finger_bones` type (added in 1.4.0) — the per-joint rotations themselves, set directly
+  in `bone_mask` bits 25–54 like any other bone, for rigs and poses the compact block cannot
+  express (a claw, an independent middle joint). A frame MUST NOT set `HAS_FINGERS` and any of
+  bits 25–54 at once.
+
+A sender that uses neither leaves bits 25–54 clear and `HAS_FINGERS` unset; receivers then
+synthesise the rest hand (§5.5).
 
 **Bone bits by declared type (Normative).** A sender sets only bits of types it was
 granted (§2.1):
 
 | Type | Bits | Bones | Mask |
 |---|---|---|---|
-| `bones` | 0–8, 17–24 | spine, head, eyes, jaw, arms | `0x01FE01FF` |
-| `legs` | 9, 10, 11, 13, 14, 15 | leftUpperLeg, leftLowerLeg, leftFoot, rightUpperLeg, rightLowerLeg, rightFoot | `0x0000EE00` |
-| `toes` | 12, 16 | leftToes, rightToes | `0x00011000` |
+| `bones` | 0–8, 17–24 | spine, head, eyes, jaw, arms | `0x0000000001FE01FF` |
+| `legs` | 9, 10, 11, 13, 14, 15 | leftUpperLeg, leftLowerLeg, leftFoot, rightUpperLeg, rightLowerLeg, rightFoot | `0x000000000000EE00` |
+| `toes` | 12, 16 | leftToes, rightToes | `0x0000000000011000` |
+| `finger_bones` | 25–54 | all 30 finger bones (both hands) | `0x007FFFFFFE000000` |
 
 A sender granted `legs` sends all six leg bones; one granted `toes` also sends both toe
 bones. §3.3 still applies per frame: a bone that cannot be solved in a given frame has
@@ -645,7 +666,7 @@ decode every valid frame, whichever of the peer's types it chooses to render.
 ```
 Offset  Size  Field
 ------  ----  ---------------------------------------------
-  0      1    u8   version          (= 3 in 1.3; the minor revision, §9)
+  0      1    u8   version          (= 4 in 1.4; the minor revision, §9)
   1      1    u8   flags
   2      2    u16  seq
   4      4    u32  timestamp_ms     (ms since session epoch)
@@ -782,13 +803,29 @@ coincide with the avatar axes (§3.1 item 6). Angles follow the right-hand rule.
 - **Thumb opposition** (`0` … `255` → `0°` … `60°`) rotates `thumbMetacarpal` about
   **X**, positive on both hands: the thumb moves toward −Y and under the palm.
 
-Receivers MUST synthesise the 30 finger bone rotations from this block. Senders MUST
-NOT also send finger bones via `bone_mask` in v1.
+Receivers MUST synthesise the 30 finger bone rotations from this block. A sender carries
+fingers through this compact block **or** through the per-joint `finger_bones` type (§4),
+never both: the compact block is the light default, and `finger_bones` is the declared
+option for a hand shape the five-finger model cannot reach (a claw, where the base joints
+stay straight while the outer joints bend). A frame MUST NOT set `HAS_FINGERS` and any of
+`bone_mask` bits 25–54 at once.
 
-**Rest hand.** When a frame carries no finger block, receivers MUST synthesise both hands
-from these values instead: curl `40, 50, 60, 70, 80` (thumb to little finger), all splay
-`0`, thumb opposition `40`. That is a relaxed hand, a little more closed toward the
-little finger. A sender that wants flat hands sends a finger block of zeros.
+**Per-joint finger bones (`finger_bones`).** When a sender declares `finger_bones`, each
+finger bone it can solve is sent as an ordinary quaternion in `bone_mask` bits 25–54, with
+the meaning of every other bone (§3.1, §3.3): the bone's local rotation delta from its rest
+pose, composed parent first, identity at rest. The rotations are in the sender's own avatar
+rest frame; there is no cross-rig retargeting. A finger bone whose bit is **clear** in a
+given frame is not at identity but takes the rest-hand value below for that joint — the hand
+relaxes exactly as an untracked hand does under the compact block, rather than snapping flat.
+A receiver that does not render `finger_bones` still decodes the frame and MAY ignore those
+bits.
+
+**Rest hand.** When a frame carries neither the compact block nor any finger bone, receivers
+MUST synthesise both hands from these values: curl `40, 50, 60, 70, 80` (thumb to little
+finger), all splay `0`, thumb opposition `40`. That is a relaxed hand, a little more closed
+toward the little finger. The same values give the per-joint rest fall-back above, joint by
+joint, for a `finger_bones` sender's cleared bits. A sender that wants flat hands sends a
+compact finger block of zeros, or `finger_bones` with the relevant bits set to identity.
 
 `testvectors/poses/hand-skeleton.json` plus `f01`–`f07` pin this synthesis: each carries the
 curl / splay / opposition bytes and the joint positions they produce on a reference hand.
@@ -920,6 +957,9 @@ expressions          18 B
 
 Perfect-Sync frame = 154 B. Add ~50 B UDP+DTLS+SCTP overhead ⇒ ~168 B / ~204 B on wire.
 A full-body sender adds 24 B (`legs`) or 32 B (`legs` + `toes`).
+Per-joint fingers (`finger_bones`, §4) replace the 24 B compact block with up to 30
+quaternions — 120 B for both full hands, so an all-blocks Perfect-Sync frame reaches 298 B;
+in practice a sender sends only the joints it solves, and clears the rest to the rest hand.
 Declared extras (§5.8) add 4 B per bone and 1 B per value: two ears of two bones each and
 three values are 19 B.
 On the WebSocket lane (§1.1) the per-frame overhead differs — a WebSocket binary
@@ -1042,7 +1082,7 @@ legs, kneeling, lying down and jumping without any pose-specific rule on the rec
   version is carried by `protocol` in the `hello` handshake (§2.1) instead, and a mismatch is
   answered with a `BAD_VERSION` error.
 - The `version` byte carries the **minor** revision of the spec release the sender
-  implements: a 1.y sender writes y. 1.3 writes 3. (1.0 and 1.1 both wrote 1.) The value
+  implements: a 1.y sender writes y. 1.4 writes 4. (1.0 and 1.1 both wrote 1.) The value
   is 0–15 for every 1.x release, which is all that `version >> 4 == 0` tests; it does not
   encode the major version, which is in the `protocol` string. Receivers MUST accept any
   value 0–15 and MUST ignore unknown flag bits and unknown `bone_mask` bits. A receiver
@@ -1054,9 +1094,12 @@ legs, kneeling, lying down and jumping without any pose-specific rule on the rec
   the format frozen, any such change requires `posy/2`.
 - Extension mechanism: avatar-specific data travels as declared extras (§2.6), which
   need no further change to the format. Reserved for other extensions: flag bits 6–7,
-  bone bits 55–63 and the reserved finger byte. A block placed behind a flag bit changes
-  the frame length, so a relay that checks lengths (§1.2) has to know it: such an
-  extension is not transparent to relays. `HAS_EXTRA` (1.3) is the first.
+  bone bits 55–63 and the reserved finger byte. A relay rejects a frame that sets a reserved
+  bone bit 55–63 (§1.2), since those bits belong to no granted type; a **receiver** still
+  ignores an unknown mask bit so a future minor can define one without breaking older
+  receivers. A block placed behind a flag bit changes the frame length, so a relay that
+  checks lengths (§1.2) has to know it: such an extension is not transparent to relays.
+  `HAS_EXTRA` (1.3) is the first.
 
 ---
 

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { encode, decode, PosyEncodeError, PosyDecodeError } from '../dist/index.js';
+import { encode, decode, PosyEncodeError, PosyDecodeError, FINGER_BONES_MASK } from '../dist/index.js';
 
 const idQuat = { x: 0, y: 0, z: 0, w: 1 };
 
@@ -121,9 +121,27 @@ test('extras: HAS_EXTRA without a block is rejected', () => {
   assert.throws(() => decode(bytes, { bones: 1, values: 0 }), PosyDecodeError);
 });
 
-test('encoder refuses finger bone bits in bone_mask', () => {
+test('encoder allows per-joint finger bones (finger_bones) without the compact block', () => {
+  // bits 28 (leftIndexProximal) and 30 (leftIndexDistal) — a claw-like partial hand.
+  const m = new Map([[0, idQuat], [28, idQuat], [30, idQuat]]);
+  const bytes = encode({ version: 4, seq: 1, timestampMs: 0, idle: false, bones: m });
+  assert.equal(bytes.length, 16 + 4 * 3); // three quaternions, no compact finger block
+  const back = decode(bytes);
+  assert.ok(back.bones.has(28));
+  assert.ok(back.bones.has(30));
+  assert.equal(back.fingers, undefined);
+});
+
+test('encoder refuses the compact finger block together with finger bones (mutually exclusive)', () => {
   const m = new Map([[0, idQuat], [28, idQuat]]); // 28 is a finger bit
-  assert.throws(() => encode({ version: 1, seq: 1, timestampMs: 0, idle: false, bones: m }), PosyEncodeError);
+  const f = {
+    version: 4, seq: 1, timestampMs: 0, idle: false, bones: m,
+    fingers: {
+      left: { curl: [0, 0, 0, 0, 0], splay: [0, 0, 0, 0, 0], thumbOpposition: 0 },
+      right: { curl: [0, 0, 0, 0, 0], splay: [0, 0, 0, 0, 0], thumbOpposition: 0 },
+    },
+  };
+  assert.throws(() => encode(f), PosyEncodeError);
 });
 
 test('encoder refuses wrong expression weight length', () => {
@@ -155,4 +173,32 @@ test('reserved flag bits 6-7 are ignored, not rejected', () => {
   bytes[1] |= 0xc0; // set flags 6,7
   const f = decode(bytes); // must not throw
   assert.equal(f.bones.size, 1);
+});
+
+// --- Folded S6: the §1.2 relay grant-check over the whole 64-bit mask ---
+// The relay (not the decoder) enforces the grant. The decoder stays tolerant of unknown
+// bits (above); these tests pin the mask arithmetic the relay runs, per spec §1.2 check 3.
+const BONES_MASK = 0x0000000001FE01FFn;
+const LEGS_MASK = 0x000000000000EE00n;
+const relayRejects = (mask, grantedMask) => (mask & ~grantedMask) !== 0n;
+
+test('relay grant-check: reserved bits 55-63 are never granted, so a set one is rejected', () => {
+  // decoder is tolerant (covered above); the relay refuses it as malformed.
+  const granted = BONES_MASK | LEGS_MASK | FINGER_BONES_MASK; // even granting everything real
+  assert.equal(relayRejects(1n << 60n | 1n, granted), true, 'bit 60 belongs to no type');
+  assert.equal(relayRejects(1n << 55n, granted), true, 'bit 55 is the first reserved bit');
+});
+
+test('relay grant-check: finger bones pass only when finger_bones is granted', () => {
+  const fingerFrame = (1n << 0n) | (1n << 28n) | (1n << 30n); // hips + two finger bones
+  assert.equal(relayRejects(fingerFrame, BONES_MASK), true, 'finger bits set without finger_bones granted');
+  assert.equal(relayRejects(fingerFrame, BONES_MASK | FINGER_BONES_MASK), false, 'granted → passes');
+});
+
+test('FINGER_BONES_MASK is exactly bits 25-54', () => {
+  assert.equal(FINGER_BONES_MASK, 0x007FFFFFFE000000n);
+  // 30 bits set
+  let n = 0n, m = FINGER_BONES_MASK;
+  while (m) { m &= m - 1n; n++; }
+  assert.equal(n, 30n);
 });

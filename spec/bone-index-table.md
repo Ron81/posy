@@ -31,39 +31,39 @@
 | 22 | `rightUpperArm` | arms & shoulders | allowed |
 | 23 | `rightLowerArm` | arms & shoulders | allowed |
 | 24 | `rightHand` | arms & shoulders | allowed |
-| 25 | `leftThumbMetacarpal` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 26 | `leftThumbProximal` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 27 | `leftThumbDistal` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 28 | `leftIndexProximal` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 29 | `leftIndexIntermediate` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 30 | `leftIndexDistal` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 31 | `leftMiddleProximal` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 32 | `leftMiddleIntermediate` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 33 | `leftMiddleDistal` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 34 | `leftRingProximal` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 35 | `leftRingIntermediate` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 36 | `leftRingDistal` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 37 | `leftLittleProximal` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 38 | `leftLittleIntermediate` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 39 | `leftLittleDistal` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 40 | `rightThumbMetacarpal` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 41 | `rightThumbProximal` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 42 | `rightThumbDistal` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 43 | `rightIndexProximal` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 44 | `rightIndexIntermediate` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 45 | `rightIndexDistal` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 46 | `rightMiddleProximal` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 47 | `rightMiddleIntermediate` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 48 | `rightMiddleDistal` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 49 | `rightRingProximal` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 50 | `rightRingIntermediate` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 51 | `rightRingDistal` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 52 | `rightLittleProximal` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 53 | `rightLittleIntermediate` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
-| 54 | `rightLittleDistal` | fingers | MUST be 0 in v1 — use the finger block (§5.5) |
+| 25 | `leftThumbMetacarpal` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 26 | `leftThumbProximal` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 27 | `leftThumbDistal` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 28 | `leftIndexProximal` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 29 | `leftIndexIntermediate` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 30 | `leftIndexDistal` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 31 | `leftMiddleProximal` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 32 | `leftMiddleIntermediate` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 33 | `leftMiddleDistal` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 34 | `leftRingProximal` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 35 | `leftRingIntermediate` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 36 | `leftRingDistal` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 37 | `leftLittleProximal` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 38 | `leftLittleIntermediate` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 39 | `leftLittleDistal` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 40 | `rightThumbMetacarpal` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 41 | `rightThumbProximal` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 42 | `rightThumbDistal` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 43 | `rightIndexProximal` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 44 | `rightIndexIntermediate` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 45 | `rightIndexDistal` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 46 | `rightMiddleProximal` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 47 | `rightMiddleIntermediate` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 48 | `rightMiddleDistal` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 49 | `rightRingProximal` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 50 | `rightRingIntermediate` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 51 | `rightRingDistal` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 52 | `rightLittleProximal` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 53 | `rightLittleIntermediate` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
+| 54 | `rightLittleDistal` | fingers | per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5) |
 | 55–63 | *reserved* | reserved | reserved, MUST be 0 |
 
-**v1 constraint:** bits **25–54** (all finger bones) MUST be 0. Fingers are carried by the compact finger block (§5.5). Bits 9–16 (legs/feet) MAY be used but are OPTIONAL; receivers MUST handle their absence.
+**Finger bones:** bits **25–54** carry the 30 per-joint finger bones. A sender uses either the compact finger block (§5.5, flag `HAS_FINGERS`) or the `finger_bones` type (per-joint rotations in these bits), never both. Bits 9–16 (legs/feet) MAY be used but are OPTIONAL; receivers MUST handle their absence. Reserved bits 55–63 MUST be 0 and are rejected by relays (§1.2).
 
 **Typical v1 upper-body mask** = bits 0, 1, 2, 4, 5, 17, 18, 19, 20, 21, 22, 23, 24 → 13 bones → `0x0000000001FE0037`.
 

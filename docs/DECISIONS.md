@@ -6,6 +6,66 @@ that commit messages and the spec text do not keep in one place.
 
 ---
 
+## 0007 — Per-joint finger bones, and one grant check over the whole mask
+
+**Date:** 2026-10-12 · **Status:** Accepted · **Affects:** §1.2, §2.1, §4, §5.5, §6, §9, schema
+
+### Context
+
+Fingers ship as a compact block (§5.5): one curl byte per finger drives all three of its joints
+on a fixed distribution, plus splay and thumb opposition. A same-rig test (sender driving its own
+avatar, no cross-rig retarget) found one shape the model cannot reach: a claw, where the base
+joints stay straight and only the outer joints bend. One curl byte cannot hold "straight, then
+bent." Widening the block (a second curl byte, per-joint bytes) would grow the light default for a
+case most senders never hit.
+
+Separately, bits 25–54 of `bone_mask` were reserved for finger bones but banned in v1 (check 3),
+and a known defect (S6) let reserved bits 55–63 escape the grant check — the fix had been parked
+behind a planned shrink of the mask to `u32`.
+
+### Decision
+
+Add a declared `finger_bones` type: the 30 finger bones carried as ordinary quaternions in bits
+25–54, parent-relative in the sender's own rest frame, exactly like every other bone. No new flag
+and no new block — they ride in `quaternions[N]`, so the frame-length formula does not change. It
+is the declared option for a hand the compact block cannot express; the compact block stays the
+light default. The two are **mutually exclusive**: a declaration carries one or the other, and a
+frame MUST NOT set `HAS_FINGERS` and any of bits 25–54 at once. A finger bit left clear relaxes to
+the §5.5 rest hand for that joint, so an untracked hand behaves as it does under the compact block.
+
+Because finger bones now occupy bits 25–54, the mask stays `u64` and the planned `u32` shrink is
+dropped. The S6 fix therefore lands here, as a simplification: §1.2's three mask-related rules
+become one check over all 64 bits, `bone_mask & ~granted_mask == 0`. Reserved bits 55–63 belong to
+no granted type and so are rejected — as `MALFORMED`, since they can never be legitimate. This is a
+**relay** check; a **receiver** still ignores unknown mask bits (§9), so the extension mechanism and
+vector `006-reserved-bits` are unchanged.
+
+### Alternatives rejected
+
+- **Widen the compact block** (a second curl byte, or per-joint curl bytes). Grows the default
+  frame for every finger sender to serve the uncommon case; the claw still is not a curl.
+- **Carry finger bones as declared extras (§5.8).** Rejected: §2.6 bans finger bones from extras,
+  and the bits already exist in `bone_mask` with names — a spare-bits home is cleaner than a named
+  payload for a fixed, standard set of bones.
+- **Keep the `u32` shrink and relocate finger bones.** The shrink saved 4 B per frame and cost the
+  30 finger bits their natural home; keeping `u64` and rejecting 55–63 at the relay is the smaller,
+  clearer rule. (The two cannot both hold — fingers want bits 25–54, the shrink removes them.)
+- **A "full fingers" flag + fixed 120 B block.** Spends one of the two remaining flag bits, cannot
+  omit an unsolved joint (§3.3), and saves nothing over per-bit quaternions.
+
+### Consequences
+
+- A claw and other base-straight/outer-bent shapes are expressible, per-joint, at 4 B per sent
+  joint; a sender sends only the joints it solves and clears the rest to the rest hand.
+- §1.2 is shorter: one grant check instead of three rules. Reserved bits 55–63 are now rejected by
+  a relay (previously passed) — the one breaking change, hence the window.
+- The largest defined-block frame grows to 298 B (still far under the 1100 B / single-datagram
+  ceiling). The compact-block path is unchanged at 202 B.
+- The decoder does not change: it already consumes a quaternion for every set bit and stores it by
+  bit number, finger and reserved bits included.
+
+---
+
 ## 0006 — The multi-sender `uid` prefix is declared at the handshake, not inferred per message
 
 **Date:** 2026-10-12 · **Status:** Accepted · **Affects:** §1.3, §2.1 (`session.multiplexed`), schema

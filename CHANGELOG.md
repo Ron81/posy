@@ -3,6 +3,44 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
+## [1.4.0] - 2026-10-12
+
+The first of the road-to-1.5 window (see `ROADMAP.md`). Adds a per-joint finger option and
+folds the long-deferred `bone_mask` grant-check cleanup (former defect S6) into the same change,
+since the two touch the same §1.2 text. **Breaking at the grant/relay layer** (a relay now rejects
+reserved `bone_mask` bits it previously passed); the version byte becomes 4.
+
+### Added
+- **`finger_bones` type** (§2.1, §4, §5.5): per-joint finger rotations carried directly in
+  `bone_mask` bits 25–54, as an alternative to the compact §5.5 finger block, for hand shapes the
+  one-curl-per-finger model cannot reach (a claw: base joints straight, outer joints bent). No new
+  flag or block — the bones ride in `quaternions[N]` like any other bone, so the frame-length
+  formula is unchanged. The former v1 ban on bits 25–54 (§4) is lifted. Requires `bones`; mutually
+  exclusive with `fingers` (a frame MUST NOT carry both). An absent finger bit relaxes to the §5.5
+  rest hand, joint by joint, not to flat.
+- Test vector `010-finger-bones` (accept, round-trips) and finger pose vector `g01-claw-left-index`
+  (direct per-joint quaternions on `hand-skeleton.json`).
+- `FINGER_BONES_MASK` export in the reference codec; `finger_bones` in the signaling schema's
+  `dataTypes` enum.
+
+### Changed
+- **§1.2 grant check (folds in S6).** The three former checks (a dedicated finger-bits-must-be-0
+  check, a 25-bit `& 0x01FFFFFF` grant check, and a "relays MUST NOT reject bits 55–63" sentence)
+  collapse to one check over the whole 64-bit mask: `bone_mask & ~granted_mask == 0`, where
+  `granted_mask` is the OR of the granted types' masks. A bit outside it fails — whether an
+  ungranted type's bone bit (`UNAUTHORIZED_TYPE`) or a reserved bit 55–63, which belongs to no type
+  and so is now rejected as `MALFORMED` rather than passed. This supersedes the 2026-10-06 S6
+  decision to defer the fix behind a `u32` mask shrink: with finger bones on bits 25–54 the mask
+  stays `u64` and there is no shrink. See `docs/DECISIONS.md` ADR 0007.
+- **Receiver stays tolerant.** The rejection of bits 55–63 is the *relay's* grant check only; a
+  receiver still decodes a frame with an unknown mask bit (§5.2, §9), so vector `006-reserved-bits`
+  is unchanged and §9's extension mechanism holds.
+- Frame-size notes (§1.1, §6): the per-joint path raises the largest defined-block frame to 298 B
+  (120 B of finger bones instead of the 24 B compact block); reserved bits 55–63 no longer add to
+  the ceiling, since a relay now rejects them.
+- `version` byte 3 → 4; `posy-protocol` package 1.3.2 → 1.4.0 (codec: encoder enforces the
+  finger-carriage exclusivity; decoder unchanged).
+
 ## [1.3.2] - 2026-10-12
 
 Editorial fix to the 1.3.1 §1.3 multi-sender clarification, found by reading the text: a

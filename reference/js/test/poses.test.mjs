@@ -133,3 +133,33 @@ test('f06 is asymmetric: the right hand is not the left', () => {
   const wrong = { ...fingerPose('left', vec.bytes.left), ...fingerPose('right', vec.bytes.left) };
   assert.ok(maxError(fkHand(handSkeleton.joints, wrong), vec.expect) > 0.1);
 });
+
+// --- Per-joint finger pose vectors (finger_bones, §4): direct quaternions, no §5.5 synthesis ---
+// These carry parent-relative quaternions like the leg poses, applied to the hand skeleton with
+// fkHand. They pin shapes the compact block cannot express (a claw: base straight, outer bent).
+const gFiles = readdirSync(POSES).filter((f) => /^g\d+.*\.json$/.test(f)).sort();
+
+for (const file of gFiles) {
+  const vec = JSON.parse(readFileSync(join(POSES, file), 'utf8'));
+
+  test(`finger_bones ${vec.name}: direct quaternions give the expected joint positions`, () => {
+    const pose = Object.fromEntries(vec.bones.map((b) => [b.name, toQuat(b.quat)]));
+    assert.ok(maxError(fkHand(handSkeleton.joints, pose), vec.expect) < 1e-4);
+  });
+
+  test(`finger_bones ${vec.name}: still within 1 cm after the wire encoding`, () => {
+    const pose = Object.fromEntries(vec.bones.map((b) => [b.name, unpackQuat(packQuat(toQuat(b.quat)))]));
+    assert.ok(maxError(fkHand(handSkeleton.joints, pose), vec.expect) < 0.01);
+  });
+}
+
+// A claw is axis-sensitive: flipping the flexion axis (−Z → +Z) curls the finger the wrong way
+// and moves its tip by more than a centimetre, which a frame vector cannot catch.
+test('finger_bones g01: a flipped flexion axis is caught', () => {
+  const vec = JSON.parse(readFileSync(join(POSES, 'g01-claw-left-index.json'), 'utf8'));
+  const wrong = Object.fromEntries(vec.bones.map((b) => {
+    const [x, y, z, w] = b.quat;
+    return [b.name, { x: -x, y: -y, z: -z, w }];
+  }));
+  assert.ok(maxError(fkHand(handSkeleton.joints, wrong), vec.expect) > 0.01);
+});

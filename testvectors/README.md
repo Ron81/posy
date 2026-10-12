@@ -19,6 +19,7 @@ Each vector is a pair: `NNN-name.bin` (the exact bytes) and `NNN-name.json` (wha
 | `007-fullbody-legs` | Distinct non-identity leg and toe rotations, lowered hips height `h`, signed tongue slots |
 | `008-extras` | The extras block (§5.8) of a declaration with 2 bones and 3 values. Its size is not in the frame: the JSON carries `extra_counts`, which stands for the declaration |
 | `009-extras-wrong-counts` | The bytes of 008 under a declaration of 3 bones and 3 values → **must be rejected** |
+| `010-finger-bones` | Per-joint fingers (`finger_bones`, §4): finger-bone bits 25–54 set as ordinary quaternions, no compact finger block. **Must be accepted** and round-trip exactly. The mutually-exclusive and reserved-bit rejections are relay-level, not decode-level (the decoder stays tolerant, like 006), so they are covered by the codec's frame tests rather than by a reject vector here. |
 
 ### JSON format
 
@@ -124,6 +125,18 @@ The frame vectors pin the bytes of the finger block (§5.5); they cannot tell wh
 | `f05-fist` | every flexion axis and the opposition at once |
 | `f06-count-two` | an asymmetric pose: the right hand is not a copy of the left |
 | `f07-half-curl-splay` | the product order `q_splay · q_curl` on the proximal bone; the thumb splay sign and that it sits on `thumbProximal`; flexion linear in the curl byte. The only pose with curl and splay on one bone and with a curl byte other than 0 or 255 |
+
+### Per-joint finger poses (`finger_bones`, `g01`…)
+
+The `f`-vectors above check the §5.5 *synthesis* from curl/splay/opposition bytes. The `g`-vectors
+check the `finger_bones` type (§4): per-joint rotations sent directly in `bone_mask` bits 25–54, with
+no synthesis. Each carries parent-relative quaternions (`bones`, like the leg poses), applied to
+`hand-skeleton.json` by the same forward kinematics. Tolerance **1e-4 m**, or **1 cm** after the wire
+encoding (§5.3), as for the leg poses.
+
+| Vectors | What they pin |
+|---|---|
+| `g01-claw-left-index` | a claw — the left index proximal straight, intermediate and distal bent — which one curl byte per finger (§5.5) cannot express. Pins that per-joint rotations apply directly and that the flexion axis is sensitive (a flipped axis moves the tip > 1 cm) |
 
 ## `quaternions.csv`
 

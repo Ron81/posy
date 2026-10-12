@@ -24,10 +24,10 @@
       "enum": ["sctp", "websocket"]
     },
     "dataTypes": {
-      "description": "List of data types (spec §2.1). 'legs' requires 'bones'; 'toes' requires 'legs'; 'perfect_sync' and 'tongue' require 'expressions' — those dependencies are checked by the server, not by this schema.",
+      "description": "List of data types (spec §2.1). 'legs' requires 'bones'; 'toes' requires 'legs'; 'finger_bones' requires 'bones' and is mutually exclusive with 'fingers'; 'perfect_sync' and 'tongue' require 'expressions' — those dependencies are checked by the server, not by this schema.",
       "type": "array",
       "uniqueItems": true,
-      "items": { "enum": ["bones", "legs", "toes", "root", "fingers", "expressions", "perfect_sync", "tongue"] }
+      "items": { "enum": ["bones", "legs", "toes", "root", "fingers", "finger_bones", "expressions", "perfect_sync", "tongue"] }
     },
     "uid": {
       "description": "Opaque user identifier, e.g. \"u_8f31\".",

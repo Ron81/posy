@@ -12,6 +12,8 @@ The reference implementation generated these vectors, so on its own it proves no
 | `008-extras`, `009-extras-wrong-counts` | every byte of 008: header with `version` 3 and flags `0x28`, hips, an empty Standard-Sync block, 2 extra quaternions (30° about +X, 45° about −Z), 3 values, total length 49 B from the §5.1 formula with B = 2, V = 3; 009 has the same bytes and a declaration that needs 53 B | independent script from §5.1–§5.3, §5.6, §5.8 | RaelRotschwinge | 2026-10-06 | ✅ |
 | `poses/p01` … `p09` | every joint position of every pose, rebuilt from the axis and angle in the pose description with 3×3 rotation matrices (no quaternion product); the stored `quat` values converted to matrices and checked the same way; `h` against `hips_height` | independent script from §3.1 + §3.4 | RaelRotschwinge | 2026-10-03 | ✅ |
 | `poses/f01` … `f07` | every joint position of every pose, rebuilt from the curl / splay / opposition bytes by the text of §5.5 and §3.1 items 5 and 6 with 3×3 rotation matrices (no quaternion product, nothing imported from `scripts/finger-fk.mjs`) | independent script from §5.5 | RaelRotschwinge | 2026-10-05 | ✅ on the reference hand; not yet applied to a real model (see Notes) |
+| `010-finger-bones` | length and bytes against the §5.1 formula with the finger bits in `bone_mask` (mask `0x70000001`, 4 quaternions, 32 B, no compact block); round-trip through the codec; the §1.2 grant check and the finger/compact exclusivity by hand | §5.1, §5.3, §4, §1.2 | Ron81 | 2026-10-12 | ⚠️ against the spec text and the codec; Rael to re-derive on the branch (see Notes) |
+| `poses/g01-claw-left-index` | the left index chain positions, rebuilt by applying the parent-relative quaternions to `hand-skeleton.json` by FK; a flipped flexion axis as a negative control | §3.1, §4 | Ron81 | 2026-10-12 | ⚠️ on the reference hand; Rael to verify on real models (see Notes) |
 
 **Rules**
 
@@ -35,3 +37,17 @@ The reference implementation generated these vectors, so on its own it proves no
 - **Extras (2026-10-06).** The codec generated `008`; the independent script builds the same 49 bytes from the spec text. What no vector checks: the meaning of an extra bone's rotation on an avatar (§5.8, the `W` conjugation) and the `since` rule of §2.6. The first was looked at on one VRM 0.x model in the loopback demo, not measured.
 - **Version byte (2026-10-05).** From 1.2 the `version` byte writes the minor revision, 2 (§9). All accept vectors were regenerated and compared byte by byte with their 1.1.0 state: each differs in byte 0 only (`01` → `02`); the reject vectors differ in byte 0 only as well, except `004d-length-too-short` (15 zero bytes) and `004e-bad-version` (byte 0 is `10`), which are unchanged. `001-minimal` is now `02 00 01 00 00 00 00 00 01 00 00 00 00 00 00 00 00 02 08 E0`.
 - **Finger pose vectors (`poses/f*`, 2026-10-05).** They pin the §5.5 synthesis the way the leg poses pin §3.4. The generator (`scripts/generate-finger-vectors.mjs`) and the test both read the synthesis from `scripts/finger-fk.mjs`, so the independent check is a separate script that shares nothing with it: 7 of 7 vectors, 41 joints each, worst deviation 6.5e-7 m (the vectors are rounded to 1e-6 m). Seven deliberate errors were applied to that script and compared with the vectors at the test tolerance of 1e-4 m: flipped finger curl sign (154 mm), flexion distribution 110/90/70 (16 mm) and 90/90/90 (10 mm), `q_curl · q_splay` on the proximal bone (12 mm), flipped thumb splay sign (21 mm), thumb splay on `thumbMetacarpal` (7 mm), curl squared instead of linear (60 mm). All are caught; before `f07` the last four were not. Five negative controls run in `test/poses.test.mjs`. **Open:** the vectors have not been applied to a real model's hand; the thumb axis was measured on real models for the §5.5 change, the vectors were not.
+
+- **`finger_bones` vectors (`010`, `poses/g01`, 2026-10-12, branch `proposal/per-joint-fingers`).**
+  These pin the per-joint finger type added in 1.4.0 (§4). `010-finger-bones` is a 32 B frame with
+  finger bits 28/29/30 set as ordinary quaternions and no compact finger block; it was checked
+  against the §5.1 length formula and the §5.3 packing by hand, and it round-trips through the codec
+  (the bend quaternion is 60° about −Z, chosen off the 45° tie so the smallest-three re-encode is
+  byte-stable). `poses/g01-claw-left-index` applies the same per-joint rotations to the reference
+  hand: the index proximal stays straight while the intermediate and distal bend — a claw the one
+  curl byte of §5.5 cannot make. A flipped flexion axis moves the tip > 1 cm (negative control in
+  `test/poses.test.mjs`). The two relay-level rejections (a reserved bit 55–63; the compact block and
+  finger bones together) are decoder-tolerant, so they are pinned by `test/frame.test.mjs`, not by a
+  reject vector. **Open, as agreed:** these were derived against the spec text and the reference
+  codec, not independently re-derived; Rael re-derives `g01` and adds further finger-bone poses on
+  real models on this branch, as with `f01`–`f07`.
