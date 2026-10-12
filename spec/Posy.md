@@ -122,7 +122,9 @@ A frame failing check 1, 2 or 3 is dropped. A violation of the frame-structure r
 once) counts toward `MALFORMED_THRESHOLD` (§2.5), reported once the threshold is crossed, not
 per frame. A bone or flag bit set for a type the sender was not granted is counted as
 `UNAUTHORIZED_TYPE` instead. Reserved flag bits 6–7 MUST NOT cause rejection: they are
-reserved for extensions (§9) and ignored on receive (§5.2). A receiver likewise still
+reserved for extensions (§9) and ignored on receive (§5.2). The relay's length check stays
+exact all the same: a frame that carries a block the relay does not know behind one of
+these bits fails check 2. A receiver likewise still
 decodes a frame whose mask carries an unknown bit (§5.2, §9) — the grant check above is the
 relay's, not the receiver's. The relay still MUST NOT modify the byte content of frames it
 does forward.
@@ -243,7 +245,8 @@ Server → Client:
   `"bones"` (the hands anchor the finger chains); `"perfect_sync"` requires
   `"expressions"`. `"finger_bones"` and `"fingers"` are **mutually exclusive** — a
   declaration carries one or the other, never both. A declaration that violates any of these
-  is rejected with `UNAUTHORIZED_TYPE`.
+  is rejected with `UNAUTHORIZED_TYPE`. A type the server does not know is no violation: it
+  is left out of `allowed` (§2.7).
 
   Leg and toe bits follow the per-side order of §4 (left chain 9–12, right chain 13–16),
   which is why the two masks interleave.
@@ -442,6 +445,30 @@ new lists and a new `since`. The extras block carries no identifier, so the fram
   frames before it have left the jitter buffer.
 - A receiver that holds no declaration for a frame's `timestamp_ms` MUST ignore that
   frame's extras block and use the rest of the frame.
+
+### 2.7 What a recipient does not know
+
+Signaling carries the major version only (§9), so a recipient meets the additions of a
+later 1.x revision without notice. It handles them as follows, and no addition may rely
+on anything else:
+
+- **Message.** A message whose `t` the recipient does not know MUST be ignored. It is not
+  an error, and the connection stays open.
+- **Field.** A field the recipient does not know MUST be ignored. The rest of the message
+  is processed as if the field were absent.
+- **Data type.** A type in `caps.sends` that the server does not know is not granted: the
+  server leaves it out of `allowed` and treats the rest of the declaration as if the type
+  were absent. Since a client sets no flag bit and no mask bit of a type absent from
+  `allowed` (§2.1), a relay never receives a block it cannot size. A client ignores a
+  type it does not know in a peer's `sends` (§2.3); what that peer's frames may then carry
+  is in §9.
+- **Error code.** A client that receives an `error` with a `code` it does not know treats
+  it as an error of unknown kind: it MAY show `detail`, and it MUST NOT close the
+  connection on that account.
+
+`schemas/signaling.schema.json` describes what an implementation of this revision
+**sends**: it is closed, and a message with a further field fails it. A recipient MUST NOT
+use it to refuse a message.
 
 ---
 
@@ -690,7 +717,8 @@ Offset  Size  Field
 Total length MUST equal:
 `16 + 4*popcount(bone_mask) + 8*b1 + 24*b2 + (b3 ? (b0 ? 54 : 15) : 0) + (b5 ? 4*B + V : 0)`
 
-A frame whose actual length differs MUST be treated as malformed.
+A frame whose actual length differs MUST be treated as malformed. One exception, for
+receivers only: a frame with flag bit 6 or 7 set MAY be longer (§9).
 
 ### 5.2 Flags
 
@@ -702,7 +730,7 @@ A frame whose actual length differs MUST be treated as malformed.
 | 3 | `HAS_EXPRESSIONS` | Expression block present |
 | 4 | `IDLE` | Sender is idle/AFK; receiver MAY skip interpolation work |
 | 5 | `HAS_EXTRA` | Extras block present (§5.8) |
-| 6–7 | reserved | MUST be 0, MUST be ignored on receive |
+| 6–7 | reserved | MUST be 0 in this revision. A receiver ignores the bit, and the bytes after the blocks it knows (§9) |
 
 ### 5.3 Quaternion encoding — smallest-three
 
@@ -1118,6 +1146,24 @@ legs, kneeling, lying down and jumping without any pose-specific rule on the rec
   receivers. A block placed behind a flag bit changes the frame length, so a relay that
   checks lengths (§1.2) has to know it: such an extension is not transparent to relays.
   `HAS_EXTRA` (1.3) is the first.
+- **A frame of a later revision at an older receiver (Normative).** A later 1.x revision
+  places a new block behind flag bit 6 or 7 and **after every block of this revision**,
+  the extras block included; two such blocks follow each other in the order of their flag
+  bits. A receiver that finds bit 6 or 7 set therefore accepts a frame that is longer
+  than the §5.1 formula gives, reads the blocks it knows and ignores the bytes after them.
+  A frame with one of these bits set that is shorter than the formula is malformed. With
+  both bits clear the length MUST be exact. The reserved byte of the finger block (§5.5)
+  is ignored on receive.
+- **The same frame at a relay.** Nothing changes: the relay's length check is exact
+  (§1.2), so it forwards a block only if it knows it. A later revision therefore gives
+  every new block a data type (§2.1). A server that does not know the type does not grant
+  it (§2.7), the sender does not send the block, and its relay never has to size it.
+- **Additive.** Once the format is frozen, a 1.x revision makes only changes that a peer
+  of an earlier 1.x revision survives by the rules above and those of §2.7: a new message,
+  field, data type or error code; a block behind flag bit 6 or 7; a bone on bits 55–63; a
+  meaning for a reserved byte. Everything else requires `posy/2`: changing or removing
+  what exists, a block in front of an existing one, and any addition an older peer has to
+  understand for the session to work.
 
 ---
 
@@ -1142,6 +1188,9 @@ An implementation is conformant if it:
 11. If it sends or renders per-joint finger bones (`finger_bones`): applies them as ordinary
     bone rotations, so that the joint positions of the per-joint finger pose vectors
     (`testvectors/poses/g*.json`) are reproduced within their tolerance (§4, §5.5).
+12. Ignores the signaling messages, fields, data types and error codes it does not know
+    (§2.7), and as a receiver accepts a frame with flag bit 6 or 7 set that is longer than
+    §5.1 gives, using the part it knows (§9).
 
 ---
 
@@ -1190,7 +1239,9 @@ form of this table is `spec/blendshape-order.json`, generated by `scripts/genera
 ## Appendix B — Reference Decode Pseudocode (Informative)
 
 ```c
-bool posy_decode(const uint8_t *p, size_t len, Frame *out) {
+// B, V: the list lengths of the declaration that applies to this frame (§2.6); 0, 0 for a
+// sender without extras.
+bool posy_decode(const uint8_t *p, size_t len, int B, int V, Frame *out) {
     if (len < 16) return false;
     out->version   = p[0];
     if ((out->version >> 4) != 0) return false;   // 1.x only: minor revision 0–15 (§9)
@@ -1200,10 +1251,13 @@ bool posy_decode(const uint8_t *p, size_t len, Frame *out) {
     out->bone_mask = rd_u64(p + 8);
 
     int b0 = out->flags & 1, b1 = (out->flags >> 1) & 1,
-        b2 = (out->flags >> 2) & 1, b3 = (out->flags >> 3) & 1;
+        b2 = (out->flags >> 2) & 1, b3 = (out->flags >> 3) & 1,
+        b5 = (out->flags >> 5) & 1;
     int n  = popcount64(out->bone_mask);
-    size_t need = 16 + 4*n + 8*b1 + 24*b2 + (b3 ? (b0 ? 54 : 15) : 0);
-    if (len != need) return false;                // malformed
+    size_t need = 16 + 4*n + 8*b1 + 24*b2 + (b3 ? (b0 ? 54 : 15) : 0) + (b5 ? 4*B + V : 0);
+    if (len < need) return false;                 // malformed
+    if (len > need && !(out->flags & 0xC0))       // longer only with flag bit 6 or 7: the
+        return false;                             // block of a later revision follows (§9)
 
     const uint8_t *q = p + 16;
     int k = 0;
@@ -1218,7 +1272,12 @@ bool posy_decode(const uint8_t *p, size_t len, Frame *out) {
     if (b2) { memcpy(out->fingers, q, 24); q += 24; }
     if (b3) { int m = b0 ? 52 : 13;
               memcpy(out->expr, q, m); q += m;
-              out->gaze_yaw = (int8_t)q[0]; out->gaze_pitch = (int8_t)q[1]; }
+              out->gaze_yaw = (int8_t)q[0]; out->gaze_pitch = (int8_t)q[1]; q += 2; }
+    if (b5) { for (int i = 0; i < B; ++i)
+                  out->extra_rot[i] = unpack_smallest3(rd_u32(q + 4 * i));
+              q += 4 * B;
+              memcpy(out->extra_val, q, V); q += V; }
+    // Bytes from q on, if any, belong to a later revision and are not read.
     return true;
 }
 

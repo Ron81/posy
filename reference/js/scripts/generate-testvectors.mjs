@@ -262,6 +262,37 @@ writeReject('004d-length-too-short', 'a 15-byte buffer (< 16)', new Uint8Array(1
   console.log('wrote  frames/006-reserved-bits.{bin,json}  (24 B)');
 }
 
+/* 011-later-block: 001-minimal with flag bit 6 set and four bytes behind the known blocks, as
+   a later revision would send them (§9). A receiver decodes the part it knows.
+   Hand-built because the encoder writes neither the bit nor an unknown block. */
+{
+  const buf = new Uint8Array(v001.length + 4);
+  buf.set(v001);
+  buf[1] = 0x40;
+  buf.set([0x01, 0x02, 0x03, 0x04], v001.length);
+  new DataView(buf.buffer).setUint16(2, 11, true);
+  const json = {
+    name: '011-later-block',
+    description: 'hips, flag bit 6 set, and 4 bytes of a block this revision does not know; the frame is accepted and the known part decoded',
+    expect: 'accept',
+    bytes_hex: hex(buf),
+    frame: {
+      version: VERSION,
+      flags: 0x40,
+      seq: 11,
+      timestamp_ms: 0,
+      bone_mask: '0x0000000000000001',
+      bones: [{ bit: 0, name: 'hips', u32: '0xE0080200' }],
+      root: null,
+      fingers: null,
+      expressions: null,
+    },
+  };
+  writeFileSync(join(TV, 'frames', '011-later-block.bin'), buf);
+  writeFileSync(join(TV, 'frames', '011-later-block.json'), JSON.stringify(json, null, 2) + '\n');
+  console.log('wrote  frames/011-later-block.{bin,json}  (24 B)');
+}
+
 /* 007-fullbody-legs: 21 bones with distinct non-identity leg and toe rotations, root with a
    lowered hips height, fingers, VRM-Sync with a weight in its last slot -> 147 B.
    Every leg bone carries a different quaternion so that a wrong bone order or offset

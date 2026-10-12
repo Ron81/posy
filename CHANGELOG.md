@@ -3,6 +3,34 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
+## [Unreleased] - proposed: what an older peer does with what it does not know
+
+Defines "additive" for the time after the freeze. No change to any frame a sender of this
+revision produces. **Changes receiver behaviour:** a frame with flag bit 6 or 7 set may be longer
+than the §5.1 formula gives. `docs/DECISIONS.md` 0010.
+
+### Added
+- **§2.7** — a recipient ignores a signaling message or field it does not know; a server leaves
+  an unknown data type out of `allowed`; a client ignores one in a peer's `sends` and does not
+  close the connection over an unknown error code.
+- **§9** — a later revision places a new block behind flag bit 6 or 7, after every existing
+  block. A receiver that finds one of these bits set accepts the longer frame and reads the part
+  it knows. A relay's length check stays exact; a new block always has a data type, which a
+  server that does not know it does not grant. "Additive" is defined by these rules.
+- §10 item 12. Test vector `011-later-block` (accept): flag bit 6 and four bytes behind the known
+  blocks.
+- Codec: `decode` accepts such a frame; `FLAG_LATER_BLOCK`.
+
+### Changed
+- §5.1, §5.2: the exact-length rule and the reserved flag bits refer to the receiver rule of §9.
+- §9: the reserved byte of the finger block is ignored on receive.
+- Schema: stated to describe what a revision sends. It stays closed; a recipient must not refuse
+  a message with it.
+
+### Fixed
+- Appendix B (informative) did not read the extras block and rejected every frame that has one
+  (since 1.3.0). It takes the two declared counts now.
+
 ## [Unreleased] - proposed: the tongue leaves the VRM-Sync block
 
 **Breaking** at the expression-block layout and the type list. The version byte stays 4.
