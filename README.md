@@ -1,14 +1,14 @@
 # Posy
 
-**Stream avatar poses over WebRTC — body, fingers and face in about 118 bytes per frame.**
+**Stream avatar poses over WebRTC — body, fingers and face in about 116 bytes per frame.**
 
 [![CI](https://github.com/Ron81/posy/actions/workflows/ci.yml/badge.svg)](https://github.com/Ron81/posy/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/posy-protocol.svg)](https://www.npmjs.com/package/posy-protocol)
 [![runtime deps](https://img.shields.io/badge/runtime%20deps-0-brightgreen.svg)](https://www.npmjs.com/package/posy-protocol?activeTab=dependencies)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-![Spec: 1.4.0](https://img.shields.io/badge/spec-1.4.0-brightgreen.svg)
+![Spec: 1.4.1](https://img.shields.io/badge/spec-1.4.1-brightgreen.svg)
 
-Posy (**Po**se **Sy**nchronization) is an open, compact protocol for syncing humanoid avatar poses between lots of people in real time. It runs over WebRTC data channels for direct and browser-to-browser links, and over a reliable WebSocket for server-relay deployments — each transport is the right tool for its context, not a fallback for the other. A typical upper-body frame with fingers and face is ~118 bytes — roughly 70× smaller than VMC — so a whole room can move at once without anybody's upload crying.
+Posy (**Po**se **Sy**nchronization) is an open, compact protocol for syncing humanoid avatar poses between lots of people in real time. It runs over WebRTC data channels for direct and browser-to-browser links, and over a reliable WebSocket for server-relay deployments — each transport is the right tool for its context, not a fallback for the other. A typical upper-body frame with fingers and face is ~116 bytes — about 25–35× smaller than the same pose over VMC — so a whole room can move at once without anybody's upload crying.
 
 ---> 🧪 **Try out the [interactive site](https://ron81.github.io/posy/)** <---
 It lets you build a frame byte by byte, play with the **[bandwidth calculator](https://ron81.github.io/posy/#bandwidth)** and browse the tables. Or try the **[loopback demo](https://ron81.github.io/posy/demo/)** to watch how an avatar looks on different connections from premium Fibre to the last copper cable, in a cave, at the end of the world.
@@ -44,7 +44,7 @@ It lets you build a frame byte by byte, play with the **[bandwidth calculator](h
 | Root position + hips height | 8 B | optional (`HAS_ROOT`) |
 | Fingers | 24 B | optional (`HAS_FINGERS`) — curl + splay per finger, both hands |
 | Face | 18 B / 54 B | optional (`HAS_EXPRESSIONS`) — 16 VRM expressions, or all 52 ARKit blendshapes with `PERFECT_SYNC`; plus 2 gaze bytes |
-| **Typical total** | **118 B** | **154 B** with Perfect-Sync |
+| **Typical total** | **116 B** | **154 B** with Perfect-Sync |
 
 One thing that trips people up: **the face doesn't travel as bones.** Blinks, mouth shapes, emotions and eye direction all live in the expression block (`HAS_EXPRESSIONS`). The eye/jaw bone bits are only a fallback for rigs that are literally bone-driven — and if both are present, the gaze bytes win.
 
@@ -121,13 +121,14 @@ If the spec, the reference code and the test vectors ever disagree, **the spec w
 
 ## Status
 
-**1.4.0 — released.** The packet format (§5) and signaling messages (§2) are soft-locked rather than
+**1.4.1 — released.** The packet format (§5) and signaling messages (§2) are soft-locked rather than
 frozen: no implementation has shipped yet, so they can still change in a 1.x revision, but every change
-needs a stated justification. 1.4.0 opens the road-to-1.5 window (see [`ROADMAP.md`]): it adds the
-per-joint `finger_bones` type — full finger-joint rotations as a declared alternative to the compact
-§5.5 block, for hand shapes the one-curl-per-finger model can't reach (a claw) — and folds in the
-`bone_mask` grant-check cleanup, so a relay now validates the whole 64-bit mask in one check and rejects
-reserved bits. The version byte becomes 4; the decoder is unchanged.
+needs a stated justification. 1.4.1 continues the road-to-1.5 window (see [`ROADMAP.md`]): the directional
+tongue leaves the expression block (it rides as a declared extra value now, so richer face sets need no
+format change), the compact face tier is renamed **VRM-Sync** (the honest name for the VRM preset set;
+Perfect-Sync, the ecosystem term for the 52 ARKit shapes, is unchanged), and the §6 size-vs-VMC figure is
+restated with its arithmetic. The version byte stays 4. 1.4.0 (just before it) added the per-joint
+`finger_bones` type and folded in the `bone_mask` grant-check cleanup.
 
 Since 1.1.0 (which brought the full-body profile with leg/foot/toe bones, on-wire hips height, and
 tongue tracking):

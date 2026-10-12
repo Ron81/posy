@@ -8,7 +8,7 @@
  *   spec/blendshape-order.json            Appendix A — the 52 ARKit blendshapes, sorted
  *   spec/bone-index-table.md              §4        — the 64-bit bone_mask bit assignments
  *   reference/js/src/tables.generated.ts  (only written if reference/js/ exists); also carries
- *                                         the Standard-Sync slots (§5.6), the finger block
+ *                                         the VRM-Sync slots (§5.6), the finger block
  *                                         fields (§5.5) and the error codes (§2.5)
  *
  * Usage
@@ -37,10 +37,11 @@ const APPENDIX_A = args.has('--appendix-a');
  */
 const FINGER_LAYOUT = 'fixed';
 
-/** §5.6: the 16 Standard-Sync slots, in wire order. */
+/** §5.6: the 14 VRM-Sync slots, in wire order. Directional tongue (the former slots 14/15)
+ * is no longer a core slot — it rides as declared extra values (§2.6). */
 const STANDARD_SYNC_SLOTS = [
   'blinkLeft', 'blinkRight', 'aa', 'ih', 'ou', 'ee', 'oh', 'happy', 'angry', 'sad', 'relaxed', 'surprised', 'neutral',
-  'tongueOut', 'tongueX', 'tongueY',
+  'tongueOut',
 ];
 
 /** §5.5: the 12 bytes of one hand in the finger block, in wire order, as [type, name]. */
@@ -185,7 +186,7 @@ function renderTs(blendshapes, info) {
     q(blendshapes),
     '] as const;',
     '',
-    '/** Index = slot in the Standard-Sync expression block (spec §5.6). */',
+    '/** Index = slot in the VRM-Sync expression block (spec §5.6). */',
     'export const STANDARD_SYNC_NAMES = [',
     q(STANDARD_SYNC_SLOTS),
     '] as const;',
