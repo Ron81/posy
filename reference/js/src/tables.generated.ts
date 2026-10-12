@@ -124,7 +124,7 @@ export const BLENDSHAPE_NAMES = [
   'tongueOut',
 ] as const;
 
-/** Index = slot in the Standard-Sync expression block (spec §5.6). */
+/** Index = slot in the VRM-Sync expression block (spec §5.6). */
 export const STANDARD_SYNC_NAMES = [
   'blinkLeft',
   'blinkRight',
@@ -140,8 +140,6 @@ export const STANDARD_SYNC_NAMES = [
   'surprised',
   'neutral',
   'tongueOut',
-  'tongueX',
-  'tongueY',
 ] as const;
 
 /** Index = byte offset within one hand of the finger block (spec §5.5). */

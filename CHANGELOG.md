@@ -3,6 +3,44 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
+## [1.4.1] - 2026-10-12
+
+The second step of the road-to-1.5 window (see `ROADMAP.md`): the interim directional tongue
+leaves the expression block, the compact face tier is renamed, and the §6 VMC size figure is
+restated with its arithmetic. **Breaking** at the expression-block layout and the tier vocabulary;
+the version byte stays 4 (1.4.x is minor revision 4, §9).
+
+### Changed
+- **Directional tongue → declared extras.** The interim `tongueX`/`tongueY` slots (14, 15) that
+  1.1 placed in the Standard-Sync block are removed. The block shrinks 18 B → 16 B (14 one-byte
+  slots + 2 gaze). Tongue protrusion (`tongueOut`, slot 13) stays, matching ARKit index 51 in
+  Perfect-Sync. Directional and richer tongue (left/right, up/down, roll, curl) is now carried as
+  declared extra `values` (§2.6, §5.8) by the names the sender's avatar uses — it composes with
+  `tongueOut`, needs no format change, and coexists with full Perfect-Sync, which the interim
+  in-block slots could not.
+- **Expression tier rename.** The 14-slot VRM-preset tier `Standard-Sync` is renamed **`VRM-Sync`**:
+  "standard" collides with how the VTuber ecosystem uses the word (ARKit-level). `Perfect-Sync`
+  (the ecosystem's name for the 52 ARKit blendshapes mapped 1:1) and the `PERFECT_SYNC` flag /
+  `perfect_sync` grant are **unchanged**. The `"tongue"` grant now gates only `tongueOut` (slot 13).
+- **§6 size vs VMC restated (former S10).** The unsourced "~70× smaller than raw VMC" becomes
+  "~25–35× smaller than the same pose over VMC", with the arithmetic shown (≈76 B per VMC OSC bone
+  message vs 4 B per Posy bone + the compact finger block + no bone names on the wire). The honest
+  factor is ~28× for the body+fingers pose of the 116 B example, ~36× for a full ~55-bone humanoid.
+- Frame-size notes and golden tests: the typical VRM-Sync frame is now 116 B (was 118); the
+  Perfect-Sync frame is unchanged at 154 B.
+
+### Added
+- A non-normative note in §2.6 that community face supersets (ARKit shapes beyond the 52,
+  VRCFaceTracking Unified Expressions, MMD morphs) ride as extra `values` by their own names — the
+  extras mechanism is the standard, no shape list is blessed as canonical.
+
+### Migration
+- Test vectors `002`, `007`, `008` and its twin `009` were re-encoded for the shorter block
+  (`002` 154→152 B, `007` 150→148 B, `008`/`009` 49→47 B); the quaternion, root, finger and extras
+  bytes are unchanged. `generate-testvectors.mjs` and `generate-spec-tables.mjs` updated so the
+  vectors and the generated slot list stay reproducible. See `docs/DECISIONS.md` ADR 0008.
+- Codec: the Standard-Sync weight length is 14 (was 16); `VERSION` is unchanged at 4.
+
 ## [1.4.0] - 2026-10-12
 
 The first of the road-to-1.5 window (see `ROADMAP.md`). Adds a per-joint finger option and

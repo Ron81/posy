@@ -6,6 +6,71 @@ that commit messages and the spec text do not keep in one place.
 
 ---
 
+## 0008 — Directional tongue leaves the block; "VRM-Sync"; richer face sets ride as extras
+
+**Date:** 2026-10-12 · **Status:** Accepted · **Affects:** §2.1, §2.6, §5.1, §5.6, §6, §11, schema, codec
+
+### Context
+
+1.1 added an **interim** directional tongue in three reserved Standard-Sync slots (13
+`tongueOut`, 14 `tongueX`, 15 `tongueY`), signed `i8` on 14/15, as a no-wire-change stop-gap. It
+had two problems. It spent fixed core bytes on a channel most senders never use, and because it
+lived only in the Standard-Sync block it could not coexist with Perfect-Sync (the 52 ARKit slots
+have no direction). Separately, the tier names overclaimed in one direction and under-claimed in
+the other: a check of the VTuber ecosystem found that **"Perfect Sync" is the established name for
+the 52 ARKit blendshapes mapped 1:1** (VMagicMirror, VSeeFace, Vear, Luppet), while Posy's
+"Standard-Sync" names the ~16 VRM expression presets — and "standard" is exactly the word the
+community attaches to the ARKit-level set, so the name collided. A third item (S10) was an
+unsourced "~70× smaller than raw VMC" in §6.
+
+The declared-extras mechanism (ADR 0005) already carries any named scalar an avatar file defines,
+plus `app:` names, with no format change. That is the natural home for anything richer than the
+core face.
+
+### Decision
+
+- **Directional tongue becomes a declared extra `value`.** Remove slots 14/15; the expression
+  block goes 18 B → 16 B. Keep `tongueOut` (slot 13), which matches ARKit index 51 in Perfect-Sync.
+  Left/right, up/down, roll and curl are declared `values` (§2.6) by the sender's own names and
+  compose with `tongueOut`. This needs no format change to grow and works alongside Perfect-Sync.
+- **Rename the compact tier `Standard-Sync` → `VRM-Sync`.** Keep `Perfect-Sync`, the `PERFECT_SYNC`
+  flag and the `perfect_sync` grant exactly as they are — they are the recognised community names.
+  Only the colliding name changes. The `"tongue"` grant now gates just `tongueOut`.
+- **Do not define a Posy face-shape vocabulary.** A one-sentence, non-normative note in §2.6 points
+  at the community sets (ARKit extras, VRCFaceTracking Unified Expressions, MMD morphs) as examples
+  carried by their own names; no list is blessed as canonical. The mechanism is the standard.
+- **Restate the VMC figure (S10)** with arithmetic: ~25–35× (≈28× for the 116 B body+fingers
+  example, ≈36× for a ~55-bone humanoid), replacing the bare 70×.
+
+The version byte stays 4: 1.4.1 is still minor revision 4 (§9).
+
+### Alternatives rejected
+
+- **The 2.0-candidates 3-tier rename** (Standard→Basic, Perfect→Standard, add Extended). It shifts
+  the referents of existing names — "Standard" would mean 16 VRM in old docs and 52 ARKit in new
+  ones — which is the worst outcome for an interop spec, and it discards the recognised "Perfect
+  Sync" name. Rejected in favour of renaming only the colliding tier.
+- **Keep directional tongue as core slots.** Spends fixed bytes on an uncommon channel and cannot
+  coexist with Perfect-Sync; the extras mechanism already covers it for free.
+- **Bless Unified Expressions (or any list) as the Posy extra-shape vocabulary.** Nobody has
+  requested it; naming a list implies the unnamed ones are second-class and creates a maintenance
+  burden against an evolving external standard. The by-name mechanism stays agnostic.
+- **Move all of the tongue (incl. protrusion) to extras.** Would split protrusion from where ARKit
+  and Perfect-Sync carry it; keeping `tongueOut` inline keeps the two tiers consistent.
+
+### Consequences
+
+- The VRM-Sync frame is 116 B (was 118); Perfect-Sync is unchanged at 154 B. Senders that used the
+  interim directional slots re-declare that tongue as extras.
+- Richer face tracking — Unified-Expressions-grade tongue, cheek, jaw, lip detail — needs no future
+  format change; it is a declaration, which is the whole point of the extras keystone (ADR 0005).
+- Breaking at the block layout and the tier vocabulary, hence the window. Test vectors `002`/`007`/
+  `008`/`009` were re-encoded (quaternion/root/finger/extras bytes unchanged). The interactive site,
+  frozen for its 1.5.0 rework, still shows the old 16-slot block; its drift tests are skipped with a
+  note until then.
+
+---
+
 ## 0007 — Per-joint finger bones, and one grant check over the whole mask
 
 **Date:** 2026-10-12 · **Status:** Accepted · **Affects:** §1.2, §2.1, §4, §5.5, §6, §9, schema

@@ -55,7 +55,7 @@ export function decode(bytes: Uint8Array, extra?: ExtraCounts): Frame {
   const b3 = (flags & FLAG_HAS_EXPRESSIONS) !== 0;
 
   const n = popcount64(mask);
-  const exprLen = b3 ? (b0 ? 54 : 18) : 0;
+  const exprLen = b3 ? (b0 ? 54 : 16) : 0;
   const b5 = (flags & FLAG_HAS_EXTRA) !== 0;
   const fixed = 16 + 4 * n + (b1 ? 8 : 0) + (b2 ? 24 : 0) + exprLen;
   if (b5 && !extra) {
@@ -117,7 +117,7 @@ export function decode(bytes: Uint8Array, extra?: ExtraCounts): Frame {
   }
 
   if (b3) {
-    const m = b0 ? 52 : 16;
+    const m = b0 ? 52 : 14;
     const weights = new Uint8Array(m);
     for (let k = 0; k < m; k++) weights[k] = dv.getUint8(off++);
     const gazeYaw = dv.getInt8(off++);

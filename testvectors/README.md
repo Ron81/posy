@@ -11,12 +11,12 @@ Each vector is a pair: `NNN-name.bin` (the exact bytes) and `NNN-name.json` (wha
 | Vector | What it tests |
 |---|---|
 | `001-minimal` | Smallest useful frame — header plus one bone. Good first target. |
-| `002-fullbody-standard` | Full-body mask, root, fingers, Standard-Sync face + gaze |
+| `002-fullbody-standard` | Full-body mask, root, fingers, VRM-Sync face + gaze |
 | `003-perfectsync` | 52-blendshape face block (`PERFECT_SYNC`) |
 | `004-malformed-length` | Length doesn't match the flags → **must be rejected** |
 | `005-quat-edgecases` | Components near ±1/√2, sign flips, ties between equally large components |
 | `006-reserved-bits` | A reserved bone bit is set — the frame **must be accepted** and the extra quaternion skipped |
-| `007-fullbody-legs` | Distinct non-identity leg and toe rotations, lowered hips height `h`, signed tongue slots |
+| `007-fullbody-legs` | Distinct non-identity leg and toe rotations, lowered hips height `h`, tongue protrusion |
 | `008-extras` | The extras block (§5.8) of a declaration with 2 bones and 3 values. Its size is not in the frame: the JSON carries `extra_counts`, which stands for the declaration |
 | `009-extras-wrong-counts` | The bytes of 008 under a declaration of 3 bones and 3 values → **must be rejected** |
 | `010-finger-bones` | Per-joint fingers (`finger_bones`, §4): finger-bone bits 25–54 set as ordinary quaternions, no compact finger block. **Must be accepted** and round-trip exactly. The mutually-exclusive and reserved-bit rejections are relay-level, not decode-level (the decoder stays tolerant, like 006), so they are covered by the codec's frame tests rather than by a reject vector here. |

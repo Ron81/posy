@@ -5,11 +5,11 @@ The reference implementation generated these vectors, so on its own it proves no
 | Vector | What was checked | How | Verified by | Date | Result |
 |---|---|---|---|---|---|
 | `001-minimal` | every byte (header, mask, one quaternion) | independent script from §5.1 + §5.3 | Ron81 | 2026-09-29 | ✅ |
-| `002-fullbody-standard` | every byte: header, mask `0x01fffe3f`, 22 identity quaternions, 8 B root block, both hands, expression block, total length (154 B) | independent script from §5.1 + §5.3–§5.6 | RaelRotschwinge | 2026-10-03 | ✅ (re-verified after the mask fix and the 8 B root block, see Notes) |
+| `002-fullbody-standard` | every byte: header, mask `0x01fffe3f`, 22 identity quaternions, 8 B root block, both hands, expression block, total length (154 B in 1.1–1.4.0; **152 B from 1.4.1**, see Notes) | independent script from §5.1 + §5.3–§5.6 | RaelRotschwinge | 2026-10-03 | ✅ (re-verified after the mask fix and the 8 B root block; re-encoded for the 1.4.1 block shrink, see Notes) |
 | `004-malformed-length` | length formula (§5.1) says reject (001 minus its last byte) | by hand | Ron81 | 2026-09-29 | ✅ |
 | `005-quat-edgecases` | 3 quaternions: negated identity, tie `(0,s,0,s)`, 90° about X | independent script from §5.3 | Ron81 | 2026-09-29 | ✅ |
-| `007-fullbody-legs` | every byte: header, mask `0x01fffe37`, 21 quaternions built from the axis-angle values in the generator comment, root block with `h` = 18022, both hands, expression block with signed tongue slots, total length (150 B) | independent script from §5.1 + §5.3–§5.6 | RaelRotschwinge | 2026-10-03 | ✅ |
-| `008-extras`, `009-extras-wrong-counts` | every byte of 008: header with `version` 3 and flags `0x28`, hips, an empty Standard-Sync block, 2 extra quaternions (30° about +X, 45° about −Z), 3 values, total length 49 B from the §5.1 formula with B = 2, V = 3; 009 has the same bytes and a declaration that needs 53 B | independent script from §5.1–§5.3, §5.6, §5.8 | RaelRotschwinge | 2026-10-06 | ✅ |
+| `007-fullbody-legs` | every byte: header, mask `0x01fffe37`, 21 quaternions built from the axis-angle values in the generator comment, root block with `h` = 18022, both hands, expression block with tongue protrusion, total length (150 B in 1.1–1.4.0; **148 B from 1.4.1**, see Notes) | independent script from §5.1 + §5.3–§5.6 | RaelRotschwinge | 2026-10-03 | ✅ (re-encoded for the 1.4.1 block shrink, see Notes) |
+| `008-extras`, `009-extras-wrong-counts` | every byte of 008: header with `version` 4 and flags `0x28`, hips, an empty VRM-Sync block, 2 extra quaternions (30° about +X, 45° about −Z), 3 values, total length **47 B from 1.4.1** (49 B through 1.4.0) from the §5.1 formula with B = 2, V = 3; 009 has the same bytes and a declaration that needs a different length | independent script from §5.1–§5.3, §5.6, §5.8 | RaelRotschwinge | 2026-10-06 | ✅ (re-encoded for the 1.4.1 block shrink, see Notes) |
 | `poses/p01` … `p09` | every joint position of every pose, rebuilt from the axis and angle in the pose description with 3×3 rotation matrices (no quaternion product); the stored `quat` values converted to matrices and checked the same way; `h` against `hips_height` | independent script from §3.1 + §3.4 | RaelRotschwinge | 2026-10-03 | ✅ |
 | `poses/f01` … `f07` | every joint position of every pose, rebuilt from the curl / splay / opposition bytes by the text of §5.5 and §3.1 items 5 and 6 with 3×3 rotation matrices (no quaternion product, nothing imported from `scripts/finger-fk.mjs`) | independent script from §5.5 | RaelRotschwinge | 2026-10-05 | ✅ on the reference hand; not yet applied to a real model (see Notes) |
 | `010-finger-bones` | length and bytes against the §5.1 formula with the finger bits in `bone_mask` (mask `0x70000001`, 4 quaternions, 32 B, no compact block); round-trip through the codec; the §1.2 grant check and the finger/compact exclusivity by hand | §5.1, §5.3, §4, §1.2 | Ron81 | 2026-10-12 | ⚠️ against the spec text and the codec; Rael to re-derive on the branch (see Notes) |
@@ -28,7 +28,7 @@ The reference implementation generated these vectors, so on its own it proves no
 - A decoded quaternion re-encoded is **angle-stable but not always byte-stable** for exact ties: reconstructing the dropped component can tip a tie the other way. This is inherent to smallest-three and expected; conformance compares decoded quaternion floats with a `1e-5` tolerance rather than requiring a byte-identical re-encode for the edge-case vector.
 - **Disagreement, fixed (1.1.0):** `002-fullbody-standard` is described as spine/head + legs + arms, but its mask was `0x00fffe3f`, which omits bit 24 (`rightHand`) while including bit 20 (`leftHand`). The generator's bit list ended at 23. The vector decoded correctly, so no test caught it; it was a wrong reference for a full-body mask. Fixed to `0x01fffe3f` (22 bones).
 - `002` and `003` changed length in 1.1.0 because the root block grew from 6 B to 8 B (§5.4, hips height `h`): 148 → 154 B (including the added bone) and 152 → 154 B.
-- `007` is the first vector with non-identity leg and toe quaternions; before it, a decoder that swapped or misaligned leg bones would have passed every vector, because 002 carries identity in all of them. Its tongue slots check the `i8` reading of slots 14 and 15: bytes `c8 c0 20` are `tongueOut` = 200, `tongueX` = −64, `tongueY` = 32.
+- `007` is the first vector with non-identity leg and toe quaternions; before it, a decoder that swapped or misaligned leg bones would have passed every vector, because 002 carries identity in all of them. Through 1.4.0 it also carried directional tongue in slots 14/15 (`c8 c0 20` = `tongueOut` 200, `tongueX` −64, `tongueY` 32); from 1.4.1 those slots are gone and only `tongueOut` (200, slot 13) remains, with directional tongue moved to declared extra values.
 - The pose vectors (`poses/`) exist because the frame vectors cannot test meaning: until them, an implementation with a mirrored or negated leg axis passed everything. The independent check uses rotation matrices rather than quaternions, so that it does not share the product-order convention it is meant to verify.
 - `007-fullbody-legs`: the generator comment described bit 9 (`leftUpperLeg`, `Y(−60°) · X(−80°)`) as "raised and turned out". By §3.4 a negative Y rotation of the raised left thigh swings it toward −X, across the body. The bytes are unchanged; only the comment was wrong. Found while writing §3.4.
 - `p08-kneeling`: the Appendix D estimate gave 0.53 m, the pose is at 0.50 m. Appendix D took the ankle's clearance from the T-pose (sole down); with the instep on the floor the ankle sits lower. Fixed in Appendix D: a foot whose sole faces up gets the shin radius. The estimate now gives 0.50 m, and `test/poses.test.mjs` checks it for `p01`–`p08`. Rejected: rotating the sole point with the foot, which also gives 0.50 m for `p08` but puts `p03` 1 cm low, because a foot tilted sideways rests on its edge, not on the centre of the sole.
@@ -51,3 +51,20 @@ The reference implementation generated these vectors, so on its own it proves no
   reject vector. **Open, as agreed:** these were derived against the spec text and the reference
   codec, not independently re-derived; Rael re-derives `g01` and adds further finger-bone poses on
   real models on this branch, as with `f01`–`f07`.
+
+- **1.4.1 expression-block shrink (tongue → extras + tier rename).** Standard-Sync was renamed
+  **VRM-Sync** and its block dropped the two interim directional-tongue slots (14 `tongueX`,
+  15 `tongueY`), going 18 B → 16 B (14 slots + 2 gaze); `tongueOut` (slot 13) stays. Directional
+  tongue is now carried as declared extra `values` (§2.6). Vectors `002`, `007`, `008` and its
+  twin `009` were **re-encoded** from their JSON `frame` objects by truncating the expression
+  weights to 14 and running the reference encoder; `002` 154→152 B, `007` 150→148 B, `008`/`009`
+  49→47 B. The quaternion, root, finger and extras bytes are unchanged — only the expression tail
+  shortened. These three were re-encoded against the reference codec, not independently
+  re-derived (the earlier ✅ was for the 1.1/1.3 layout); the honest flag is in the rows above.
+  The `version` byte stays 4 — 1.4.1 is still minor revision 4 (§9).
+
+- **Version byte sync (1.4.1).** `VERSION` became 4 in the codec at 1.4.0, but the accept vectors
+  that predate 1.4.0 were not regenerated then and still carried byte 3 (the decoder accepts any
+  0–15, §9, so no test caught the stale byte). Regenerating from `generate-testvectors.mjs` at 1.4.1
+  brings `001`, `003`, `005`, `006`, `007`, `008` to byte 4; only byte 0 changed on `001`/`003`/`005`/
+  `006`. `010-finger-bones` was already byte 4; `004e-bad-version` keeps its deliberate `0x10`.

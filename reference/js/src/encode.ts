@@ -67,9 +67,9 @@ export function encode(frame: Frame): Uint8Array {
   }
 
   // PERFECT_SYNC is only meaningful with HAS_EXPRESSIONS.
-  const exprLen = frame.expressions ? (frame.expressions.perfectSync ? 54 : 18) : 0;
+  const exprLen = frame.expressions ? (frame.expressions.perfectSync ? 54 : 16) : 0;
   if (frame.expressions) {
-    const want = frame.expressions.perfectSync ? 52 : 16;
+    const want = frame.expressions.perfectSync ? 52 : 14;
     if (frame.expressions.weights.length !== want) {
       throw new PosyEncodeError(`expression weights length ${frame.expressions.weights.length}, expected ${want}`);
     }

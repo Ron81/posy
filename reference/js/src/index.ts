@@ -33,9 +33,9 @@ export interface Frame {
   expressions?: {
     perfectSync: boolean;
     /**
-     * 16 slots (Standard-Sync) or 52 (Perfect-Sync), raw bytes 0..255.
-     * Standard-Sync slots 14 and 15 (tongueX, tongueY) are i8 on the wire (§5.6):
-     * read with `(b << 24) >> 24`, write with `v & 0xff`.
+     * 14 slots (VRM-Sync) or 52 (Perfect-Sync), raw bytes 0..255 (§5.6). The VRM-Sync
+     * block is the VRM expression presets plus tongue protrusion (slot 13); directional
+     * tongue is no longer a slot — it rides as declared extra values (§2.6, §5.8).
      */
     weights: Uint8Array;
     gazeYaw: number;
