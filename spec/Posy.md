@@ -411,7 +411,9 @@ current avatar has. Three cases:
 
 A declaration that exceeds either limit is not granted: `"extra"` is absent from
 `allowed`, and the client MAY declare again within the limits. Without `extra_max` the
-limits are 255 and 255. The server reads the two list lengths and nothing else; it MUST
+limits are 255 and 255. `extra_max` states both limits, and either MAY be 0: the server
+then grants no extra of that kind, so `"bones": 0` admits a declaration of values only.
+The server reads the two list lengths and nothing else; it MUST
 NOT edit the lists, and the names are opaque to it. The frame size limit of §1.1 applies
 unchanged: a sender MUST NOT declare extras that could make one of its frames exceed it.
 
