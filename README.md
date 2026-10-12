@@ -143,19 +143,14 @@ here.
 
 ## What's next
 
-A quick look at where 1.x is going. These are plans, scoped to 1.x — nothing here changes the wire
-unless it says so.
-
-- **1.3.5 (in progress)** — demo polish. A richer loopback demo: orbit the camera to see
-  back-of-avatar extras like tails and wings, clearer extras and expression pickers, and pose presets
-  grouped by body area. Demo only — no wire change.
-- **1.4** — a tested PMX driver and normative per-type driver sections (§3.2), so MMD/PMX avatars are
-  first-class, verified against the pose vectors in a real MMD runtime.
-- **A later 1.x clean-up release** — one "soft-lock-closing" revision that batches the last small
-  breaking tidy-ups (mask width, a couple of spec fixes, some naming) before the first real
-  integration. After that, a long calm run of additive-only 1.x.
+1.x is in a short, time-boxed window where the last few breaking tidy-ups land together — a per-joint
+`finger_bones` option, a mask-check cleanup, and a tested PMX/MMD driver — after which the core locks
+for a long, calm, additive-only run. The full plan, the release sequence, and the real-use gate before
+1.5.0 are in **[`ROADMAP.md`]**.
 
 2.0 is deliberately far off — 1.x is where the work is.
+
+[`ROADMAP.md`]: ROADMAP.md
 
 ## Thanks — standing on a lot of shoulders
 
