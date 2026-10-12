@@ -104,7 +104,7 @@ test.skip('docs: packetSize equals encoded frame length (site frozen; re-enable 
       if (hasRoot) frame.root = { x: 0, y: 0, z: 0, h: 32768 };
       if (hasFingers) frame.fingers = { left: hand, right: hand };
       if (expr !== null) {
-        frame.expressions = { perfectSync: expr, weights: new Uint8Array(expr ? 52 : 14), gazeYaw: 0, gazePitch: 0 };
+        frame.expressions = { perfectSync: expr, weights: new Uint8Array(expr ? 52 : 13), gazeYaw: 0, gazePitch: 0 };
       }
       const opts = { boneCount: bits.length, hasRoot, hasFingers, hasExpressions: expr !== null, perfectSync: expr === true };
       assert.equal(PosyCodec.packetSize(opts), encode(frame).length, JSON.stringify(opts));

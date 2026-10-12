@@ -37,11 +37,10 @@ const APPENDIX_A = args.has('--appendix-a');
  */
 const FINGER_LAYOUT = 'fixed';
 
-/** §5.6: the 14 VRM-Sync slots, in wire order. Directional tongue (the former slots 14/15)
- * is no longer a core slot — it rides as declared extra values (§2.6). */
+/** §5.6: the 13 VRM-Sync slots, in wire order: the VRM expression presets and nothing else.
+ * The tongue is not a VRM preset; a VRM-Sync sender declares it as extra values (§2.6). */
 const STANDARD_SYNC_SLOTS = [
   'blinkLeft', 'blinkRight', 'aa', 'ih', 'ou', 'ee', 'oh', 'happy', 'angry', 'sad', 'relaxed', 'surprised', 'neutral',
-  'tongueOut',
 ];
 
 /** §5.5: the 12 bytes of one hand in the finger block, in wire order, as [type, name]. */

@@ -3,6 +3,34 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
+## [Unreleased] - proposed: the tongue leaves the VRM-Sync block
+
+**Breaking** at the expression-block layout and the type list. The version byte stays 4.
+`docs/DECISIONS.md` 0009.
+
+### Removed
+- **Slot 13 `tongueOut` of the VRM-Sync block.** The block is the 13 VRM expression presets and
+  the two gaze bytes: 16 B → 15 B. A VRM-Sync sender whose avatar file defines a tongue expression
+  declares it as an extra value (§2.6) and needs the `"extra"` grant.
+- **The `"tongue"` type.** It was the one type a relay could not check in the frame header. In
+  Perfect-Sync, `tongueOut` stays weight 51 and is granted with `"perfect_sync"`.
+
+### Changed
+- §2.6: a value is an expression that the sender's own expression block does not carry. The
+  former wording ("other than those §5.6 carries") left open which tier was meant.
+- §1.2, §5.1, Appendix B: the length formula reads `(b0 ? 54 : 15)`. The §5.1 layout table still
+  said `18|54`, and the Appendix B pseudocode still read 16 slots; both are corrected.
+- §6: the typical VRM-Sync frame is 115 B (was 116). Perfect-Sync is unchanged at 154 B.
+
+### Migration
+- Codec: the VRM-Sync weight list has 13 entries (was 14); the encoder refuses any other length.
+  `STANDARD_SYNC_NAMES` has 13 names.
+- Test vectors `002` (152→151 B), `007` (148→147 B), `008` and `009` (47→46 B). `007` carried 200
+  in slot 13 and now carries it in slot 12. All four were re-derived independently of the codec
+  (`testvectors/VERIFICATION.md`). No other vector changed.
+- Schema: `"tongue"` is no longer a data type.
+- The site and the loopback demo are frozen for their rework and still show the older blocks.
+
 ## [Unreleased] - proposed for the next 1.4.x
 
 No wire change and no codec change.

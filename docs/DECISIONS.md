@@ -6,6 +6,69 @@ that commit messages and the spec text do not keep in one place.
 
 ---
 
+## 0009 — Two face tiers and nothing between them: `tongueOut` and the `"tongue"` type leave
+
+**Date:** 2026-10-12 · **Status:** Proposed · **Affects:** §1.2, §2.1, §2.6, §5.1, §5.2, §5.6, §6, Appendix B, schema, codec, vectors 002/007/008/009
+
+### Context
+
+0008 moved the tongue direction into declared extras and kept two things: slot 13 `tongueOut`
+in the VRM-Sync block, and the `"tongue"` type that gated it (and ARKit index 51 in
+Perfect-Sync). Both stood apart from the rest of the format:
+
+- **The type could not be checked.** Every other type is a flag bit or a set of mask bits, and a
+  relay checks it in the frame header (§1.2). `"tongue"` was "not visible in the header; the
+  sender sends 0 when not granted". A relay that does not read the payload could not tell a
+  granted sender from an ungranted one, so `UNAUTHORIZED_TYPE` could not be raised for it, and
+  a receiver had no rule for a non-zero byte from a peer whose `sends` lacks the type.
+- **The slot was not a VRM preset.** The other 13 slots are the VRM expression presets, which
+  every VRM avatar has. A tongue on a VRM avatar is an expression of that one file, which is what
+  §2.6 defines as an extra.
+- **Few senders can fill it.** The tongue was a permission of its own for one byte. A camera face
+  model such as MediaPipe Face Landmarker outputs 52 scores: `_neutral` and 51 of the ARKit
+  shapes, with no tongue. The senders that track the tongue use an ARKit-class tracker and
+  declare Perfect-Sync, where `tongueOut` is one of the 52 weights.
+
+### Decision
+
+- **The face has two tiers.** VRM-Sync is the VRM presets: 13 slots and the two gaze bytes, 15 B.
+  Perfect-Sync is the 52 ARKit weights, unchanged, 54 B. Everything else about a face is a
+  declared extra value (§2.6).
+- **Slot 13 `tongueOut` leaves the VRM-Sync block.** A VRM-Sync sender whose avatar file defines
+  a tongue expression declares it as an extra value under the file's name.
+- **The `"tongue"` type is removed.** In Perfect-Sync, `tongueOut` stays weight 51 and is granted
+  with `"perfect_sync"` like the other 51. Every remaining type is visible in the frame header.
+
+The version byte stays 4.
+
+### Alternatives rejected
+
+- **Keep slot 13 and the type (0008).** Keeps the one grant a relay cannot enforce, and a byte in
+  the preset block that is not a preset. 0008 kept it so that both tiers carry protrusion in the
+  block; the tiers are now told apart by what they are (VRM presets, ARKit weights), not by
+  carrying the same things.
+- **Keep the slot, drop the type** (the byte granted with `"expressions"`). Removes the
+  unenforceable grant, but leaves a slot most VRM avatars have no expression for.
+- **Take `tongueOut` out of Perfect-Sync as well.** The 52 weights are a list shared by trackers
+  and avatars in its fixed order (Appendix A); a 51-weight block would be a list of Posy's own.
+- **A permission per extra**, so that a server could admit a tongue and refuse other values. The
+  names are the sender's and opaque to the server (§2.6); a permission on a name the sender chose
+  controls nothing. What a server can judge is the count, which `extra_max` gives it, per kind.
+
+### Consequences
+
+- The VRM-Sync frame of §6 is 115 B (was 116); Perfect-Sync is unchanged at 154 B.
+- Breaking at the block layout and the type list, inside the window. A 1.4.1 encoder writes a
+  16 B block; mixed with this layout, every frame with a VRM-Sync block fails the length check.
+- A VRM-Sync sender needs the `"extra"` grant to show a tongue; a Perfect-Sync sender does not.
+  A server that grants no extra values (`extra_max`) therefore admits no tongue from VRM-Sync
+  senders.
+- Vectors `002`, `007`, `008` and `009` are one byte shorter and were re-derived independently
+  (`testvectors/VERIFICATION.md`). The site and the loopback demo, frozen for their rework, still
+  show the older blocks.
+
+---
+
 ## 0008 — Directional tongue leaves the block; "VRM-Sync"; richer face sets ride as extras
 
 **Date:** 2026-10-12 · **Status:** Accepted · **Affects:** §2.1, §2.6, §5.1, §5.6, §6, §11, schema, codec

@@ -24,10 +24,10 @@
       "enum": ["sctp", "websocket"]
     },
     "dataTypes": {
-      "description": "List of data types (spec §2.1). 'legs' requires 'bones'; 'toes' requires 'legs'; 'finger_bones' requires 'bones' and is mutually exclusive with 'fingers'; 'perfect_sync' and 'tongue' require 'expressions'; 'extra' requires the 'extra' object beside the list (§2.6) — those dependencies are checked by the server, not by this schema.",
+      "description": "List of data types (spec §2.1). 'legs' requires 'bones'; 'toes' requires 'legs'; 'finger_bones' requires 'bones' and is mutually exclusive with 'fingers'; 'perfect_sync' requires 'expressions'; 'extra' requires the 'extra' object beside the list (§2.6) — those dependencies are checked by the server, not by this schema.",
       "type": "array",
       "uniqueItems": true,
-      "items": { "enum": ["bones", "legs", "toes", "root", "fingers", "finger_bones", "expressions", "perfect_sync", "tongue", "extra"] }
+      "items": { "enum": ["bones", "legs", "toes", "root", "fingers", "finger_bones", "expressions", "perfect_sync", "extra"] }
     },
     "extraNames": {
       "description": "One list of a declaration of extras (spec §2.6): names from the sender's avatar file, in the order of the extras block (§5.8). The names are opaque to the server.",

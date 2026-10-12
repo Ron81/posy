@@ -96,7 +96,7 @@ const v001 = writeAccept(
   { flags: 0 },
 );
 
-/* 002-fullbody-standard: 22 bones, root+fingers+VRM-Sync -> 152 B */
+/* 002-fullbody-standard: 22 bones, root+fingers+VRM-Sync -> 151 B */
 {
   const bits = [0, 1, 2, 3, 4, 5, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24];
   const bones = new Map(bits.map((b) => [b, idQuat]));
@@ -114,7 +114,7 @@ const v001 = writeAccept(
         left: { curl: [0, 64, 128, 192, 255], splay: [-127, -64, 0, 64, 127], thumbOpposition: 30 },
         right: { curl: [0, 64, 128, 192, 255], splay: [-127, -64, 0, 64, 127], thumbOpposition: 30 },
       },
-      expressions: { perfectSync: false, weights: new Uint8Array(14), gazeYaw: 12, gazePitch: -8 },
+      expressions: { perfectSync: false, weights: new Uint8Array(13), gazeYaw: 12, gazePitch: -8 },
     },
     { flags: 0x0e },
   );
@@ -165,7 +165,7 @@ writeReject('004d-length-too-short', 'a 15-byte buffer (< 16)', new Uint8Array(1
   writeReject('004e-bad-version', 'version byte with a non-zero high nibble', badVer, 'unsupported major version');
 }
 
-/* 008-extras: hips, VRM-Sync, and a declared extras block of 2 bones and 3 values -> 47 B.
+/* 008-extras: hips, VRM-Sync, and a declared extras block of 2 bones and 3 values -> 46 B.
    009: the same bytes are malformed for a declaration of 3 bones and 3 values. */
 {
   const rot = (axis, deg) => {
@@ -180,7 +180,7 @@ writeReject('004d-length-too-short', 'a 15-byte buffer (< 16)', new Uint8Array(1
     timestampMs: 5000,
     idle: false,
     bones: new Map([[0, idQuat]]),
-    expressions: { perfectSync: false, weights: new Uint8Array(14), gazeYaw: 0, gazePitch: 0 },
+    expressions: { perfectSync: false, weights: new Uint8Array(13), gazeYaw: 0, gazePitch: 0 },
     extra: { bones: [rot('x', 30), rot('z', -45)], values: new Uint8Array([0, 128, 255]) },
   };
   const bytes = writeAccept(
@@ -263,7 +263,7 @@ writeReject('004d-length-too-short', 'a 15-byte buffer (< 16)', new Uint8Array(1
 }
 
 /* 007-fullbody-legs: 21 bones with distinct non-identity leg and toe rotations, root with a
-   lowered hips height, fingers, VRM-Sync with tongue protrusion -> 148 B.
+   lowered hips height, fingers, VRM-Sync with a weight in its last slot -> 147 B.
    Every leg bone carries a different quaternion so that a wrong bone order or offset
    shows up. Rotations are given as axis-angle in degrees; 90 deg is avoided on purpose
    (exact tie, see 005). */
@@ -297,12 +297,12 @@ writeReject('004d-length-too-short', 'a 15-byte buffer (< 16)', new Uint8Array(1
     [23, idQuat], // rightLowerArm
     [24, idQuat], // rightHand
   ]);
-  const weights = new Uint8Array(14);
+  const weights = new Uint8Array(13);
   weights[2] = 128; // aa
-  weights[13] = 200; // tongueOut (protrusion). Directional tongue left the block in 1.4.1 → extras.
+  weights[12] = 200; // neutral, the last slot: a decoder with a wrong slot count reads it as gaze
   writeAccept(
     '007-fullbody-legs',
-    '21 bones with non-identity legs and toes, root with h = 0.55 (seated), fingers, VRM-Sync with tongue protrusion (slot 13)',
+    '21 bones with non-identity legs and toes, root with h = 0.55 (seated), fingers, VRM-Sync with a weight in its last slot (12)',
     {
       version: VERSION,
       seq: 7,
