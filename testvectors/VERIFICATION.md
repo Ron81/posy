@@ -12,8 +12,8 @@ The reference implementation generated these vectors, so on its own it proves no
 | `008-extras`, `009-extras-wrong-counts` | every byte of 008: header with `version` 4 and flags `0x28`, hips, an empty VRM-Sync block, 2 extra quaternions (30° about +X, 45° about −Z), 3 values, total length **47 B from 1.4.1** (49 B through 1.4.0) from the §5.1 formula with B = 2, V = 3; 009 has the same bytes and a declaration that needs a different length | independent script from §5.1–§5.3, §5.6, §5.8 | RaelRotschwinge | 2026-10-06 | ✅ (re-encoded for the 1.4.1 block shrink, see Notes) |
 | `poses/p01` … `p09` | every joint position of every pose, rebuilt from the axis and angle in the pose description with 3×3 rotation matrices (no quaternion product); the stored `quat` values converted to matrices and checked the same way; `h` against `hips_height` | independent script from §3.1 + §3.4 | RaelRotschwinge | 2026-10-03 | ✅ |
 | `poses/f01` … `f07` | every joint position of every pose, rebuilt from the curl / splay / opposition bytes by the text of §5.5 and §3.1 items 5 and 6 with 3×3 rotation matrices (no quaternion product, nothing imported from `scripts/finger-fk.mjs`) | independent script from §5.5 | RaelRotschwinge | 2026-10-05 | ✅ on the reference hand; not yet applied to a real model (see Notes) |
-| `010-finger-bones` | length and bytes against the §5.1 formula with the finger bits in `bone_mask` (mask `0x70000001`, 4 quaternions, 32 B, no compact block); round-trip through the codec; the §1.2 grant check and the finger/compact exclusivity by hand | §5.1, §5.3, §4, §1.2 | Ron81 | 2026-10-12 | ⚠️ against the spec text and the codec; Rael to re-derive on the branch (see Notes) |
-| `poses/g01-claw-left-index` | the left index chain positions, rebuilt by applying the parent-relative quaternions to `hand-skeleton.json` by FK; a flipped flexion axis as a negative control | §3.1, §4 | Ron81 | 2026-10-12 | ⚠️ on the reference hand; Rael to verify on real models (see Notes) |
+| `010-finger-bones` | length and bytes against the §5.1 formula with the finger bits in `bone_mask` (mask `0x70000001`, 4 quaternions, 32 B, no compact block); round-trip through the codec; the §1.2 grant check and the finger/compact exclusivity by hand | §5.1, §5.3, §4, §1.2; independent script from §5.1 + §5.3 | Ron81; RaelRotschwinge | 2026-10-12 | ✅ every byte rebuilt from the spec text (see Notes) |
+| `poses/g01-claw-left-index` | the left index chain positions, rebuilt by applying the parent-relative quaternions to `hand-skeleton.json` by FK; a flipped flexion axis as a negative control | §3.1, §4; independent script with 3×3 rotation matrices | Ron81; RaelRotschwinge | 2026-10-12 | ✅ on the reference hand; not yet applied to a real model (see Notes) |
 
 **Rules**
 
@@ -51,6 +51,18 @@ The reference implementation generated these vectors, so on its own it proves no
   reject vector. **Open, as agreed:** these were derived against the spec text and the reference
   codec, not independently re-derived; Rael re-derives `g01` and adds further finger-bone poses on
   real models on this branch, as with `f01`–`f07`.
+
+- **`010` and `g01` re-derived (2026-10-12).** An independent script, importing nothing from
+  `reference/js`, built `010` from §5.1 and §5.3: header, mask `0x0000000070000001`, two identity
+  quaternions and two of 60° about −Z (`0xE0080096`). The 32 bytes are identical. For `g01` it
+  built the left index chain on `hand-skeleton.json` with 3×3 rotation matrices (no quaternion
+  product), once from the description (60° about −Z on the intermediate and the distal) and once
+  from the stored quaternions converted to matrices. Worst deviation from `expect`: 3.5e-7 m; after
+  the §5.3 wire encoding 0.25 mm. Controls: +Z in place of −Z moves a joint 80 mm, the same
+  rotations on the right hand 59 mm. **What `g01` does not pin:** `expect` lists 4 of the 41 joints
+  of the hand, so an implementation that also moves another finger passes, and the rest-hand
+  fall-back for a cleared finger bit (§5.5) is pinned by no vector. **Open:** `g01` has not been
+  applied to a real model.
 
 - **1.4.1 expression-block shrink (tongue → extras + tier rename).** Standard-Sync was renamed
   **VRM-Sync** and its block dropped the two interim directional-tongue slots (14 `tongueX`,

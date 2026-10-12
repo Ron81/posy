@@ -16,6 +16,15 @@ No wire change and no codec change.
 - §2.6: a limit in `extra_max` MAY be 0. The rule that a declaration above a limit is not
   granted already gave that; it is now stated, with what it is for: `"bones": 0` admits a
   declaration of values only.
+- §3.2: the VRM 0.x thumb naming (0.x `ThumbProximal` / `ThumbIntermediate` are 1.0
+  `ThumbMetacarpal` / `ThumbProximal`) is stated for the thumb bones of `finger_bones` too. It
+  covered the finger block only.
+
+### Added
+- §10 item 11: an implementation that sends or renders `finger_bones` reproduces the per-joint
+  finger pose vectors (`testvectors/poses/g*.json`).
+- `testvectors/VERIFICATION.md`: `010-finger-bones` and `poses/g01-claw-left-index` re-derived
+  independently of the codec, and what `g01` does not pin.
 
 ## [1.4.1] - 2026-10-12
 
