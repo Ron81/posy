@@ -119,7 +119,7 @@ function classify(bit, { fingerStart, fingerEnd }) {
   if (bit <= 8) return ['face (fallback)', 'allowed — but face tracking belongs in the expression block (§5.6)'];
   if (bit <= 16) return ['legs & feet', 'optional'];
   if (bit < fingerStart) return ['arms & shoulders', 'allowed'];
-  if (bit <= fingerEnd) return ['fingers', 'MUST be 0 in v1 — use the finger block (§5.5)'];
+  if (bit <= fingerEnd) return ['fingers', 'per-joint via `finger_bones` (§4), or carried by the compact finger block (§5.5)'];
   return ['reserved', 'reserved, MUST be 0'];
 }
 
@@ -159,7 +159,7 @@ function renderBoneMarkdown(info) {
   }
   L.push(`| ${firstReserved}–63 | *reserved* | reserved | reserved, MUST be 0 |`);
   L.push('');
-  L.push(`**v1 constraint:** bits **${fingerStart}–${fingerEnd}** (all finger bones) MUST be 0. Fingers are carried by the compact finger block (§5.5). Bits 9–16 (legs/feet) MAY be used but are OPTIONAL; receivers MUST handle their absence.`);
+  L.push(`**Finger bones:** bits **${fingerStart}–${fingerEnd}** carry the 30 per-joint finger bones. A sender uses either the compact finger block (§5.5, flag \`HAS_FINGERS\`) or the \`finger_bones\` type (per-joint rotations in these bits), never both. Bits 9–16 (legs/feet) MAY be used but are OPTIONAL; receivers MUST handle their absence. Reserved bits 55–63 MUST be 0 and are rejected by relays (§1.2).`);
   L.push('');
   L.push(`**Typical v1 upper-body mask** = bits ${typical.join(', ')} → ${typical.length} bones → \`0x${mask.toString(16).toUpperCase().padStart(16, '0')}\`.`);
   L.push('');

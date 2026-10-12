@@ -45,12 +45,16 @@ function i16(n: number, field: string): number {
 export function encode(frame: Frame): Uint8Array {
   const bits = [...frame.bones.keys()].sort((a, b) => a - b);
   let mask = 0n;
+  let hasFingerBone = false;
   for (const bit of bits) {
     if (!Number.isInteger(bit) || bit < 0 || bit > 63) throw new PosyEncodeError(`bone bit out of range: ${bit}`);
-    if (bit >= FINGER_BIT_LOW && bit <= FINGER_BIT_HIGH) {
-      throw new PosyEncodeError(`finger bone bit ${bit} MUST NOT be set in v1 (use the finger block)`);
-    }
+    if (bit >= FINGER_BIT_LOW && bit <= FINGER_BIT_HIGH) hasFingerBone = true;
     mask |= 1n << BigInt(bit);
+  }
+
+  // §4/§5.5: the compact finger block and per-joint finger bones are mutually exclusive.
+  if (frame.fingers && hasFingerBone) {
+    throw new PosyEncodeError('a frame carries the compact finger block or per-joint finger bones (bits 25–54), never both');
   }
 
   let flags = 0;

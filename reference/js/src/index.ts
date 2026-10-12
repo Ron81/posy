@@ -17,7 +17,7 @@ export interface HandFingers {
 }
 
 /** The `version` byte this release writes: the minor revision of the spec (§9). */
-export const VERSION = 3;
+export const VERSION = 4;
 
 export interface Frame {
   /** Senders write `VERSION`. Any value 0–15 decodes (§9). */
@@ -59,6 +59,9 @@ export const FLAG_HAS_EXPRESSIONS = 1 << 3;
 export const FLAG_IDLE = 1 << 4;
 export const FLAG_HAS_EXTRA = 1 << 5;
 
-/** Lowest / highest finger bone bit — MUST be 0 in v1 (§4). */
+/** Lowest / highest finger bone bit (§4). Carried per-joint by the `finger_bones` type,
+ * or synthesised from the compact finger block (§5.5) — never both in one frame. */
 export const FINGER_BIT_LOW = 25;
 export const FINGER_BIT_HIGH = 54;
+/** Mask of all 30 finger bone bits (25–54), the `finger_bones` type (§4). */
+export const FINGER_BONES_MASK = ((1n << 55n) - (1n << 25n));
