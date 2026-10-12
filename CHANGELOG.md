@@ -3,6 +3,31 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
+## [1.3.2] - 2026-10-12
+
+Editorial fix to the 1.3.1 §1.3 multi-sender clarification, found by reading the text: a
+receiver could not tell a `uid`-prefixed message from a bare pose frame, because a short
+`uid` makes the 1-byte length `L` (1–255) fall in the `version` byte's range (0–15), so the
+two are indistinguishable byte-for-byte, and "appears only on a shared multi-sender socket"
+is a per-connection property the receiver cannot observe per message. **No wire or codec
+change** — the pose frame, vectors and the published package are untouched; this only adds a
+signaling field and clarifies normative text.
+
+### Added
+- Spec §2.1 `session` message: optional boolean **`multiplexed`** (absent ⇒ `false`),
+  declared once at the handshake. When `true`, **every** forwarded binary pose message on
+  that connection carries the §1.3 `uid` prefix — including while only one sender is in the
+  room — so the stream format never changes mid-session and the receiver parses the prefix
+  unconditionally instead of guessing from byte 0. A server that may ever multiplex more than
+  one sender onto the socket MUST set it `true` from the first `session`; direct,
+  one-sender-per-socket and single-client-loop connections leave it `false`.
+- `schemas/signaling.schema.json`: `multiplexed` property on the `session` definition.
+
+### Clarified
+- Spec §1.3: the `uid` routing prefix is tied to `session.multiplexed`, not inferred per
+  message. The prior wording ("appears only on a shared multi-sender socket") is replaced by
+  the handshake-declared rule above.
+
 ## [1.3.1] - 2026-10-09
 
 Editorial clarifications from the first client to run Posy over a real server relay. **No

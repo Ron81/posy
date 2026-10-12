@@ -69,6 +69,7 @@
         "session_id": { "type": "string", "minLength": 1 },
         "epoch_unix_ms": { "type": "integer", "minimum": 0, "description": "Session epoch; timestamp_ms in pose frames counts from here." },
         "transport": { "$ref": "#/$defs/transport" },
+        "multiplexed": { "type": "boolean", "description": "Whether this connection carries the §1.3 uid routing prefix on forwarded binary pose messages (spec §1.3/§2.1, added in 1.3.2). When true, every such message is prefixed for the whole connection, so the receiver parses the prefix unconditionally rather than guessing from byte 0. Optional; absent means false. A server that may multiplex more than one sender onto the socket MUST set it true from the first session; direct, one-sender-per-socket and single-client-loop connections leave it false." },
         "playspace": {
           "type": "object",
           "required": ["w", "h"],

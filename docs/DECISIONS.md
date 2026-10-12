@@ -6,6 +6,57 @@ that commit messages and the spec text do not keep in one place.
 
 ---
 
+## 0006 — The multi-sender `uid` prefix is declared at the handshake, not inferred per message
+
+**Date:** 2026-10-12 · **Status:** Accepted · **Affects:** §1.3, §2.1 (`session.multiplexed`), schema
+
+### Context
+
+1.3.1 made a server that multiplexes several senders onto one WebSocket prefix each
+forwarded binary pose message with a routing header: a 1-byte length `L` (1–255), `L` bytes
+of the sender's `uid`, then the unmodified frame (§1.3). The clarification was sound but
+underspecified the receiver side: it said the prefix "appears only on a shared multi-sender
+socket" without giving the receiver any way to know whether a given connection is one. A
+receiver cannot tell a prefixed message from a bare frame by inspection — byte 0 of a frame
+is `version` (0–15, §5.1) and byte 0 of a prefix is `L` (1–255), so a `uid` of 15 bytes or
+fewer makes the two indistinguishable (the spec's own example `u_8f31` gives `L = 6`). A
+server that began prefixing only once a second sender joined would also change the stream
+format mid-session. Two independent implementations would interoperate only by out-of-band
+agreement — a real gap in released text.
+
+### Decision
+
+The server declares it once, at the handshake, in the `session` message (§2.1): an optional
+boolean `multiplexed` (absent ⇒ `false`). When `true`, **every** forwarded binary pose
+message on that connection carries the `uid` prefix — including while only one sender is in
+the room — so the stream format is fixed for the life of the connection and the receiver
+parses the prefix unconditionally. When `false` or absent, no message is prefixed and byte 0
+is always `version`. A server that may ever multiplex MUST set it `true` from the first
+`session`. It is a connection property alongside `transport`, independent of `allowed`. No
+change to the pose frame, the codec, or any test vector.
+
+### Alternatives rejected
+
+- **Self-describing first byte** (e.g. a length byte with the high bit set to mark a prefix).
+  Needs no handshake field, but it is a decode trick a reader has to be told about, and
+  stating connection properties up front at the handshake is how `transport` and the rest of
+  the protocol already work.
+- **Infer from room state** (prefix only while >1 sender present). Changes the stream format
+  mid-session and still leaves a lone-sender message ambiguous. Rejected.
+- **A new per-frame sender tag.** Rejected in 1.3.1 already; the `uid` prefix reuses an
+  existing identifier and this ADR only fixes how the receiver learns to expect it.
+
+### Consequences
+
+- A receiver knows from `session` whether to strip a prefix; the byte-0 ambiguity never
+  arises.
+- One optional boolean on `session`; direct, one-sender-per-socket and single-client-loop
+  deployments leave it `false` and are unaffected.
+- Editorial, additive to the signaling layer — no wire or codec change, so 1.3.0/1.3.1
+  frames and the published package behave identically.
+
+---
+
 ## 0005 — Declared extras for everything beyond the humanoid core
 
 **Date:** 2026-10-06 · **Status:** Proposed · **Affects:** §2.1, §2.3, §2.6, §5.1, §5.2, §5.8, §1.2, §9 (flag bit 5, signaling)

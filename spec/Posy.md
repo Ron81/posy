@@ -1,5 +1,5 @@
 # POSY — Pose Synchronization
-**Version:** 1.3.1
+**Version:** 1.3.2
 **Status:** Released — packet format (§5) and signaling (§2) are soft-locked: they may change in a 1.x revision, and every change needs a stated justification
 **Channel label:** `avatar-pose`
 **Channel protocol string:** `posy/1`
@@ -137,14 +137,24 @@ pose message with the sender's `uid` (§2.3) as a routing header **outside** the
 one byte unsigned length `L` (1–255), then `L` bytes of the `uid` as UTF-8, then the
 unmodified frame. The frame bytes are untouched — the header is transport envelope, not
 frame content, so §1.2 still holds — and the receiver strips the header, matches the `uid`
-to the peer it announced in `peers` (§2.3), and decodes the frame as usual. This header
-appears **only** on a shared multi-sender socket; a direct SCTP consumer, a
+to the peer it announced in `peers` (§2.3), and decodes the frame as usual.
+
+Whether a connection carries this prefix is declared **once at the handshake**, not inferred
+per message. The receiver cannot tell a prefixed message from a bare frame by inspection — a
+short `uid` makes the length byte `L` fall in the `version` range (0–15, §5.1), so the two are
+indistinguishable byte-for-byte. The server therefore states it in `session` (§2.1): the
+boolean field **`multiplexed`** (added in 1.3.2; absent ⇒ `false`). When `multiplexed` is
+`true`, **every** forwarded binary pose message on that connection carries the `uid` prefix —
+including while only one sender is in the room — so the stream format never changes
+mid-session as peers come and go. When it is `false` or absent, no message carries a prefix
+and byte 0 is always `version`. A server that may ever multiplex MUST set `multiplexed: true`
+from the start; a server that never does leaves it `false`. This header therefore appears
+**only** on a connection the server declared `multiplexed`; a direct SCTP consumer, a
 one-sender-per-socket WebSocket and a single-client loop (where the receiver is the sender)
-never carry it. How much a receiver may trust the `uid` is a property of the deployment,
-not of this format: a server that stamps it from the sender's authenticated session (§2.3,
-"the server MUST reject frames arriving on an unauthenticated producer") makes it
-unforgeable, which
-is why no separate per-frame sender tag is defined here.
+leave `multiplexed` unset and never carry it. How much a receiver may trust the `uid` is a
+property of the deployment, not of this format: a server that stamps it from the sender's
+authenticated session (§2.3, "the server MUST reject frames arriving on an unauthenticated
+producer") makes it unforgeable, which is why no separate per-frame sender tag is defined here.
 
 ---
 
@@ -191,6 +201,14 @@ Server → Client:
   requested lane, it either confirms a lane it does support in `session` (which the client
   then uses) or, if none is available, rejects the join with an `UNSUPPORTED_TRANSPORT` error
   (§2.5).
+- `multiplexed` (optional boolean, added in 1.3.2; absent ⇒ `false`) declares whether this
+  connection carries the §1.3 `uid` routing prefix on its forwarded binary pose messages. When
+  `true`, **every** such message is prefixed, for the whole connection, so the receiver parses a
+  prefix unconditionally and never has to guess from byte 0 (which a short `uid` would make
+  ambiguous). A server that may ever multiplex more than one sender onto this socket MUST set it
+  `true` from the first `session`; a direct link, a one-sender-per-socket WebSocket and a
+  single-client loop leave it `false`. It is a connection property, like `transport`, and is
+  independent of `allowed`.
 - `caps.sends` is the sender's **declaration**: the complete list of data types it will
   transmit. It MUST be the intersection of what the sender's capture pipeline delivers and
   what its current avatar can show. A type the avatar cannot show (no toe bones, no tongue
