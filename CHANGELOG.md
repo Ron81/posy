@@ -3,7 +3,7 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
-## [Unreleased] - proposed: what an older peer does with what it does not know
+## [1.4.4] - 2026-10-13
 
 Defines "additive" for the time after the freeze. No change to any frame a sender of this
 revision produces. **Changes receiver behaviour:** a frame with flag bit 6 or 7 set may be longer

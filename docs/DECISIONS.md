@@ -8,7 +8,7 @@ that commit messages and the spec text do not keep in one place.
 
 ## 0010 — What "additive" means: what an older peer does with what it does not know
 
-**Date:** 2026-10-12 · **Status:** Proposed · **Affects:** §1.2, §2.1, §2.7 (new), §5.1, §5.2, §9, §10, Appendix B, schema, codec, vector 011
+**Date:** 2026-10-12 · **Status:** Accepted · **Affects:** §1.2, §2.1, §2.7 (new), §5.1, §5.2, §9, §10, Appendix B, schema, codec, vector 011
 
 ### Context
 
