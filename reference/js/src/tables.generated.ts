@@ -139,7 +139,6 @@ export const STANDARD_SYNC_NAMES = [
   'relaxed',
   'surprised',
   'neutral',
-  'tongueOut',
 ] as const;
 
 /** Index = byte offset within one hand of the finger block (spec §5.5). */

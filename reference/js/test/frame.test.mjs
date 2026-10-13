@@ -30,25 +30,25 @@ test('001-minimal is 20 bytes with exact spec bytes', () => {
   assert.equal(hex, '010001000000000001000000000000000002 08e0'.replaceAll(' ', ''));
 });
 
-test('116 B golden: 13 bones + root + fingers + VRM-Sync', () => {
+test('115 B golden: 13 bones + root + fingers + VRM-Sync', () => {
   const f = baseFrame({
     root: { x: 0x8000, y: 0x4000, z: -1500, h: 0x6000 },
     fingers: {
       left: { curl: [0, 64, 128, 192, 255], splay: [-127, -64, 0, 64, 127], thumbOpposition: 30 },
       right: { curl: [255, 192, 128, 64, 0], splay: [127, 64, 0, -64, -127], thumbOpposition: 60 },
     },
-    expressions: { perfectSync: false, weights: new Uint8Array(14), gazeYaw: 0, gazePitch: 0 },
+    expressions: { perfectSync: false, weights: new Uint8Array(13), gazeYaw: 0, gazePitch: 0 },
   });
   const bytes = encode(f);
-  // 16 + 4*13 + 8 + 24 + 16 = 116
-  assert.equal(bytes.length, 116);
+  // 16 + 4*13 + 8 + 24 + 15 = 115
+  assert.equal(bytes.length, 115);
   const back = decode(bytes);
   assert.equal(back.bones.size, 13);
   assert.equal(back.root.z, -1500);
   assert.equal(back.root.h, 0x6000);
   assert.deepEqual([...back.fingers.left.curl], [0, 64, 128, 192, 255]);
   assert.deepEqual([...back.fingers.left.splay], [-127, -64, 0, 64, 127]);
-  assert.equal(back.expressions.weights.length, 14);
+  assert.equal(back.expressions.weights.length, 13);
 });
 
 test('154 B golden: 13 bones + root + fingers + Perfect-Sync', () => {
@@ -147,6 +147,9 @@ test('encoder refuses the compact finger block together with finger bones (mutua
 test('encoder refuses wrong expression weight length', () => {
   const f = baseFrame({ expressions: { perfectSync: true, weights: new Uint8Array(16), gazeYaw: 0, gazePitch: 0 } });
   assert.throws(() => encode(f), PosyEncodeError);
+  // The VRM-Sync block of 1.4.1 had 14 slots (13 presets and tongueOut); it has 13.
+  const old = baseFrame({ expressions: { perfectSync: false, weights: new Uint8Array(14), gazeYaw: 0, gazePitch: 0 } });
+  assert.throws(() => encode(old), PosyEncodeError);
 });
 
 test('reserved bone bit is consumed and preserved, rest parses', () => {

@@ -5,11 +5,11 @@ The reference implementation generated these vectors, so on its own it proves no
 | Vector | What was checked | How | Verified by | Date | Result |
 |---|---|---|---|---|---|
 | `001-minimal` | every byte (header, mask, one quaternion) | independent script from §5.1 + §5.3 | Ron81 | 2026-09-29 | ✅ |
-| `002-fullbody-standard` | every byte: header, mask `0x01fffe3f`, 22 identity quaternions, 8 B root block, both hands, expression block, total length (154 B in 1.1–1.4.0; **152 B from 1.4.1**, see Notes) | independent script from §5.1 + §5.3–§5.6 | RaelRotschwinge | 2026-10-03 | ✅ (re-verified after the mask fix and the 8 B root block; re-encoded for the 1.4.1 block shrink, see Notes) |
+| `002-fullbody-standard` | every byte: header, mask `0x01fffe3f`, 22 identity quaternions, 8 B root block, both hands, expression block, total length (154 B in 1.1–1.4.0, 152 B in 1.4.1, **151 B with the 13-slot block**, see Notes) | independent script from §5.1 + §5.3–§5.6 | RaelRotschwinge | 2026-10-03, 2026-10-12 | ✅ (re-verified after the mask fix and the 8 B root block; re-derived for the 13-slot block, see Notes) |
 | `004-malformed-length` | length formula (§5.1) says reject (001 minus its last byte) | by hand | Ron81 | 2026-09-29 | ✅ |
 | `005-quat-edgecases` | 3 quaternions: negated identity, tie `(0,s,0,s)`, 90° about X | independent script from §5.3 | Ron81 | 2026-09-29 | ✅ |
-| `007-fullbody-legs` | every byte: header, mask `0x01fffe37`, 21 quaternions built from the axis-angle values in the generator comment, root block with `h` = 18022, both hands, expression block with tongue protrusion, total length (150 B in 1.1–1.4.0; **148 B from 1.4.1**, see Notes) | independent script from §5.1 + §5.3–§5.6 | RaelRotschwinge | 2026-10-03 | ✅ (re-encoded for the 1.4.1 block shrink, see Notes) |
-| `008-extras`, `009-extras-wrong-counts` | every byte of 008: header with `version` 4 and flags `0x28`, hips, an empty VRM-Sync block, 2 extra quaternions (30° about +X, 45° about −Z), 3 values, total length **47 B from 1.4.1** (49 B through 1.4.0) from the §5.1 formula with B = 2, V = 3; 009 has the same bytes and a declaration that needs a different length | independent script from §5.1–§5.3, §5.6, §5.8 | RaelRotschwinge | 2026-10-06 | ✅ (re-encoded for the 1.4.1 block shrink, see Notes) |
+| `007-fullbody-legs` | every byte: header, mask `0x01fffe37`, 21 quaternions built from the axis-angle values in the generator comment, root block with `h` = 18022, both hands, expression block with a weight in its last slot, total length (150 B in 1.1–1.4.0, 148 B in 1.4.1, **147 B with the 13-slot block**, see Notes) | independent script from §5.1 + §5.3–§5.6 | RaelRotschwinge | 2026-10-03, 2026-10-12 | ✅ (re-derived for the 13-slot block, see Notes) |
+| `008-extras`, `009-extras-wrong-counts` | every byte of 008: header with `version` 4 and flags `0x28`, hips, an empty VRM-Sync block, 2 extra quaternions (30° about +X, 45° about −Z), 3 values, total length **46 B with the 13-slot block** (49 B through 1.4.0, 47 B in 1.4.1) from the §5.1 formula with B = 2, V = 3; 009 has the same bytes and a declaration that needs a different length | independent script from §5.1–§5.3, §5.6, §5.8 | RaelRotschwinge | 2026-10-06, 2026-10-12 | ✅ (re-derived for the 13-slot block, see Notes) |
 | `poses/p01` … `p09` | every joint position of every pose, rebuilt from the axis and angle in the pose description with 3×3 rotation matrices (no quaternion product); the stored `quat` values converted to matrices and checked the same way; `h` against `hips_height` | independent script from §3.1 + §3.4 | RaelRotschwinge | 2026-10-03 | ✅ |
 | `poses/f01` … `f07` | every joint position of every pose, rebuilt from the curl / splay / opposition bytes by the text of §5.5 and §3.1 items 5 and 6 with 3×3 rotation matrices (no quaternion product, nothing imported from `scripts/finger-fk.mjs`) | independent script from §5.5 | RaelRotschwinge | 2026-10-05 | ✅ on the reference hand; not yet applied to a real model (see Notes) |
 | `010-finger-bones` | length and bytes against the §5.1 formula with the finger bits in `bone_mask` (mask `0x70000001`, 4 quaternions, 32 B, no compact block); round-trip through the codec; the §1.2 grant check and the finger/compact exclusivity by hand | §5.1, §5.3, §4, §1.2; independent script from §5.1 + §5.3 | Ron81; RaelRotschwinge | 2026-10-12 | ✅ every byte rebuilt from the spec text (see Notes) |
@@ -74,6 +74,17 @@ The reference implementation generated these vectors, so on its own it proves no
   shortened. These three were re-encoded against the reference codec, not independently
   re-derived (the earlier ✅ was for the 1.1/1.3 layout); the honest flag is in the rows above.
   The `version` byte stays 4 — 1.4.1 is still minor revision 4 (§9).
+
+- **13-slot VRM-Sync block (2026-10-12).** Slot 13 `tongueOut` and the `"tongue"` type are
+  removed; the block is the 13 preset slots and 2 gaze bytes, 15 B. `002` 152→151 B, `007`
+  148→147 B, `008`/`009` 47→46 B. `007` had 200 in slot 13 and now has 200 in slot 12 (`neutral`):
+  the last slot stays non-zero, so a decoder with a wrong slot count reads it as gaze. An
+  independent script, importing nothing from `reference/js`, built the four vectors from the spec
+  text and the values in the vector descriptions (for `007` the axis-angle values of the generator
+  comment, bit 9 as the product `Y(−60°) · X(−80°)`): every byte is identical, and `009` needs 50 B
+  under its declaration and has 46. This closes the flag of the 1.4.1 note above, where the three
+  accept vectors had been re-encoded against the codec only. All other vectors are unchanged byte
+  for byte.
 
 - **Version byte sync (1.4.1).** `VERSION` became 4 in the codec at 1.4.0, but the accept vectors
   that predate 1.4.0 were not regenerated then and still carried byte 3 (the decoder accepts any

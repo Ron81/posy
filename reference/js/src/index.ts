@@ -33,9 +33,9 @@ export interface Frame {
   expressions?: {
     perfectSync: boolean;
     /**
-     * 14 slots (VRM-Sync) or 52 (Perfect-Sync), raw bytes 0..255 (§5.6). The VRM-Sync
-     * block is the VRM expression presets plus tongue protrusion (slot 13); directional
-     * tongue is no longer a slot — it rides as declared extra values (§2.6, §5.8).
+     * 13 slots (VRM-Sync) or 52 (Perfect-Sync), raw bytes 0..255 (§5.6). The VRM-Sync
+     * block is the VRM expression presets and nothing else; a VRM-Sync sender declares a
+     * tongue as extra values (§2.6, §5.8). In Perfect-Sync, `tongueOut` is weight 51.
      */
     weights: Uint8Array;
     gazeYaw: number;

@@ -104,7 +104,7 @@ A relay MAY validate a frame structurally without decoding the quaternion payloa
 needs the §5.1 header and, for a sender that was granted `"extra"`, the two list lengths
 of its declaration (§2.6), which it has from the handshake. It checks:
 1. `version` byte: `version >> 4 == 0` (a 1.x frame; the value is the minor revision, §9).
-2. Frame length exactly equals `16 + 4·popcount(bone_mask) + 8·b1 + 24·b2 + (b3 ? (b0 ? 54 : 16) : 0) + (b5 ? 4·B + V : 0)`,
+2. Frame length exactly equals `16 + 4·popcount(bone_mask) + 8·b1 + 24·b2 + (b3 ? (b0 ? 54 : 15) : 0) + (b5 ? 4·B + V : 0)`,
    with `B` and `V` from the declaration that applies at the frame's `timestamp_ms`. A
    relay MAY instead use the sender's **current** declaration and need not retain superseded
    ones; the two differ only for frames in flight across a re-declaration, which the sender
@@ -217,8 +217,8 @@ Server → Client:
   independent of `allowed`.
 - `caps.sends` is the sender's **declaration**: the complete list of data types it will
   transmit. It MUST be the intersection of what the sender's capture pipeline delivers and
-  what its current avatar can show. A type the avatar cannot show (no toe bones, no tongue
-  or ARKit blendshapes) MUST NOT be declared even if the tracker delivers it. An empty
+  what its current avatar can show. A type the avatar cannot show (no toe bones, no ARKit
+  blendshapes) MUST NOT be declared even if the tracker delivers it. An empty
   list declares a watcher: the client transmits no pose frames and the server allocates
   no pose producer for it.
 - `allowed` is the server's **grant** for this client: `caps.sends` reduced by server
@@ -235,11 +235,12 @@ Server → Client:
   | `"finger_bones"` | per-joint finger bones (§4, §5.5) | `bone_mask` bits 25–54 — mask `0x007FFFFFFE000000` |
   | `"expressions"` | expression block (§5.6) | flag `HAS_EXPRESSIONS` |
   | `"perfect_sync"` | 52-slot ARKit mode (§5.6) | flag `PERFECT_SYNC` |
-  | `"tongue"` | tongue protrusion, slot 13 of §5.6 (and ARKit index 51 in Perfect-Sync) | not visible in the header; the sender sends 0 when not granted |
   | `"extra"` | declared extras: avatar-specific bones and values (§2.6, §5.8) | flag `HAS_EXTRA` |
 
+  Every type is visible in the frame header, so a relay can check each one (§1.2).
+
   `"legs"` requires `"bones"`; `"toes"` requires `"legs"`; `"finger_bones"` requires
-  `"bones"` (the hands anchor the finger chains); `"perfect_sync"` and `"tongue"` require
+  `"bones"` (the hands anchor the finger chains); `"perfect_sync"` requires
   `"expressions"`. `"finger_bones"` and `"fingers"` are **mutually exclusive** — a
   declaration carries one or the other, never both. A declaration that violates any of these
   is rejected with `UNAUTHORIZED_TYPE`.
@@ -377,12 +378,14 @@ A sender that declares `"extra"` adds an `extra` object beside `sends` (in `caps
   humanoid bone of §4 nor a finger bone (VRM: the glTF node name; MMD/PMX: the bone name).
   It is transmitted as a rotation.
 - `values` — up to 255 names. Each names one scalar control the avatar file defines
-  (VRM: an expression other than those §5.6 carries; MMD/PMX: a morph, including bone
-  and group morphs). It is transmitted as one byte. This is how richer face sets ride
-  without any change to Posy: directional or curled tongue, ARKit shapes beyond the
-  Perfect-Sync 52, or a community superset such as VRCFaceTracking Unified Expressions, are
-  each carried by the names the sender's avatar file uses. Posy blesses no such list as
-  canonical — the mechanism is the standard, the names are the sender's.
+  (VRM: an expression that the sender's own expression block does not carry — beyond the
+  13 presets for a VRM-Sync sender, beyond the 52 weights for a Perfect-Sync sender, §5.6;
+  MMD/PMX: a morph, including bone and group morphs). It is transmitted as one byte. This
+  is how richer face sets ride without any change to Posy: the tongue of a VRM-Sync
+  sender, directional or curled tongue, ARKit shapes beyond the Perfect-Sync 52, or a
+  community superset such as VRCFaceTracking Unified Expressions, are each carried by the
+  names the sender's avatar file uses. Posy blesses no such list as canonical — the
+  mechanism is the standard, the names are the sender's.
 - A name MUST be unique in the avatar file among the items of its kind. An item without a
   unique name cannot be declared; that is a fault of the file and is not worked around.
 - A name in `values` that begins with `app:` is not resolved against the avatar. Its
@@ -680,12 +683,12 @@ Offset  Size  Field
  16     4*N   u32  quaternions[N]   N = popcount(bone_mask)
   +      8    root block            if flags bit 1
   +     24    finger block          if flags bit 2
-  +   18|54   expression block      if flags bit 3
+  +   15|54   expression block      if flags bit 3
   +  4*B+V    extras block          if flags bit 5 (B, V from the declaration, §5.8)
 ```
 
 Total length MUST equal:
-`16 + 4*popcount(bone_mask) + 8*b1 + 24*b2 + (b3 ? (b0 ? 54 : 16) : 0) + (b5 ? 4*B + V : 0)`
+`16 + 4*popcount(bone_mask) + 8*b1 + 24*b2 + (b3 ? (b0 ? 54 : 15) : 0) + (b5 ? 4*B + V : 0)`
 
 A frame whose actual length differs MUST be treated as malformed.
 
@@ -693,7 +696,7 @@ A frame whose actual length differs MUST be treated as malformed.
 
 | Bit | Name | Meaning |
 |---|---|---|
-| 0 | `PERFECT_SYNC` | 0 = VRM-Sync (14 expressions), 1 = Perfect-Sync (52 ARKit) |
+| 0 | `PERFECT_SYNC` | 0 = VRM-Sync (13 expressions), 1 = Perfect-Sync (52 ARKit) |
 | 1 | `HAS_ROOT` | Root position block present |
 | 2 | `HAS_FINGERS` | Finger block present |
 | 3 | `HAS_EXPRESSIONS` | Expression block present |
@@ -847,11 +850,11 @@ encoding.
 
 ### 5.6 Expression block
 
-#### VRM-Sync (16 B) — `PERFECT_SYNC` = 0
+#### VRM-Sync (15 B) — `PERFECT_SYNC` = 0
 
-14 one-byte expression slots, then `i8` gaze yaw, `i8` gaze pitch. The 14 slots are the
-VRM standard expression presets (emotions, the five visemes, blink, neutral) plus tongue
-protrusion.
+13 one-byte expression slots, then `i8` gaze yaw, `i8` gaze pitch. The 13 slots are the
+VRM standard expression presets (emotions, the five visemes, blink, neutral) and nothing
+else.
 
 | Slot | Name | Type | Value |
 |---|---|---|---|
@@ -868,19 +871,20 @@ protrusion.
 | 10 | `relaxed` | `u8` | `v / 255` |
 | 11 | `surprised` | `u8` | `v / 255` |
 | 12 | `neutral` | `u8` | `v / 255` |
-| 13 | `tongueOut` | `u8` | `v / 255` — protrusion |
 
-**Tongue rules.**
-- A sender not granted `"tongue"` (§2.1) MUST send 0 in slot 13.
-- In Perfect-Sync, protrusion is ARKit index 51 (`tongueOut`, Appendix A), likewise 0
-  without the `"tongue"` grant.
-- **Directional and other richer tongue** (left/right, up/down, roll, curl) is **not** a
-  core slot. A sender that tracks it declares it as extra `values` (§2.6, §5.8) by the
-  names its avatar file uses, and it composes with `tongueOut`: protrusion from slot 13,
-  direction from the declared values. This replaces the interim directional slots that 1.1
-  carried in the block (removed in 1.4.1); it keeps the core block to the shapes every VRM
-  avatar has and lets directional tongue coexist with full Perfect-Sync, which the interim
-  slots could not. See §11.
+**Tongue.** The tongue is not a VRM preset. The VRM-Sync block has no slot for it, and
+there is no tongue type.
+- A VRM-Sync sender whose avatar file defines a tongue expression declares it as extra
+  `values` (§2.6, §5.8) by the names the file uses: protrusion, and direction, roll or
+  curl where the file has them. It needs the `"extra"` grant, like every other extra.
+- In Perfect-Sync, protrusion is ARKit index 51 (`tongueOut`, Appendix A): one of the 52
+  weights, granted with `"perfect_sync"` like the other 51.
+- **Directional and other richer tongue** (left/right, up/down, roll, curl) is extra
+  `values` for a Perfect-Sync sender too, and composes with weight 51. See §11.
+
+Slot 13 `tongueOut` and the `"tongue"` type of 1.1–1.4.1 are removed: the type could not
+be checked in the frame header, and the slot was the one byte of the block that is not a
+VRM preset.
 
 #### Perfect-Sync (54 B) — `PERFECT_SYNC` = 1
 
@@ -958,11 +962,11 @@ header + mask        16 B
 13 quaternions       52 B
 root                  8 B
 fingers              24 B
-expressions          16 B
-                 = 116 B payload
+expressions          15 B
+                 = 115 B payload
 ```
 
-Perfect-Sync frame = 154 B. Add ~50 B UDP+DTLS+SCTP overhead ⇒ ~166 B / ~204 B on wire.
+Perfect-Sync frame = 154 B. Add ~50 B UDP+DTLS+SCTP overhead ⇒ ~165 B / ~204 B on wire.
 A full-body sender adds 24 B (`legs`) or 32 B (`legs` + `toes`).
 Per-joint fingers (`finger_bones`, §4) replace the 24 B compact block with up to 30
 quaternions — 120 B for both full hands, so an all-blocks Perfect-Sync frame reaches 298 B;
@@ -982,7 +986,7 @@ below are the right order of magnitude for either lane.
 Pose data is smaller than the accompanying Opus stream, and about **25–35× smaller than
 the same pose over raw VMC**. VMC sends one OSC message per bone — address
 `/VMC/Ext/Bone/Pos` (20 B padded) + type tags (12 B) + the bone-name string (~16 B padded)
-+ 7 floats of position and rotation (28 B) ≈ **76 B per bone**. The pose in the 116 B frame
++ 7 floats of position and rotation (28 B) ≈ **76 B per bone**. The pose in the 115 B frame
 above (13 body bones with the hands as a 24 B finger block) is, in VMC, those 13 bones plus
 30 individual finger bones at 76 B each ≈ 3.3 KB — about **28×**. A full ~55-bone humanoid
 is ≈ 4.2 KB, about **36×**. The win comes from the smallest-three quaternion (4 B vs 28 B
@@ -1145,7 +1149,7 @@ An implementation is conformant if it:
 
 Explicitly out of scope for v1, listed so v1 does not accidentally block them:
 - **Keyframe + delta encoding** (full frame every 1 s, changed bones in between).
-  Requires reliable resync logic; the bandwidth saving is not worth it at ~116 B.
+  Requires reliable resync logic; the bandwidth saving is not worth it at ~115 B.
 - **Server-side field stripping** as a congestion path (drop fingers → hands → body).
   Requires the server to re-encode packets, which v1 forbids. v1 degrades by rate only.
 - **Props, scene state, 3D playspaces.**
@@ -1198,7 +1202,7 @@ bool posy_decode(const uint8_t *p, size_t len, Frame *out) {
     int b0 = out->flags & 1, b1 = (out->flags >> 1) & 1,
         b2 = (out->flags >> 2) & 1, b3 = (out->flags >> 3) & 1;
     int n  = popcount64(out->bone_mask);
-    size_t need = 16 + 4*n + 8*b1 + 24*b2 + (b3 ? (b0 ? 54 : 16) : 0);
+    size_t need = 16 + 4*n + 8*b1 + 24*b2 + (b3 ? (b0 ? 54 : 15) : 0);
     if (len != need) return false;                // malformed
 
     const uint8_t *q = p + 16;
@@ -1212,7 +1216,7 @@ bool posy_decode(const uint8_t *p, size_t len, Frame *out) {
               out->root_z = (int16_t)rd_u16(q+4);
               out->root_h = rd_u16(q+6); q += 8; }
     if (b2) { memcpy(out->fingers, q, 24); q += 24; }
-    if (b3) { int m = b0 ? 52 : 16;
+    if (b3) { int m = b0 ? 52 : 13;
               memcpy(out->expr, q, m); q += m;
               out->gaze_yaw = (int8_t)q[0]; out->gaze_pitch = (int8_t)q[1]; }
     return true;

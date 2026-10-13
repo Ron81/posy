@@ -2,7 +2,7 @@
   "name": "008-extras",
   "description": "hips, VRM-Sync, and the extras block of a declaration with 2 bones (30 deg about +X, 45 deg about -Z) and 3 values (0, 128, 255)",
   "expect": "accept",
-  "bytes_hex": "04 28 08 00 88 13 00 00 01 00 00 00 00 00 00 00 00 02 08 e0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 b8 eb eb 00 08 e0 00 80 ff",
+  "bytes_hex": "04 28 08 00 88 13 00 00 01 00 00 00 00 00 00 00 00 02 08 e0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 b8 eb eb 00 08 e0 00 80 ff",
   "frame": {
     "version": 4,
     "flags": 40,
@@ -21,7 +21,6 @@
     "expressions": {
       "perfect_sync": false,
       "weights": [
-        0,
         0,
         0,
         0,
