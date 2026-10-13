@@ -8,7 +8,7 @@ that commit messages and the spec text do not keep in one place.
 
 ## 0009 — Two face tiers and nothing between them: `tongueOut` and the `"tongue"` type leave
 
-**Date:** 2026-10-12 · **Status:** Proposed · **Affects:** §1.2, §2.1, §2.6, §5.1, §5.2, §5.6, §6, Appendix B, schema, codec, vectors 002/007/008/009
+**Date:** 2026-10-12 · **Status:** Accepted · **Affects:** §1.2, §2.1, §2.6, §5.1, §5.2, §5.6, §6, Appendix B, schema, codec, vectors 002/007/008/009
 
 ### Context
 

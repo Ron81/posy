@@ -3,7 +3,7 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
-## [Unreleased] - proposed: the tongue leaves the VRM-Sync block
+## [1.4.3] - 2026-10-13
 
 **Breaking** at the expression-block layout and the type list. The version byte stays 4.
 `docs/DECISIONS.md` 0009.
