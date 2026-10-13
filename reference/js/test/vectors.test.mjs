@@ -70,11 +70,12 @@ for (const jf of jsonFiles) {
     }
 
     // round-trip: re-encoding an accept vector must reproduce the exact bytes.
-    // Skipped for 006 (reserved bone bits can't be re-encoded by design) and for
+    // Skipped for 006 (reserved bone bits can't be re-encoded by design), for 011 (the
+    // encoder writes no block of a later revision) and for
     // 005, whose deliberate ties/boundary quaternions are angle-stable but not
     // byte-stable across a decode→encode cycle (a reconstructed component can tip a
     // tie the other way — inherent to smallest-three, not a codec bug).
-    if (vec.name !== '006-reserved-bits' && vec.name !== '005-quat-edgecases') {
+    if (vec.name !== '006-reserved-bits' && vec.name !== '011-later-block' && vec.name !== '005-quat-edgecases') {
       const re = encode({
         version: f.version,
         seq: f.seq,

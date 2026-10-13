@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/Ron81/posy/main/schemas/signaling.schema.json",
   "title": "Posy signaling messages (spec §2)",
-  "description": "Every JSON control message defined in §2 of the Posy 1.0 spec, discriminated by the 't' field. They travel as UTF-8 JSON over the reliable, ordered signaling channel (WebSocket or a reliable data channel). Direction is noted in each definition. The 'examples' arrays are the examples from the spec text.",
+  "description": "Every JSON control message defined in §2 of the Posy 1.0 spec, discriminated by the 't' field. They travel as UTF-8 JSON over the reliable, ordered signaling channel (WebSocket or a reliable data channel). Direction is noted in each definition. The 'examples' arrays are the examples from the spec text. The schema is closed (no further fields, enumerated types): it describes what an implementation of this revision sends. A recipient MUST NOT use it to refuse a message; what it does not know it ignores (spec §2.7).",
   "oneOf": [
     { "$ref": "#/$defs/hello" },
     { "$ref": "#/$defs/session" },

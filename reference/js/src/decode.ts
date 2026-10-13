@@ -8,6 +8,7 @@ import {
   FLAG_HAS_EXPRESSIONS,
   FLAG_IDLE,
   FLAG_HAS_EXTRA,
+  FLAG_LATER_BLOCK,
 } from './index.js';
 
 export class PosyDecodeError extends Error {
@@ -63,7 +64,10 @@ export function decode(bytes: Uint8Array, extra?: ExtraCounts): Frame {
     if (len <= fixed) throw new PosyDecodeError(`length ${len}: HAS_EXTRA set but no extras block`);
   } else {
     const need = fixed + (b5 ? 4 * extra!.bones + extra!.values : 0);
-    if (len !== need) throw new PosyDecodeError(`length ${len} != required ${need}`);
+    // A block of a later revision sits behind flag bit 6 or 7, after the blocks known here:
+    // the frame may then be longer, and the bytes after `need` are not read (§9).
+    const later = (flags & FLAG_LATER_BLOCK) !== 0;
+    if (later ? len < need : len !== need) throw new PosyDecodeError(`length ${len} != required ${need}`);
   }
 
   // Consume a quaternion for every set bit, including reserved/unknown ones (§9),

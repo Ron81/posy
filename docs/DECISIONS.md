@@ -6,6 +6,70 @@ that commit messages and the spec text do not keep in one place.
 
 ---
 
+## 0010 — What "additive" means: what an older peer does with what it does not know
+
+**Date:** 2026-10-12 · **Status:** Accepted · **Affects:** §1.2, §2.1, §2.7 (new), §5.1, §5.2, §9, §10, Appendix B, schema, codec, vector 011
+
+### Context
+
+After the freeze a 1.x revision may only add. The spec did not say what a peer of an earlier
+revision does with an addition, so no addition was safe:
+
+- **Signaling had no rule** for a message, field or data type the recipient does not know. The
+  schema is closed (`additionalProperties: false`, enumerated types); an implementation that
+  validates with it refuses the first message that carries a new field.
+- **Frames had half a rule.** §9 told receivers to ignore unknown flag and mask bits, and §5.1
+  told them to treat any length but the formula's as malformed. A receiver could therefore ignore
+  a new flag bit only as long as it had no block: a frame with flag bit 6 and four further bytes
+  was dropped by the reference decoder.
+- Signaling carries the major version only, so a peer cannot ask what the other side knows.
+
+### Decision
+
+- **Signaling (§2.7).** A recipient ignores a message with an unknown `t`, and an unknown field. A
+  server leaves a data type it does not know out of `allowed`; a client ignores one in a peer's
+  `sends`. A client does not close the connection over an unknown error code.
+- **Frames at a receiver (§9).** A new block sits behind flag bit 6 or 7, after every existing
+  block. A receiver that finds one of these bits set accepts a longer frame and reads the part it
+  knows. Shorter than the formula is still malformed; with both bits clear the length is exact.
+- **Frames at a relay: unchanged.** Its length check stays exact, so it forwards only blocks it
+  knows. Every new block gets a data type; a server that does not know the type does not grant
+  it, so the sender does not send the block and the relay never has to size it.
+- **"Additive" is defined by these rules:** a change an earlier 1.x peer survives by them.
+  Anything else is `posy/2`.
+- **The schema stays closed** and is declared to describe what a revision sends. A recipient must
+  not refuse a message with it.
+
+### Alternatives rejected
+
+- **A minor version in the handshake**, with each side adapting to the other. Every implementation
+  would carry the differences of all revisions; ignoring what is unknown needs no table.
+- **Relays forward a frame with an unknown flag bit and trailing bytes.** The relay would pass
+  bytes it cannot size or attribute to a grant, against §1.2 check 3, and a server that grants
+  only known types never needs it.
+- **Relays refuse flag bits 6–7 outright**, as they do mask bits 55–63. A later flag without a
+  block and without a type (a hint like `IDLE`) would then mute its sender at every older relay.
+  The bits stay tolerated; only the length decides.
+- **Open the schema** (further fields allowed, types any string). It would no longer catch a
+  misspelt field, which is most of its use. The tolerance belongs to the recipient, not to the
+  description of what is sent.
+- **A length prefix on every later block**, so that an older receiver could skip one and read the
+  next. Not needed while later blocks come last and in the order of their flag bits.
+
+### Consequences
+
+- A receiver built before this rule drops frames that carry a later block. The rule therefore has
+  to be in the revision that is frozen.
+- New rate tiers are not additive under these rules: an older client cannot ignore a
+  `default_tier` it does not know. A new transport lane is, by the negotiation §2.1 already has.
+- Two flag bits are left, so two later blocks can be added this way; a third needs a block that
+  is extensible in itself.
+- Vector `011-later-block` (accept) pins the receiver rule; `004b-trailing-byte` (reject) pins
+  that it depends on the flag bit. Appendix B now also reads the extras block, which it had
+  not done since 1.3.0.
+
+---
+
 ## 0009 — Two face tiers and nothing between them: `tongueOut` and the `"tongue"` type leave
 
 **Date:** 2026-10-12 · **Status:** Accepted · **Affects:** §1.2, §2.1, §2.6, §5.1, §5.2, §5.6, §6, Appendix B, schema, codec, vectors 002/007/008/009

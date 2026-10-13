@@ -58,6 +58,8 @@ export const FLAG_HAS_FINGERS = 1 << 2;
 export const FLAG_HAS_EXPRESSIONS = 1 << 3;
 export const FLAG_IDLE = 1 << 4;
 export const FLAG_HAS_EXTRA = 1 << 5;
+/** Bits 6–7: unset in this revision. Behind one of them a later revision appends a block (§9). */
+export const FLAG_LATER_BLOCK = (1 << 6) | (1 << 7);
 
 /** Lowest / highest finger bone bit (§4). Carried per-joint by the `finger_bones` type,
  * or synthesised from the compact finger block (§5.5) — never both in one frame. */

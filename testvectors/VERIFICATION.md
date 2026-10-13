@@ -14,6 +14,7 @@ The reference implementation generated these vectors, so on its own it proves no
 | `poses/f01` … `f07` | every joint position of every pose, rebuilt from the curl / splay / opposition bytes by the text of §5.5 and §3.1 items 5 and 6 with 3×3 rotation matrices (no quaternion product, nothing imported from `scripts/finger-fk.mjs`) | independent script from §5.5 | RaelRotschwinge | 2026-10-05 | ✅ on the reference hand; not yet applied to a real model (see Notes) |
 | `010-finger-bones` | length and bytes against the §5.1 formula with the finger bits in `bone_mask` (mask `0x70000001`, 4 quaternions, 32 B, no compact block); round-trip through the codec; the §1.2 grant check and the finger/compact exclusivity by hand | §5.1, §5.3, §4, §1.2; independent script from §5.1 + §5.3 | Ron81; RaelRotschwinge | 2026-10-12 | ✅ every byte rebuilt from the spec text (see Notes) |
 | `poses/g01-claw-left-index` | the left index chain positions, rebuilt by applying the parent-relative quaternions to `hand-skeleton.json` by FK; a flipped flexion axis as a negative control | §3.1, §4; independent script with 3×3 rotation matrices | Ron81; RaelRotschwinge | 2026-10-12 | ✅ on the reference hand; not yet applied to a real model (see Notes) |
+| `011-later-block` | every byte: the header of `001` with flags `0x40` and `seq` 11, the hips identity quaternion, then `01 02 03 04`; 24 B, 4 more than the §5.1 formula gives; `004b` (the same without the flag bit) stays a reject | by hand from §5.1, §5.3, §9 | RaelRotschwinge | 2026-10-12 | ✅ |
 
 **Rules**
 

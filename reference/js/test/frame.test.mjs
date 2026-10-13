@@ -178,6 +178,36 @@ test('reserved flag bits 6-7 are ignored, not rejected', () => {
   assert.equal(f.bones.size, 1);
 });
 
+test('a block of a later revision behind flag bit 6 or 7: the known part decodes', () => {
+  const known = encode(baseFrame({ root: { x: 1, y: 2, z: 3, h: 0x8000 } }));
+  for (const bits of [0x40, 0x80, 0xc0]) {
+    const bytes = new Uint8Array(known.length + 5).fill(0xaa);
+    bytes.set(known);
+    bytes[1] |= bits;
+    const f = decode(bytes);
+    assert.equal(f.bones.size, 13);
+    assert.equal(f.root.z, 3);
+  }
+  // Without the bit the same bytes are malformed (vector 004b) ...
+  const plain = new Uint8Array(known.length + 5);
+  plain.set(known);
+  assert.throws(() => decode(plain), PosyDecodeError);
+  // ... and the bit does not excuse a frame that is too short for the blocks known here.
+  const short = known.slice(0, known.length - 1);
+  short[1] |= 0x40;
+  assert.throws(() => decode(short), PosyDecodeError);
+});
+
+test('a later block follows the extras block', () => {
+  const known = encode(baseFrame({ extra: { bones: [idQuat], values: new Uint8Array([7, 9]) } }));
+  const bytes = new Uint8Array(known.length + 3).fill(0xaa);
+  bytes.set(known);
+  bytes[1] |= 0x80;
+  assert.deepEqual([...decode(bytes, { bones: 1, values: 2 }).extra.values], [7, 9]);
+  assert.equal(decode(bytes).extra, undefined); // no declaration: the extras and the later block are skipped
+  assert.throws(() => decode(bytes, { bones: 2, values: 2 }), PosyDecodeError); // too short for that declaration
+});
+
 // --- Folded S6: the §1.2 relay grant-check over the whole 64-bit mask ---
 // The relay (not the decoder) enforces the grant. The decoder stays tolerant of unknown
 // bits (above); these tests pin the mask arithmetic the relay runs, per spec §1.2 check 3.
