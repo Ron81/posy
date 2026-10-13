@@ -24,10 +24,26 @@
       "enum": ["sctp", "websocket"]
     },
     "dataTypes": {
-      "description": "List of data types (spec §2.1). 'legs' requires 'bones'; 'toes' requires 'legs'; 'finger_bones' requires 'bones' and is mutually exclusive with 'fingers'; 'perfect_sync' and 'tongue' require 'expressions' — those dependencies are checked by the server, not by this schema.",
+      "description": "List of data types (spec §2.1). 'legs' requires 'bones'; 'toes' requires 'legs'; 'finger_bones' requires 'bones' and is mutually exclusive with 'fingers'; 'perfect_sync' and 'tongue' require 'expressions'; 'extra' requires the 'extra' object beside the list (§2.6) — those dependencies are checked by the server, not by this schema.",
       "type": "array",
       "uniqueItems": true,
-      "items": { "enum": ["bones", "legs", "toes", "root", "fingers", "finger_bones", "expressions", "perfect_sync", "tongue"] }
+      "items": { "enum": ["bones", "legs", "toes", "root", "fingers", "finger_bones", "expressions", "perfect_sync", "tongue", "extra"] }
+    },
+    "extraNames": {
+      "description": "One list of a declaration of extras (spec §2.6): names from the sender's avatar file, in the order of the extras block (§5.8). The names are opaque to the server.",
+      "type": "array",
+      "maxItems": 255,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "extra": {
+      "description": "Declaration of extras (spec §2.6), beside a list of data types that contains 'extra'. Either list may be empty, not both — checked by the server, not by this schema.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "bones": { "$ref": "#/$defs/extraNames", "description": "Bones of the avatar file outside §4. Each is transmitted as a rotation, 4 bytes." },
+        "values": { "$ref": "#/$defs/extraNames", "description": "Scalar controls the avatar file defines, or names with the prefix 'app:'. Each is transmitted as one byte." },
+        "since": { "type": "integer", "minimum": 0, "description": "Session time (§2.2) in milliseconds from which this declaration applies. May be omitted in hello, where it is 0." }
+      }
     },
     "uid": {
       "description": "Opaque user identifier, e.g. \"u_8f31\".",
@@ -51,7 +67,8 @@
           "additionalProperties": false,
           "properties": {
             "sends": { "$ref": "#/$defs/dataTypes", "description": "The sender's declaration: every data type it will transmit — what its capture pipeline delivers and its avatar can show. Empty for a watcher." },
-            "max_rate_hz": { "type": "integer", "minimum": 1 }
+            "max_rate_hz": { "type": "integer", "minimum": 1 },
+            "extra": { "$ref": "#/$defs/extra" }
           }
         }
       },
@@ -82,6 +99,16 @@
         "allowed": {
           "$ref": "#/$defs/dataTypes",
           "description": "The server's grant for this client: caps.sends reduced by server policy. Authoritative. A client MUST NOT set a flag bit or bone_mask bit of a type not listed here."
+        },
+        "extra_max": {
+          "description": "The server's limits for a declaration of extras (spec §2.6): the largest number of bones and of values it grants. Optional; absent means 255 and 255. A limit of 0 grants no item of that kind. A declaration above either limit is not granted: 'extra' is then absent from 'allowed'.",
+          "type": "object",
+          "required": ["bones", "values"],
+          "additionalProperties": false,
+          "properties": {
+            "bones": { "type": "integer", "minimum": 0, "maximum": 255 },
+            "values": { "type": "integer", "minimum": 0, "maximum": 255 }
+          }
         },
         "tiers": {
           "type": "object",
@@ -115,9 +142,13 @@
       "additionalProperties": false,
       "properties": {
         "t": { "const": "caps" },
-        "sends": { "$ref": "#/$defs/dataTypes" }
+        "sends": { "$ref": "#/$defs/dataTypes" },
+        "extra": { "$ref": "#/$defs/extra", "type": "object", "required": ["since"], "description": "The new lists, with the session time from which they apply (§2.6). 'since' is required here." }
       },
-      "examples": [{ "t": "caps", "sends": ["bones", "root", "expressions"] }]
+      "examples": [
+        { "t": "caps", "sends": ["bones", "root", "expressions"] },
+        { "t": "caps", "sends": ["bones", "expressions", "extra"], "extra": { "bones": ["ear.L", "ear.R", "tail.001", "tail.002"], "values": ["tailWag", "blush", "app:confidence"], "since": 734500 } }
+      ]
     },
     "ping": {
       "description": "Client → Server (§2.2). t1 is the client's monotonic clock in milliseconds at send time.",
@@ -159,7 +190,8 @@
             "properties": {
               "uid": { "$ref": "#/$defs/uid" },
               "consumer_id": { "type": "string", "minLength": 1 },
-              "sends": { "$ref": "#/$defs/dataTypes", "description": "That peer's granted set. An add for a known uid replaces the earlier entry." }
+              "sends": { "$ref": "#/$defs/dataTypes", "description": "That peer's granted set. An add for a known uid replaces the earlier entry." },
+              "extra": { "$ref": "#/$defs/extra", "description": "The extra object of a peer that was granted 'extra', as that peer declared it (§2.6)." }
             }
           }
         },

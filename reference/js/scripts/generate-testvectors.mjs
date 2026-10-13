@@ -320,6 +320,26 @@ writeReject('004d-length-too-short', 'a 15-byte buffer (< 16)', new Uint8Array(1
   );
 }
 
+/* 010-finger-bones: per-joint fingers (finger_bones, bits 25-54). Left index proximal straight
+   (identity), intermediate and distal bent 60 deg about -Z - a claw the compact §5.5 block (one
+   curl per finger) cannot express. No compact finger block, HAS_FINGERS unset; cleared finger bits
+   take the rest hand (§5.5). -> 32 B. */
+{
+  const q60negZ = { x: 0, y: 0, z: -0.5, w: 0.866025 }; // 60 deg about -Z
+  const bones = new Map([
+    [0, idQuat],
+    [28, idQuat], // leftIndexProximal
+    [29, q60negZ], // leftIndexIntermediate
+    [30, q60negZ], // leftIndexDistal
+  ]);
+  writeAccept(
+    '010-finger-bones',
+    'per-joint fingers (finger_bones, bits 25-54): left index proximal straight (identity), intermediate and distal bent 60 deg about -Z - a claw the compact block (one curl per finger) cannot express. No compact finger block; HAS_FINGERS unset. The cleared left-hand finger bits take the rest hand (spec 5.5).',
+    { version: VERSION, seq: 10, timestampMs: 0, bones, root: null, fingers: null, expressions: null },
+    { flags: 0 },
+  );
+}
+
 /* quaternions.csv */
 {
   const rows = [['id', 'x', 'y', 'z', 'w', 'expected_u32', 'largest_index', 'note']];

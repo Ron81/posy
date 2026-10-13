@@ -3,6 +3,36 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
+## [1.4.2] - 2026-10-13
+
+No wire change and no codec change. A free-slot follow-up on the road-to-1.5 window: it brings
+the signaling schema up to the declared extras of 1.3.0, states a few spec points left implicit,
+and completes the test-vector generator.
+
+### Fixed
+- `schemas/signaling.schema.json` did not know the declared extras of 1.3.0: `"extra"` was
+  missing from the data types, the `extra` object from `hello`, `caps` and `peers`, and
+  `extra_max` from `session`. Every message of a sender with extras failed the schema.
+
+### Changed
+- §2.6: a limit in `extra_max` MAY be 0. The rule that a declaration above a limit is not
+  granted already gave that; it is now stated, with what it is for: `"bones": 0` admits a
+  declaration of values only.
+- §3.2: the VRM 0.x thumb naming (0.x `ThumbProximal` / `ThumbIntermediate` are 1.0
+  `ThumbMetacarpal` / `ThumbProximal`) is stated for the thumb bones of `finger_bones` too. It
+  covered the finger block only.
+
+### Added
+- §10 item 11: an implementation that sends or renders `finger_bones` reproduces the per-joint
+  finger pose vectors (`testvectors/poses/g*.json`).
+- `testvectors/VERIFICATION.md`: `010-finger-bones` and `poses/g01-claw-left-index` re-derived
+  independently of the codec, and what `g01` does not pin.
+- Test-vector generator completeness: `010-finger-bones` is now emitted by
+  `reference/js/scripts/generate-testvectors.mjs` and `g01-claw-left-index` by
+  `scripts/generate-finger-vectors.mjs`. Both were hand-added on the 1.4.0 fingers branch and a
+  full regeneration did not reproduce them; it now does, byte-identically (the `.json` sidecars
+  are reformatted to the generator's standard output, the `.bin` bytes are unchanged).
+
 ## [1.4.1] - 2026-10-12
 
 The second step of the road-to-1.5 window (see `ROADMAP.md`): the interim directional tongue

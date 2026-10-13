@@ -127,4 +127,31 @@ for (const pose of POSES) {
   writeFileSync(join(OUT, `${vec.name}.json`), JSON.stringify(vec, null, 2) + '\n');
   console.log(`wrote ${vec.name}.json`);
 }
+
+// g01: a per-joint (finger_bones) pose, NOT a §5.5 synthesis. The three listed joints carry their
+// quaternions directly; cleared bits take the rest hand (§3.3, §5.5). Only the posed index chain
+// is asserted. finger_bones mask bits: leftIndex Proximal/Intermediate/Distal = 28/29/30 (§4).
+{
+  const q60negZ = { x: 0, y: 0, z: -0.5, w: 0.866025 }; // 60 deg about -Z, into the palm
+  const ID = { x: 0, y: 0, z: 0, w: 1 };
+  const bones = [
+    { bit: 28, name: 'leftIndexProximal', quat: ID },
+    { bit: 29, name: 'leftIndexIntermediate', quat: q60negZ },
+    { bit: 30, name: 'leftIndexDistal', quat: q60negZ },
+  ];
+  const pose = Object.fromEntries(bones.map((b) => [b.name, b.quat]));
+  const posAll = fkHand(skeleton.joints, pose);
+  const r6 = (n) => Math.round(n * 1e6) / 1e6 + 0;
+  const chain = ['leftIndexProximal', 'leftIndexIntermediate', 'leftIndexDistal', 'leftIndexTip'];
+  const vec = {
+    name: 'g01-claw-left-index',
+    description:
+      'finger_bones (per-joint), the shape the compact §5.5 block cannot reach: the left index proximal stays straight (identity) while the intermediate and distal bend 60 deg about -Z (into the palm). One curl byte per finger drives all three joints together, so this base-straight / outer-bent claw is only expressible per-joint. Quaternions are parent-relative, applied directly - no §5.5 synthesis. Cleared finger bits take the rest hand (spec §3.3, §5.5); only the three listed joints are posed here.',
+    bones: bones.map((b) => ({ bit: b.bit, name: b.name, quat: ['x', 'y', 'z', 'w'].map((k) => r6(b.quat[k])) })),
+    expect: Object.fromEntries(chain.map((name) => [name, posAll[name].map(r6)])),
+  };
+  writeFileSync(join(OUT, `${vec.name}.json`), JSON.stringify(vec, null, 2) + '\n');
+  console.log(`wrote ${vec.name}.json`);
+}
+
 console.log('wrote hand-skeleton.json');

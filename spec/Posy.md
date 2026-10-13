@@ -411,7 +411,9 @@ current avatar has. Three cases:
 
 A declaration that exceeds either limit is not granted: `"extra"` is absent from
 `allowed`, and the client MAY declare again within the limits. Without `extra_max` the
-limits are 255 and 255. The server reads the two list lengths and nothing else; it MUST
+limits are 255 and 255. `extra_max` states both limits, and either MAY be 0: the server
+then grants no extra of that kind, so `"bones": 0` admits a declaration of values only.
+The server reads the two list lengths and nothing else; it MUST
 NOT edit the lists, and the names are opaque to it. The frame size limit of §1.1 applies
 unchanged: a sender MUST NOT declare extras that could make one of its frames exceed it.
 
@@ -475,7 +477,7 @@ MUST NOT need to know the sender's tracker or how the sender produced the rotati
 | Sender avatar | Sender obligation |
 |---|---|
 | **VRM 1.0** | None. Normalized bones are native. Read and send. |
-| **VRM 0.x** | Send rotations in the avatar space of §3.1, exactly as for a VRM 1.0 avatar. If they are read from the runtime's normalized humanoid rig, convert them where that rig is not in avatar space (see below). MUST NOT read the raw glTF node rotations. VRM 0.x names the thumb joints one step further out: 0.x `ThumbProximal` / `ThumbIntermediate` are 1.0 `ThumbMetacarpal` / `ThumbProximal`. §5.5 uses the 1.0 names; a sender that derives the finger block from 0.x bone names MUST apply this mapping. |
+| **VRM 0.x** | Send rotations in the avatar space of §3.1, exactly as for a VRM 1.0 avatar. If they are read from the runtime's normalized humanoid rig, convert them where that rig is not in avatar space (see below). MUST NOT read the raw glTF node rotations. VRM 0.x names the thumb joints one step further out: 0.x `ThumbProximal` / `ThumbIntermediate` are 1.0 `ThumbMetacarpal` / `ThumbProximal`. §4 and §5.5 use the 1.0 names; a sender that derives the finger block, or the thumb bones of the `finger_bones` type (bits 25–27 and 40–42), from 0.x bone names MUST apply this mapping. |
 | **MMD** (untested) | Map MMD bones to humanoid semantics, then send `q_wire = inverse(q_rest) · q_current` per bone in the parent-relative frame, where `q_rest` is that bone's rotation in the model's own rest (A- or T-) pose. `inverse(q_rest)` MUST be precomputed once at model load. **This formula has not been checked on an MMD/PMX model and may be wrong**: a PMX bone has a position and a parent but no rest rotation of its own. It stays until a PMX model passes the pose vectors (`testvectors/poses/`); do not build on it. |
 
 **The wire is always in avatar space; the avatar driver adapts the rig.** Rotations on
@@ -1133,6 +1135,9 @@ An implementation is conformant if it:
 10. If it declares or renders extras: follows §2.6 and §5.8, sets a declared extra bone
     from the frame only, and takes the block's size from the declaration that applies at
     the frame's `timestamp_ms`.
+11. If it sends or renders per-joint finger bones (`finger_bones`): applies them as ordinary
+    bone rotations, so that the joint positions of the per-joint finger pose vectors
+    (`testvectors/poses/g*.json`) are reproduced within their tolerance (§4, §5.5).
 
 ---
 

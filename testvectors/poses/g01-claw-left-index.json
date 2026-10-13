@@ -2,14 +2,57 @@
   "name": "g01-claw-left-index",
   "description": "finger_bones (per-joint), the shape the compact §5.5 block cannot reach: the left index proximal stays straight (identity) while the intermediate and distal bend 60 deg about -Z (into the palm). One curl byte per finger drives all three joints together, so this base-straight / outer-bent claw is only expressible per-joint. Quaternions are parent-relative, applied directly - no §5.5 synthesis. Cleared finger bits take the rest hand (spec §3.3, §5.5); only the three listed joints are posed here.",
   "bones": [
-    { "bit": 28, "name": "leftIndexProximal", "quat": [0, 0, 0, 1] },
-    { "bit": 29, "name": "leftIndexIntermediate", "quat": [0, 0, -0.5, 0.866025] },
-    { "bit": 30, "name": "leftIndexDistal", "quat": [0, 0, -0.5, 0.866025] }
+    {
+      "bit": 28,
+      "name": "leftIndexProximal",
+      "quat": [
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    {
+      "bit": 29,
+      "name": "leftIndexIntermediate",
+      "quat": [
+        0,
+        0,
+        -0.5,
+        0.866025
+      ]
+    },
+    {
+      "bit": 30,
+      "name": "leftIndexDistal",
+      "quat": [
+        0,
+        0,
+        -0.5,
+        0.866025
+      ]
+    }
   ],
   "expect": {
-    "leftIndexProximal": [0.085, 0, 0.03],
-    "leftIndexIntermediate": [0.125, 0, 0.03],
-    "leftIndexDistal": [0.138, -0.022517, 0.03],
-    "leftIndexTip": [0.128, -0.039837, 0.03]
+    "leftIndexProximal": [
+      0.085,
+      0,
+      0.03
+    ],
+    "leftIndexIntermediate": [
+      0.125,
+      0,
+      0.03
+    ],
+    "leftIndexDistal": [
+      0.138,
+      -0.022517,
+      0.03
+    ],
+    "leftIndexTip": [
+      0.128,
+      -0.039837,
+      0.03
+    ]
   }
 }
