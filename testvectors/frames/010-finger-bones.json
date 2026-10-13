@@ -10,10 +10,26 @@
     "timestamp_ms": 0,
     "bone_mask": "0x0000000070000001",
     "bones": [
-      { "bit": 0, "name": "hips", "u32": "0xE0080200" },
-      { "bit": 28, "name": "leftIndexProximal", "u32": "0xE0080200" },
-      { "bit": 29, "name": "leftIndexIntermediate", "u32": "0xE0080096" },
-      { "bit": 30, "name": "leftIndexDistal", "u32": "0xE0080096" }
+      {
+        "bit": 0,
+        "name": "hips",
+        "u32": "0xE0080200"
+      },
+      {
+        "bit": 28,
+        "name": "leftIndexProximal",
+        "u32": "0xE0080200"
+      },
+      {
+        "bit": 29,
+        "name": "leftIndexIntermediate",
+        "u32": "0xE0080096"
+      },
+      {
+        "bit": 30,
+        "name": "leftIndexDistal",
+        "u32": "0xE0080096"
+      }
     ],
     "root": null,
     "fingers": null,
