@@ -6,6 +6,40 @@ that commit messages and the spec text do not keep in one place.
 
 ---
 
+## 0013 — Declared body: the person's measurements, opt-in, in metres
+
+**Date:** 2026-10-16 · **Status:** Proposed · **Affects:** §2.1, §2.3, §2.8 (new), schema
+
+### Context
+
+Posy carries rotations and no lengths. Every receiver so far holds the sender's avatar file and
+takes the lengths from it. A consumer without the file (an analysis service, a stick figure)
+has the angles but not the body they belong to.
+
+### Decision
+
+An optional `body` in `caps`: the person's T-pose joint offsets in metres, per bone of §4,
+declared once. Not a data type, no grant, nothing per frame. The server forwards it unchanged
+in `peers` to the receivers its policy names. Posy does not define how it is measured, nor what
+a consumer does with it, and asks implementers for feedback.
+
+### Alternatives rejected
+
+- *Relative units (ratios of hip height).* An application that needs measurements has them in
+  metres.
+- *A generated avatar file sent like any other.* Posy carries no files (§0).
+- *Sent by every sender.* Of no use to a receiver that shows the avatar, and it describes a
+  person.
+- *A mode flag ("measured body" against "avatar").* Which avatar a sender uses is the
+  application's business; a receiver knows whether it holds the file.
+
+### Consequences
+
+Additive: an earlier peer ignores the field (§2.7). Who receives it is server policy. The
+definition is expected to change once a real consumer reports what it needs.
+
+---
+
 ## 0012 — The finger block: splay ±30°, and the thumb's three bytes reworked as one piece
 
 **Date:** 2026-10-22 · **Status:** Accepted · **Affects:** §5.5, §10 items 9 and 11, pose vectors `f03`–`f09`, `g02`, `scripts/finger-fk.mjs`
