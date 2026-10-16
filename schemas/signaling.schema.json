@@ -45,6 +45,12 @@
         "since": { "type": "integer", "minimum": 0, "description": "Session time (§2.2) in milliseconds from which this declaration applies. May be omitted in hello, where it is 0." }
       }
     },
+    "body": {
+      "description": "Measurements of the captured person (spec §2.8), for consumers without the avatar file. Keys are bone names of §4; each value is the T-pose offset in metres from the parent bone, in avatar space. Not a data type.",
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": { "type": "array", "items": { "type": "number" }, "minItems": 3, "maxItems": 3 }
+    },
     "uid": {
       "description": "Opaque user identifier, e.g. \"u_8f31\".",
       "type": "string",
@@ -68,7 +74,8 @@
           "properties": {
             "sends": { "$ref": "#/$defs/dataTypes", "description": "The sender's declaration: every data type it will transmit — what its capture pipeline delivers and its avatar can show. Empty for a watcher." },
             "max_rate_hz": { "type": "integer", "minimum": 1 },
-            "extra": { "$ref": "#/$defs/extra" }
+            "extra": { "$ref": "#/$defs/extra" },
+            "body": { "$ref": "#/$defs/body" }
           }
         }
       },
@@ -143,11 +150,13 @@
       "properties": {
         "t": { "const": "caps" },
         "sends": { "$ref": "#/$defs/dataTypes" },
-        "extra": { "$ref": "#/$defs/extra", "type": "object", "required": ["since"], "description": "The new lists, with the session time from which they apply (§2.6). 'since' is required here." }
+        "extra": { "$ref": "#/$defs/extra", "type": "object", "required": ["since"], "description": "The new lists, with the session time from which they apply (§2.6). 'since' is required here." },
+        "body": { "$ref": "#/$defs/body", "description": "The measurements of the captured person (§2.8). A caps without body withdraws an earlier one." }
       },
       "examples": [
         { "t": "caps", "sends": ["bones", "root", "expressions"] },
-        { "t": "caps", "sends": ["bones", "expressions", "extra"], "extra": { "bones": ["ear.L", "ear.R", "tail.001", "tail.002"], "values": ["tailWag", "blush", "app:confidence"], "since": 734500 } }
+        { "t": "caps", "sends": ["bones", "expressions", "extra"], "extra": { "bones": ["ear.L", "ear.R", "tail.001", "tail.002"], "values": ["tailWag", "blush", "app:confidence"], "since": 734500 } },
+        { "t": "caps", "sends": ["bones", "legs"], "body": { "hips": [0, 0.95, 0], "leftUpperLeg": [0.085, -0.06, 0], "leftLowerLeg": [0, -0.44, 0] } }
       ]
     },
     "ping": {
@@ -191,7 +200,8 @@
               "uid": { "$ref": "#/$defs/uid" },
               "consumer_id": { "type": "string", "minLength": 1 },
               "sends": { "$ref": "#/$defs/dataTypes", "description": "That peer's granted set. An add for a known uid replaces the earlier entry." },
-              "extra": { "$ref": "#/$defs/extra", "description": "The extra object of a peer that was granted 'extra', as that peer declared it (§2.6)." }
+              "extra": { "$ref": "#/$defs/extra", "description": "The extra object of a peer that was granted 'extra', as that peer declared it (§2.6)." },
+              "body": { "$ref": "#/$defs/body", "description": "The peer's declared body, unchanged, for the receivers the server's policy names (§2.8)." }
             }
           }
         },

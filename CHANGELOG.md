@@ -3,6 +3,18 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
+## [Unreleased]
+
+Adds an optional declaration of the captured person's measurements, for consumers without the
+avatar file. No change to any frame. `docs/DECISIONS.md` 0011.
+
+### Added
+- **§2.8** — `body` in `caps`: the person's T-pose joint offsets in metres, per bone of §4. Not
+  a data type, no grant, nothing per frame. The server forwards it unchanged in `peers` to the
+  receivers its policy names.
+- §2.1, §2.3: one sentence each.
+- Schema: `$defs/body`, referenced from `hello.caps`, `caps` and the `peers` entry.
+
 ## [1.4.4] - 2026-10-13
 
 Defines "additive" for the time after the freeze. No change to any frame a sender of this

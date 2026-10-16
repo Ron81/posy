@@ -223,6 +223,8 @@ Server → Client:
   blendshapes) MUST NOT be declared even if the tracker delivers it. An empty
   list declares a watcher: the client transmits no pose frames and the server allocates
   no pose producer for it.
+- `caps.body` (optional) declares the measurements of the captured person, for consumers
+  without the avatar file (§2.8). It is not a data type.
 - `allowed` is the server's **grant** for this client: `caps.sends` reduced by server
   policy, so `allowed` ⊆ `caps.sends`. It is authoritative. A client MUST NOT set a flag
   bit or a `bone_mask` bit that belongs to a type absent from `allowed`.
@@ -302,7 +304,8 @@ the mapping once per peer over signaling:
 peer's avatar before the first frame arrives; a type absent from it never arrives, and
 the receiver leaves that part of the avatar in its rest state (§3.3, §5.5). An `add` for a `uid`
 already known replaces the earlier entry. The entry of a peer that was granted `"extra"`
-also carries its `extra` object (§2.6). A peer whose granted set is empty has no pose
+also carries its `extra` object (§2.6). The entry of a peer that declared `body` carries it
+for the receivers the server's policy names (§2.8). A peer whose granted set is empty has no pose
 producer and is not listed; if its set becomes empty it is removed.
 
 Receivers MUST associate an inbound data consumer with the `uid` given here. No UID
@@ -469,6 +472,36 @@ on anything else:
 `schemas/signaling.schema.json` describes what an implementation of this revision
 **sends**: it is closed, and a message with a further field fails it. A recipient MUST NOT
 use it to refuse a message.
+
+### 2.8 Declared body
+
+A receiver that holds the sender's avatar file takes the body's lengths from it (§0). For a
+consumer without that file, a sender MAY declare the measurements of the person it captures,
+beside `sends` (in `caps` of `hello`, and in a `caps` message):
+
+```json
+{ "t": "caps", "sends": ["bones", "legs"],
+  "body": { "hips":         [0,      0.95, 0],
+            "leftUpperLeg": [0.085, -0.06, 0],
+            "leftLowerLeg": [0,     -0.44, 0] } }
+```
+
+- Each entry is a bone of §4 and the offset in metres from its parent to where it begins, in
+  the T-pose, in avatar space (§3.1). The parent is the nearest ancestor in the VRM 1.0
+  humanoid hierarchy that `body` contains; `hips` is measured from the floor beneath it.
+  A bone that is absent is unknown.
+- `body` describes the person, not the avatar. How it is measured is the sender's business.
+- It is not a data type, needs no grant and adds nothing to frames. A `caps` without `body`
+  withdraws it.
+- It describes a person: a sender declares it only where an application needs it. The
+  server forwards it unchanged in the sender's `peers` entry (§2.3), to the receivers its
+  policy names.
+
+`body` is where a sender puts the measurements it has of the person, so that a consumer
+without the avatar file finds them in Posy. What the consumer does with them is its own
+business. Posy has no such implementation yet: if you build one, please tell us how you use
+`body`, what you are missing and what you never need, so that the definition can be adjusted
+to fit a wide range of applications.
 
 ---
 
