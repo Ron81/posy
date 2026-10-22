@@ -3,7 +3,7 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
-## [Unreleased]
+## [1.4.5] - 2026-10-22
 
 PMX avatars over Posy, from a check in an implementation with a PMX driver on three PMX
 models beside VRM ones: the wire fits PMX, no change to any frame. **Changes sender and

@@ -6,7 +6,7 @@
 [![npm](https://img.shields.io/npm/v/posy-protocol.svg)](https://www.npmjs.com/package/posy-protocol)
 [![runtime deps](https://img.shields.io/badge/runtime%20deps-0-brightgreen.svg)](https://www.npmjs.com/package/posy-protocol?activeTab=dependencies)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-![Spec: 1.4.4](https://img.shields.io/badge/spec-1.4.4-brightgreen.svg)
+![Spec: 1.4.5](https://img.shields.io/badge/spec-1.4.5-brightgreen.svg)
 
 Posy (**Po**se **Sy**nchronization) is an open, compact protocol for syncing humanoid avatar poses between lots of people in real time. It runs over WebRTC data channels for direct and browser-to-browser links, and over a reliable WebSocket for server-relay deployments — each transport is the right tool for its context, not a fallback for the other. A typical upper-body frame with fingers and face is ~116 bytes — about 25–35× smaller than the same pose over VMC — so a whole room can move at once without anybody's upload crying.
 
@@ -121,9 +121,9 @@ If the spec, the reference code and the test vectors ever disagree, **the spec w
 
 ## Status
 
-**1.4.4 — released.** The packet format (§5) and signaling messages (§2) are soft-locked rather than
+**1.4.5 — released.** The packet format (§5) and signaling messages (§2) are soft-locked rather than
 frozen: no implementation has shipped yet, so they can still change in a 1.x revision, but every change
-needs a stated justification. The road-to-1.5 window (see [`ROADMAP.md`]) has now shipped through 1.4.4:
+needs a stated justification. The road-to-1.5 window (see [`ROADMAP.md`]) has now shipped through 1.4.5:
 - **1.4.0** added the per-joint `finger_bones` type and folded in the `bone_mask` grant-check cleanup.
 - **1.4.1** moved the directional tongue out of the expression block (it rides as a declared extra value
   now), renamed the compact face tier **VRM-Sync** (the honest name for the VRM preset set; Perfect-Sync,
@@ -137,6 +137,13 @@ needs a stated justification. The road-to-1.5 window (see [`ROADMAP.md`]) has no
 - **1.4.4** defined what "additive" means after the freeze: an older peer ignores a signaling message,
   field, data type or error code it does not know, and accepts a frame with a later block behind flag bit
   6 or 7 — anything an older peer cannot survive is `posy/2`.
+- **1.4.5** made the PMX (MMD) avatar driver rule normative (§3.2), so the former "untested MMD" row is
+  gone: an avatar driver maps PMX bones, builds the T-pose with one rigid turn per arm, and keeps every
+  IK chain. It also pinned a few meanings that a driver needs — the gaze bytes are the line of sight from
+  the head, a PMX bone/morph is named by its first name field, each avatar type keeps its own hips
+  landmark — and reworked the compact finger block: four-finger splay widened to ±30°, and the thumb's
+  three bytes drive its three bones together (splay, opposition with a roll, curl) from each avatar's
+  measured thumb rest. No frame, size or codec change.
 
 The version byte stays 4 across all of 1.4.x.
 

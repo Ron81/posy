@@ -1,5 +1,5 @@
 # POSY — Pose Synchronization
-**Version:** 1.4.4
+**Version:** 1.4.5
 **Status:** Released — packet format (§5) and signaling (§2) are soft-locked: they may change in a 1.x revision, and every change needs a stated justification
 **Channel label:** `avatar-pose`
 **Channel protocol string:** `posy/1`

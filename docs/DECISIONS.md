@@ -8,7 +8,7 @@ that commit messages and the spec text do not keep in one place.
 
 ## 0012 — The finger block: splay ±30°, and the thumb's three bytes reworked as one piece
 
-**Date:** 2026-10-22 · **Status:** Proposed · **Affects:** §5.5, §10 items 9 and 11, pose vectors `f03`–`f09`, `g02`, `scripts/finger-fk.mjs`
+**Date:** 2026-10-22 · **Status:** Accepted · **Affects:** §5.5, §10 items 9 and 11, pose vectors `f03`–`f09`, `g02`, `scripts/finger-fk.mjs`
 
 ### Context
 
@@ -83,7 +83,7 @@ the reference hand of the pose vectors.
 
 ## 0011 — PMX avatars: the driver rule, names, hips height, toes, the gaze bytes, moods, absent arms
 
-**Date:** 2026-10-22 · **Status:** Proposed · **Affects:** §2.6, §3.2, §3.3, §3.4, §5.4, §5.6, §5.8, §8.5, Appendix D
+**Date:** 2026-10-22 · **Status:** Accepted · **Affects:** §2.6, §3.2, §3.3, §3.4, §5.4, §5.6, §5.8, §8.5, Appendix D
 
 ### Context
 
