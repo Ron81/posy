@@ -1,4 +1,4 @@
-// Generates the finger pose vectors in testvectors/poses/ (hand-skeleton.json + f01…f07).
+// Generates the finger pose vectors in testvectors/poses/ (hand-skeleton.json + f01…f08, g01, g02).
 // Run from reference/js:  node scripts/generate-finger-vectors.mjs
 // The vectors pin the §5.5 finger synthesis (curl / splay / opposition → bone rotations).
 // Codec-independent: uses only finger-fk.mjs. Re-run and diff to regenerate.
@@ -6,7 +6,7 @@
 import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { fingerPose, fkHand } from './finger-fk.mjs';
+import { REST_HAND, axisAngle, fingerPose, fkHand } from './finger-fk.mjs';
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), '../../../testvectors/poses');
 const R2 = Math.SQRT1_2;
@@ -73,13 +73,13 @@ const POSES = [
   },
   {
     name: 'f03-index-splay',
-    description: 'index proximal splayed to +127 on both hands, no curl. Splay about Y (−Y left, +Y right): the extended index tip moves toward the thumb side, +Z.',
+    description: 'index proximal splayed to +127 (30°) on both hands, no curl. Splay about Y (−Y left, +Y right): the extended index tip moves toward the thumb side, +Z.',
     left: { splay: [0, 127, 0, 0, 0] },
     right: { splay: [0, 127, 0, 0, 0] },
   },
   {
     name: 'f04-thumb-opposition',
-    description: 'thumb opposition 255 on both hands, no curl. Opposition rotates the metacarpal about X (positive both hands): the whole thumb swings toward −Y, under the palm.',
+    description: 'thumb opposition 255 (60°) on both hands, no curl. The metacarpal turns toward the palm side about (1, 0, −1)/√2 on the left hand and rolls by the same angle about the thumb’s own axis, (1, 0, 1)/√2, by −60°; the right hand mirrors. The thumb swings toward −Y, under the palm, its pad toward the fingers.',
     left: { opposition: 255 },
     right: { opposition: 255 },
   },
@@ -97,9 +97,21 @@ const POSES = [
   },
   {
     name: 'f07-half-curl-splay',
-    description: 'both hands half curled (128), index splayed +127, ring splayed −127, thumb splayed +100. The only pose with curl and splay on one joint, with a thumb splay and with a curl byte other than 0 or 255: it pins the product order q_splay · q_curl, the thumb splay sign and bone, and that flexion is linear in the byte.',
+    description: 'both hands half curled (128), index splayed +127, ring splayed −127, thumb splayed +100 (outward, 70.9°). The only pose with curl and splay on one finger joint and with a curl byte other than 0 or 255: it pins the product order q_splay · q_curl, that flexion is linear in the byte, and an outward thumb splay spread 0.30 : 0.45 : 0.25 over metacarpal, proximal and distal on top of the thumb curl.',
     left: { curl: [128, 128, 128, 128, 128], splay: [100, 127, 0, -127, 0] },
     right: { curl: [128, 128, 128, 128, 128], splay: [100, 127, 0, -127, 0] },
+  },
+  {
+    name: 'f08-all-splay',
+    description: 'every finger spread, no curl: splay thumb to little finger 36, 64, 0, −42, −127 (thumb 25.5° outward; index 15°, middle 0, ring −10°, little −30°). The little finger goes out further than the ring finger, as in a real spread hand. Pins the ±30° scale of the four fingers and an outward thumb splay without curl.',
+    left: { splay: [36, 64, 0, -42, -127] },
+    right: { splay: [36, 64, 0, -42, -127] },
+  },
+  {
+    name: 'f09-thumb-inward',
+    description: 'thumb splayed inward (−87) with curl 72 and no opposition, both hands: the thumb laid across the palm. An inward splay stays wholly on the metacarpal; the outer joints carry curl only.',
+    left: { curl: [72, 0, 0, 0, 0], splay: [-87, 0, 0, 0, 0] },
+    right: { curl: [72, 0, 0, 0, 0], splay: [-87, 0, 0, 0, 0] },
   },
 ];
 
@@ -149,6 +161,33 @@ for (const pose of POSES) {
       'finger_bones (per-joint), the shape the compact §5.5 block cannot reach: the left index proximal stays straight (identity) while the intermediate and distal bend 60 deg about -Z (into the palm). One curl byte per finger drives all three joints together, so this base-straight / outer-bent claw is only expressible per-joint. Quaternions are parent-relative, applied directly - no §5.5 synthesis. Cleared finger bits take the rest hand (spec §3.3, §5.5); only the three listed joints are posed here.',
     bones: bones.map((b) => ({ bit: b.bit, name: b.name, quat: ['x', 'y', 'z', 'w'].map((k) => r6(b.quat[k])) })),
     expect: Object.fromEntries(chain.map((name) => [name, posAll[name].map(r6)])),
+  };
+  writeFileSync(join(OUT, `${vec.name}.json`), JSON.stringify(vec, null, 2) + '\n');
+  console.log(`wrote ${vec.name}.json`);
+}
+
+// g02: finger_bones with bits cleared. The left thumb (25–27) and left index (28–30) are sent; every
+// other finger bit is clear and takes the rest hand of §5.5 joint by joint (the rest bytes through
+// the synthesis). All 41 joints are asserted, so the fall-back is pinned, not only the sent chains.
+{
+  const r6 = (n) => Math.round(n * 1e6) / 1e6 + 0;
+  const bones = [
+    { bit: 25, name: 'leftThumbMetacarpal', quat: axisAngle([1, 0, 0], 30) },
+    { bit: 26, name: 'leftThumbProximal', quat: axisAngle([0, 1, 0], 40) },
+    { bit: 27, name: 'leftThumbDistal', quat: axisAngle([0, 1, 0], 50) },
+    { bit: 28, name: 'leftIndexProximal', quat: axisAngle([0, 0, -1], 45) },
+    { bit: 29, name: 'leftIndexIntermediate', quat: axisAngle([0, 0, -1], 60) },
+    { bit: 30, name: 'leftIndexDistal', quat: axisAngle([0, 0, -1], 30) },
+  ].map((b) => ({ ...b, quat: Object.fromEntries(['x', 'y', 'z', 'w'].map((k) => [k, r6(b.quat[k])])) }));
+  const rest = { ...fingerPose('left', REST_HAND), ...fingerPose('right', REST_HAND) };
+  const pose = { ...rest, ...Object.fromEntries(bones.map((b) => [b.name, b.quat])) };
+  const posAll = fkHand(skeleton.joints, pose);
+  const vec = {
+    name: 'g02-cleared-bits-rest-hand',
+    description:
+      'finger_bones (per-joint) with bits cleared. Sent: the left thumb (bits 25–27: metacarpal 30° about +X, proximal 40° and distal 50° about +Y) and the left index (bits 28–30: 45°, 60°, 30° about −Z). Every other finger bit is clear, so that joint takes the rest hand of §5.5 (curl 40, 50, 60, 70, 80, splay 0, opposition 40 through the synthesis): the left middle, ring and little finger and the whole right hand. Quaternions are parent-relative and applied directly. All 41 joints are listed, so a receiver that leaves a cleared bit at identity, or synthesises the rest hand wrongly, fails.',
+    bones: bones.map((b) => ({ bit: b.bit, name: b.name, quat: ['x', 'y', 'z', 'w'].map((k) => b.quat[k]) })),
+    expect: Object.fromEntries(Object.keys(posAll).map((name) => [name, posAll[name].map(r6)])),
   };
   writeFileSync(join(OUT, `${vec.name}.json`), JSON.stringify(vec, null, 2) + '\n');
   console.log(`wrote ${vec.name}.json`);

@@ -1,6 +1,6 @@
 {
   "name": "f04-thumb-opposition",
-  "description": "thumb opposition 255 on both hands, no curl. Opposition rotates the metacarpal about X (positive both hands): the whole thumb swings toward −Y, under the palm.",
+  "description": "thumb opposition 255 (60°) on both hands, no curl. The metacarpal turns toward the palm side about (1, 0, −1)/√2 on the left hand and rolls by the same angle about the thumb’s own axis, (1, 0, 1)/√2, by −60°; the right hand mirrors. The thumb swings toward −Y, under the palm, its pad toward the fingers.",
   "bytes": {
     "left": {
       "curl": [
@@ -129,18 +129,18 @@
       0.036
     ],
     "leftThumbProximal": [
-      0.037627,
-      -0.019596,
+      0.026314,
+      -0.027713,
       0.047314
     ],
     "leftThumbDistal": [
-      0.058841,
-      -0.037967,
+      0.03692,
+      -0.053694,
       0.05792
     ],
     "leftThumbTip": [
-      0.076518,
-      -0.053276,
+      0.045759,
+      -0.075344,
       0.066759
     ],
     "rightIndexProximal": [
@@ -229,18 +229,18 @@
       0.036
     ],
     "rightThumbProximal": [
-      -0.037627,
-      -0.019596,
+      -0.026314,
+      -0.027713,
       0.047314
     ],
     "rightThumbDistal": [
-      -0.058841,
-      -0.037967,
+      -0.03692,
+      -0.053694,
       0.05792
     ],
     "rightThumbTip": [
-      -0.076518,
-      -0.053276,
+      -0.045759,
+      -0.075344,
       0.066759
     ]
   }

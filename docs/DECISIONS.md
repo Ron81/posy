@@ -6,6 +6,81 @@ that commit messages and the spec text do not keep in one place.
 
 ---
 
+## 0012 — The finger block: splay ±30°, and the thumb's three bytes reworked as one piece
+
+**Date:** 2026-10-22 · **Status:** Proposed · **Affects:** §5.5, §10 items 9 and 11, pose vectors `f03`–`f09`, `g02`, `scripts/finger-fk.mjs`
+
+### Context
+
+The block of 1.4.4 was checked with real tracking on PMX and VRM avatars, each shown joint by
+joint (`finger_bones`) beside the same hand through the block, and the synthesis was measured on
+the reference hand of the pose vectors.
+
+- **Splay ±15° could not show a spread hand.** At the little finger the gap never opened; joint
+  by joint it did. The ranking was the same on VRM, so it is the block's limit for every avatar
+  type.
+- **The thumb could not reach the common thumb shapes, on the reference hand itself.** Thumb
+  curl and thumb splay both turned `thumbProximal` about Y in opposite senses, and the base got
+  only opposition about X. Over every byte combination the thumb tip stayed 5.1 cm from the little
+  fingertip and 3.7–4.1 cm from the index tip in a pinch; through the block "thumb across the
+  palm" and "to the little finger" stopped short on every avatar.
+- **Avatars rest their thumbs differently.** Measured from the arm's axis after the arm is in
+  the T-pose: 32°–47° on PMX models against the reference hand's 45°, and below the palm's plane
+  as well. With fixed axes the same bytes turn each thumb from a different start: OK, pinch and
+  thumb to the little fingertip read right only on the one avatar whose thumb rests near 45°.
+- **With the splay wholly on the base, thumbs-up and the "L" looked stiff** ("a triangle") on
+  every avatar. Camera recordings of three hands of two people showed the knuckle taking 41–47 %
+  of an outward thumb turn, steadily over the held shapes.
+
+### Decision
+
+- **Splay of index to little finger: ±127 = ±30°**, on the proximal bone as before.
+- **The thumb's bytes drive its three bones together.** Splay ±127 = ±90° about Y on
+  `thumbMetacarpal`; opposition 0–60° toward the palm side about `(1, 0, −1)/√2` plus the same
+  angle of roll about the thumb's own axis, so the pad faces the fingers; curl 60° and 80° on the
+  outer joints as before. An outward splay is spread `0.30 : 0.45 : 0.25` over the three bones;
+  an inward one stays on the metacarpal.
+- **The axes rule.** At load, the block driver turns the avatar's resting thumb direction onto
+  the reference direction (`T0`), applies it on the metacarpal and conjugates the outer joints
+  with it; the sender inverts it. It is normative, because the sender inverts exactly what the
+  receiver applies: two drivers that measured the thumb differently would put different bytes on
+  the wire for the same thumb. Nothing of it travels.
+- Byte 11 stays reserved. The block stays 12 B per hand; the four fingers keep their meaning
+  apart from the splay scale.
+
+### Alternatives rejected
+
+- **Keeping 15°, and sending a spread hand as `finger_bones`.** After 1.5.0 the light default
+  could never show it, and a sender would pay 120 B instead of 24 B for both hands.
+- **Byte 11 as a bend of the base across the palm.** It brought the thumb to 1.0 cm of the little
+  fingertip but left the pinch 4.0 cm short: patching one byte does not fix the thumb's model.
+- **An independent roll on byte 11.** It reached the same shapes, but the sender would have to
+  measure the plane of the thumb's bend, which is noisy while the thumb is straight.
+- **Splay moved to the base without the roll.** Pinch and fist stayed 1.5–2.7 cm short.
+- **Axes fixed at 45° whatever the avatar.** Thumb tip 51–61 % of the thumb's length from its
+  target on avatars whose thumb rests turned, against 17–38 % with the rule.
+- **Straightening the avatar's whole resting thumb, joint by joint.** Never better than turning
+  the direction alone, and worse on a bent resting thumb.
+- **A byte of its own for the knuckle.** The share was steady on every hand measured; a fixed
+  split rebuilds it.
+- **Spreading an inward splay too.** Across the palm and to the little fingertip then stayed 1.7
+  and 3.2 cm short with any bytes.
+
+### Consequences
+
+- Byte meanings change for every sender and receiver of the block; frame bytes and the codec do
+  not. Vectors `f03`–`f07` are derived again; `f08` (all fingers spread), `f09` (an inward thumb)
+  and `g02` (the rest fall-back of cleared `finger_bones` bits, all 41 joints) are added.
+- A block driver measures one direction per hand at load. On the reference hand `T0` is the
+  identity.
+- Contacts made on one hand do not meet on a hand of other proportions; making them meet is the
+  implementation's.
+- The reference thumb rests straight at 45°, while relaxed real thumbs measured bent at the
+  knuckle. Changing that rest later re-derives the shape bytes and the vectors.
+- The loopback demo and the site keep the 1.4.4 synthesis until their rework before 1.5.0.
+
+---
+
 ## 0011 — PMX avatars: the driver rule, names, hips height, toes, the gaze bytes, moods, absent arms
 
 **Date:** 2026-10-22 · **Status:** Proposed · **Affects:** §2.6, §3.2, §3.3, §3.4, §5.4, §5.6, §5.8, §8.5, Appendix D

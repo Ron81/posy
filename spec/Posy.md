@@ -745,7 +745,8 @@ granted (§2.1):
 
 A sender granted `legs` sends all six leg bones; one granted `toes` also sends both toe
 bones. §3.3 still applies per frame: a bone that cannot be solved in a given frame has
-its bit cleared in that frame, and the receiver treats it as identity. A receiver MUST
+its bit cleared in that frame, and the receiver treats it as its rest rotation (§3.3; a
+finger bone as the rest hand, §5.5). A receiver MUST
 decode every valid frame, whichever of the peer's types it chooses to render.
 
 **Typical v1 upper-body mask** = bits 0,1,2,4,5,17,18,19,20,21,22,23,24 → 13 bones.
@@ -881,7 +882,7 @@ why splay and thumb opposition are added rather than more curl bits.
   | Distal | 70° |
 
   For the thumb, curl drives `thumbProximal` (60°) and `thumbDistal` (80°) only.
-  Flexion is linear in the curl byte.
+  Flexion is linear in the curl byte, and so are splay and opposition in theirs.
 
 All axes below are the bone's local axes in the T-pose of Posy avatar space, where they
 coincide with the avatar axes (§3.1 item 6). Angles follow the right-hand rule.
@@ -894,16 +895,89 @@ coincide with the avatar axes (§3.1 item 6). Angles follow the right-hand rule.
   lies in the plane of the palm in the T-pose and points forward and outward; about Z it
   would bend down and back toward the wrist, away from the palm.
 
-- **Splay** (`−127` … `+127` → `−15°` … `+15°`) is applied to the **proximal bone
-  only** (`thumbProximal` for the thumb, not `thumbMetacarpal`), about **Y**. Positive = abduction toward the thumb side: negative Y-rotation
-  on the left hand, positive on the right. For the thumb this is the axis of its flexion,
-  in the opposite sense: positive thumb splay opens the thumb away from the fingers.
+- **Splay, index to little finger** (`−127` … `+127` → `−30°` … `+30°`) is applied to
+  the **proximal bone only**, about **Y**. Positive = abduction toward the thumb side:
+  negative Y-rotation on the left hand, positive on the right.
 
 - **Order on the proximal bone**, which carries both: `q = q_splay · q_curl` (§3.1
   item 5: the finger curls in the plane it was splayed into).
 
-- **Thumb opposition** (`0` … `255` → `0°` … `60°`) rotates `thumbMetacarpal` about
-  **X**, positive on both hands: the thumb moves toward −Y and under the palm.
+**The thumb.** Its three bytes drive its three bones together. On the left hand, with
+`s` = thumb splay in degrees (`−127` … `+127` → `−90°` … `+90°`), `o` = thumb opposition
+in degrees (`0` … `255` → `0°` … `60°`) and `c` = thumb curl / 255:
+
+- **Splay** turns the thumb in the palm's plane about **Y**; positive opens it away from
+  the fingers (outward), negative lays it toward and across the palm (inward). An
+  outward splay is spread over the three bones, `0.30 : 0.45 : 0.25` from
+  `thumbMetacarpal` to `thumbDistal`, as a real thumb bends at its knuckle when it opens.
+  An inward splay is wholly on `thumbMetacarpal`; inward, the outer joints move as curl,
+  which curl already carries.
+- **Opposition** turns `thumbMetacarpal` toward the palm side, by `+o` about
+  `(1, 0, −1)/√2`, and rolls it by `−o` about the thumb's own resting axis, `(1, 0, 1)/√2`
+  (left hand), so that the pad turns toward the fingers.
+- **Curl** bends `thumbProximal` by 60° and `thumbDistal` by 80° about **Y**, toward the
+  fingers.
+
+| Bone (left hand) | Rotation on the reference hand |
+|---|---|
+| `thumbMetacarpal` | `q_splay · q_opposition · q_roll`: about Y by `−s_m`, about `(1, 0, −1)/√2` by `+o`, about `(1, 0, 1)/√2` by `−o` |
+| `thumbProximal` | about Y by `60c − s_p` |
+| `thumbDistal` | about Y by `80c − s_d` |
+
+with `(s_m, s_p, s_d) = (0.30 s, 0.45 s, 0.25 s)` for `s > 0` and `(s, 0, 0)` for `s ≤ 0`.
+The right hand is the mirror of the left: each rotation `(x, y, z, w)` becomes
+`(x, −y, −z, w)`. In code, in the style of `reference/js/scripts/finger-fk.mjs`
+(`mul(a, b)` applies `b` first; `aa(axis, deg)` turns by `deg` about the normalised axis):
+
+```js
+const s = splay / 127 * 90, o = opposition / 255 * 60, c = curl / 255;   // left hand
+const [sm, sp, sd] = s > 0 ? [0.30 * s, 0.45 * s, 0.25 * s] : [s, 0, 0];
+const meta = mul(mul(aa([0, 1, 0], -sm), aa([1, 0, -1], o)), aa([1, 0, 1], -o));
+const prox = aa([0, 1, 0], 60 * c - sp), dist = aa([0, 1, 0], 80 * c - sd);
+```
+
+**The thumb's rest: the axes rule.** The rotations above are on the reference hand, whose
+thumb rests in the palm's plane at 45° between the arm's axis and forward: from the
+metacarpal joint to the distal joint, `(1, 0, 1)/√2` on the left hand and `(−1, 0, 1)/√2`
+on the right. Avatars rest their thumbs differently, so the same rotations would turn each
+thumb from a different start. The driver of the compact block therefore measures, once at
+load and on each end alike, how its avatar's thumb rests:
+
+- `T0` is the shortest rotation that turns the avatar's resting thumb direction (metacarpal
+  joint to distal joint, in the T-pose, in avatar space) onto the reference direction.
+- The receiver sets `thumbMetacarpal = meta · T0`, `thumbProximal = T0⁻¹ · prox · T0` and
+  `thumbDistal = T0⁻¹ · dist · T0`.
+- The sender inverts it before it reduces a thumb to the three bytes:
+  `meta = thumbMetacarpal · T0⁻¹`, `prox = T0 · thumbProximal · T0⁻¹`, and so for `dist`.
+
+On the reference hand `T0` is the identity. Nothing of it is on the wire or at a relay or a
+server; it is the block driver's job, like the arm turn of a PMX driver (§3.2). Joint
+rotations sent as `finger_bones` are the avatar's own and take no `T0`.
+
+*Example.* An avatar whose left thumb rests at `(0.832134, −0.238844, 0.500506)`, 31.0°
+from the arm's axis in the palm's plane and 13.8° below it, has
+`T0 = (−0.085689, −0.118976, 0.085689, 0.985474)`, a turn of 19.6°. Its right thumb,
+resting at the mirror `(−0.832134, −0.238844, 0.500506)`, has the mirror
+`T0 = (−0.085689, 0.118976, −0.085689, 0.985474)`.
+
+*Shapes on the reference hand (informative).* Twelve bytes of one hand in block order; the
+figures hold for either hand. The distance is that of the thumb tip from its target; "over
+the middle phalanges" is the midpoint between the middles of the index's and the middle
+finger's intermediate segments. A tip segment's angle is measured from the hand's axis,
+±X.
+
+| Shape | Bytes | On the reference hand |
+|---|---|---|
+| OK, pinch | `84, −39, 160, 0, 0, 0, 0, 0, 0, 0, 152, 0` | 0.06 cm from the index tip |
+| Pinch, index more curled | `227, 22, 192, 0, 0, 0, 0, 0, 0, 0, 135, 0` | 0.07 cm from the index tip |
+| Thumb across the palm | `72, −87, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0` | 0.07 cm from the ring finger's base |
+| Thumb to the little fingertip | `40, −127, 0, 0, 0, 0, 0, 0, 192, 0, 84, 0` | 0.14 cm from the little fingertip |
+| Fist | `164, −27, 255, 0, 255, 0, 255, 0, 255, 0, 100, 0` | 0.10 cm from over the middle phalanges of index and middle finger |
+| Thumbs-up | `4, 21, 255, 0, 255, 0, 255, 0, 255, 0, 0, 0` | the tip segment 58° from the hand's axis |
+| Counting, thumb out ("L") | `4, 36, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0` | the tip segment 68° from the hand's axis |
+
+Shape bytes made on one hand do not make the fingertips of a hand with other proportions
+meet; a sender measures its bytes on its own avatar.
 
 Receivers MUST synthesise the 30 finger bone rotations from this block. A sender carries
 fingers through this compact block **or** through the per-joint `finger_bones` type (§4),
@@ -926,14 +1000,16 @@ bits.
 MUST synthesise both hands from these values: curl `40, 50, 60, 70, 80` (thumb to little
 finger), all splay `0`, thumb opposition `40`. That is a relaxed hand, a little more closed
 toward the little finger. The same values give the per-joint rest fall-back above, joint by
-joint, for a `finger_bones` sender's cleared bits. A sender that wants flat hands sends a
-compact finger block of zeros, or `finger_bones` with the relevant bits set to identity.
+joint, for a `finger_bones` sender's cleared bits: the rest bytes through this synthesis,
+the axes rule included. A sender that wants flat hands sends a compact finger block of
+zeros, or `finger_bones` with the relevant bits set to identity.
 
-`testvectors/poses/hand-skeleton.json` plus `f01`–`f07` pin this synthesis: each carries the
+`testvectors/poses/hand-skeleton.json` plus `f01`–`f09` pin this synthesis: each carries the
 curl / splay / opposition bytes and the joint positions they produce on a reference hand.
-A wrong flexion axis (the thumb about Z rather than Y), a flipped sign, or the wrong product
-order on a proximal bone moves a joint by a centimetre or more there, which the frame
-vectors cannot detect (§10 item 9).
+`g02` pins the rest fall-back of cleared `finger_bones` bits. A wrong flexion axis (the
+thumb about Z rather than Y), a flipped sign, the opposition without its roll, the wrong
+split of a thumb splay, or the wrong product order on a proximal bone moves a joint by a
+centimetre or more there, which the frame vectors cannot detect (§10 item 9).
 
 **Integration note.** The reduction from per-joint bone rotations to the curl/splay/
 opposition parameterisation is integration-layer work (sender-side). Posy intentionally
@@ -1280,8 +1356,9 @@ An implementation is conformant if it:
     from the frame only, and takes the block's size from the declaration that applies at
     the frame's `timestamp_ms`.
 11. If it sends or renders per-joint finger bones (`finger_bones`): applies them as ordinary
-    bone rotations, so that the joint positions of the per-joint finger pose vectors
-    (`testvectors/poses/g*.json`) are reproduced within their tolerance (§4, §5.5).
+    bone rotations, and a cleared finger bit as the rest hand, so that the joint positions
+    of the per-joint finger pose vectors (`testvectors/poses/g*.json`) are reproduced within
+    their tolerance (§4, §5.5).
 12. Ignores the signaling messages, fields, data types and error codes it does not know
     (§2.7), and as a receiver accepts a frame with flag bit 6 or 7 set that is longer than
     §5.1 gives, using the part it knows (§9).

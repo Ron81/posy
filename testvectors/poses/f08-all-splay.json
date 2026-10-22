@@ -1,0 +1,247 @@
+{
+  "name": "f08-all-splay",
+  "description": "every finger spread, no curl: splay thumb to little finger 36, 64, 0, −42, −127 (thumb 25.5° outward; index 15°, middle 0, ring −10°, little −30°). The little finger goes out further than the ring finger, as in a real spread hand. Pins the ±30° scale of the four fingers and an outward thumb splay without curl.",
+  "bytes": {
+    "left": {
+      "curl": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "splay": [
+        36,
+        64,
+        0,
+        -42,
+        -127
+      ],
+      "opposition": 0
+    },
+    "right": {
+      "curl": [
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "splay": [
+        36,
+        64,
+        0,
+        -42,
+        -127
+      ],
+      "opposition": 0
+    }
+  },
+  "expect": {
+    "wrist": [
+      0,
+      0,
+      0
+    ],
+    "leftIndexProximal": [
+      0.085,
+      0,
+      0.03
+    ],
+    "leftIndexIntermediate": [
+      0.123616,
+      0,
+      0.040432
+    ],
+    "leftIndexDistal": [
+      0.148716,
+      0,
+      0.047213
+    ],
+    "leftIndexTip": [
+      0.168024,
+      0,
+      0.05243
+    ],
+    "leftMiddleProximal": [
+      0.085,
+      0,
+      0.01
+    ],
+    "leftMiddleIntermediate": [
+      0.13,
+      0,
+      0.01
+    ],
+    "leftMiddleDistal": [
+      0.16,
+      0,
+      0.01
+    ],
+    "leftMiddleTip": [
+      0.182,
+      0,
+      0.01
+    ],
+    "leftRingProximal": [
+      0.085,
+      0,
+      -0.01
+    ],
+    "leftRingIntermediate": [
+      0.124402,
+      0,
+      -0.016892
+    ],
+    "leftRingDistal": [
+      0.151983,
+      0,
+      -0.021716
+    ],
+    "leftRingTip": [
+      0.171684,
+      0,
+      -0.025162
+    ],
+    "leftLittleProximal": [
+      0.085,
+      0,
+      -0.03
+    ],
+    "leftLittleIntermediate": [
+      0.112713,
+      0,
+      -0.046
+    ],
+    "leftLittleDistal": [
+      0.131765,
+      0,
+      -0.057
+    ],
+    "leftLittleTip": [
+      0.147354,
+      0,
+      -0.066
+    ],
+    "leftThumbMetacarpal": [
+      0.015,
+      0,
+      0.036
+    ],
+    "leftThumbProximal": [
+      0.034412,
+      0,
+      0.061439
+    ],
+    "leftThumbDistal": [
+      0.0475,
+      0,
+      0.088434
+    ],
+    "leftThumbTip": [
+      0.055841,
+      0,
+      0.112002
+    ],
+    "rightIndexProximal": [
+      -0.085,
+      0,
+      0.03
+    ],
+    "rightIndexIntermediate": [
+      -0.123616,
+      0,
+      0.040432
+    ],
+    "rightIndexDistal": [
+      -0.148716,
+      0,
+      0.047213
+    ],
+    "rightIndexTip": [
+      -0.168024,
+      0,
+      0.05243
+    ],
+    "rightMiddleProximal": [
+      -0.085,
+      0,
+      0.01
+    ],
+    "rightMiddleIntermediate": [
+      -0.13,
+      0,
+      0.01
+    ],
+    "rightMiddleDistal": [
+      -0.16,
+      0,
+      0.01
+    ],
+    "rightMiddleTip": [
+      -0.182,
+      0,
+      0.01
+    ],
+    "rightRingProximal": [
+      -0.085,
+      0,
+      -0.01
+    ],
+    "rightRingIntermediate": [
+      -0.124402,
+      0,
+      -0.016892
+    ],
+    "rightRingDistal": [
+      -0.151983,
+      0,
+      -0.021716
+    ],
+    "rightRingTip": [
+      -0.171684,
+      0,
+      -0.025162
+    ],
+    "rightLittleProximal": [
+      -0.085,
+      0,
+      -0.03
+    ],
+    "rightLittleIntermediate": [
+      -0.112713,
+      0,
+      -0.046
+    ],
+    "rightLittleDistal": [
+      -0.131765,
+      0,
+      -0.057
+    ],
+    "rightLittleTip": [
+      -0.147354,
+      0,
+      -0.066
+    ],
+    "rightThumbMetacarpal": [
+      -0.015,
+      0,
+      0.036
+    ],
+    "rightThumbProximal": [
+      -0.034412,
+      0,
+      0.061439
+    ],
+    "rightThumbDistal": [
+      -0.0475,
+      0,
+      0.088434
+    ],
+    "rightThumbTip": [
+      -0.055841,
+      0,
+      0.112002
+    ]
+  }
+}

@@ -1,6 +1,6 @@
 {
   "name": "f03-index-splay",
-  "description": "index proximal splayed to +127 on both hands, no curl. Splay about Y (−Y left, +Y right): the extended index tip moves toward the thumb side, +Z.",
+  "description": "index proximal splayed to +127 (30°) on both hands, no curl. Splay about Y (−Y left, +Y right): the extended index tip moves toward the thumb side, +Z.",
   "bytes": {
     "left": {
       "curl": [
@@ -49,19 +49,19 @@
       0.03
     ],
     "leftIndexIntermediate": [
-      0.123637,
+      0.119641,
       0,
-      0.040353
+      0.05
     ],
     "leftIndexDistal": [
-      0.148751,
+      0.142158,
       0,
-      0.047082
+      0.063
     ],
     "leftIndexTip": [
-      0.16807,
+      0.159478,
       0,
-      0.052258
+      0.073
     ],
     "leftMiddleProximal": [
       0.085,
@@ -149,19 +149,19 @@
       0.03
     ],
     "rightIndexIntermediate": [
-      -0.123637,
+      -0.119641,
       0,
-      0.040353
+      0.05
     ],
     "rightIndexDistal": [
-      -0.148751,
+      -0.142158,
       0,
-      0.047082
+      0.063
     ],
     "rightIndexTip": [
-      -0.16807,
+      -0.159478,
       0,
-      0.052258
+      0.073
     ],
     "rightMiddleProximal": [
       -0.085,
