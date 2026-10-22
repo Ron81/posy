@@ -1,0 +1,273 @@
+{
+  "name": "g02-cleared-bits-rest-hand",
+  "description": "finger_bones (per-joint) with bits cleared. Sent: the left thumb (bits 25–27: metacarpal 30° about +X, proximal 40° and distal 50° about +Y) and the left index (bits 28–30: 45°, 60°, 30° about −Z). Every other finger bit is clear, so that joint takes the rest hand of §5.5 (curl 40, 50, 60, 70, 80, splay 0, opposition 40 through the synthesis): the left middle, ring and little finger and the whole right hand. Quaternions are parent-relative and applied directly. All 41 joints are listed, so a receiver that leaves a cleared bit at identity, or synthesises the rest hand wrongly, fails.",
+  "bones": [
+    {
+      "bit": 25,
+      "name": "leftThumbMetacarpal",
+      "quat": [
+        0.258819,
+        0,
+        0,
+        0.965926
+      ]
+    },
+    {
+      "bit": 26,
+      "name": "leftThumbProximal",
+      "quat": [
+        0,
+        0.34202,
+        0,
+        0.939693
+      ]
+    },
+    {
+      "bit": 27,
+      "name": "leftThumbDistal",
+      "quat": [
+        0,
+        0.422618,
+        0,
+        0.906308
+      ]
+    },
+    {
+      "bit": 28,
+      "name": "leftIndexProximal",
+      "quat": [
+        0,
+        0,
+        -0.382683,
+        0.92388
+      ]
+    },
+    {
+      "bit": 29,
+      "name": "leftIndexIntermediate",
+      "quat": [
+        0,
+        0,
+        -0.5,
+        0.866025
+      ]
+    },
+    {
+      "bit": 30,
+      "name": "leftIndexDistal",
+      "quat": [
+        0,
+        0,
+        -0.258819,
+        0.965926
+      ]
+    }
+  ],
+  "expect": {
+    "wrist": [
+      0,
+      0,
+      0
+    ],
+    "leftIndexProximal": [
+      0.085,
+      0,
+      0.03
+    ],
+    "leftIndexIntermediate": [
+      0.113284,
+      -0.028284,
+      0.03
+    ],
+    "leftIndexDistal": [
+      0.106555,
+      -0.053398,
+      0.03
+    ],
+    "leftIndexTip": [
+      0.092413,
+      -0.06754,
+      0.03
+    ],
+    "leftMiddleProximal": [
+      0.085,
+      0,
+      0.01
+    ],
+    "leftMiddleIntermediate": [
+      0.126961,
+      -0.016256,
+      0.01
+    ],
+    "leftMiddleDistal": [
+      0.147399,
+      -0.038217,
+      0.01
+    ],
+    "leftMiddleTip": [
+      0.157205,
+      -0.057911,
+      0.01
+    ],
+    "leftRingProximal": [
+      0.085,
+      0,
+      -0.01
+    ],
+    "leftRingIntermediate": [
+      0.121339,
+      -0.016718,
+      -0.01
+    ],
+    "leftRingDistal": [
+      0.137438,
+      -0.039627,
+      -0.01
+    ],
+    "leftRingTip": [
+      0.142911,
+      -0.058864,
+      -0.01
+    ],
+    "leftLittleProximal": [
+      0.085,
+      0,
+      -0.03
+    ],
+    "leftLittleIntermediate": [
+      0.113192,
+      -0.015139,
+      -0.03
+    ],
+    "leftLittleDistal": [
+      0.123267,
+      -0.034697,
+      -0.03
+    ],
+    "leftLittleTip": [
+      0.124928,
+      -0.05262,
+      -0.03
+    ],
+    "leftThumbMetacarpal": [
+      0.015,
+      0,
+      0.036
+    ],
+    "leftThumbProximal": [
+      0.037627,
+      -0.011314,
+      0.055596
+    ],
+    "leftThumbDistal": [
+      0.067513,
+      -0.012621,
+      0.05786
+    ],
+    "leftThumbTip": [
+      0.085191,
+      -0.003782,
+      0.042551
+    ],
+    "rightIndexProximal": [
+      -0.085,
+      0,
+      0.03
+    ],
+    "rightIndexIntermediate": [
+      -0.123118,
+      -0.012126,
+      0.03
+    ],
+    "rightIndexDistal": [
+      -0.143262,
+      -0.028564,
+      0.03
+    ],
+    "rightIndexTip": [
+      -0.155314,
+      -0.044525,
+      0.03
+    ],
+    "rightMiddleProximal": [
+      -0.085,
+      0,
+      0.01
+    ],
+    "rightMiddleIntermediate": [
+      -0.126961,
+      -0.016256,
+      0.01
+    ],
+    "rightMiddleDistal": [
+      -0.147399,
+      -0.038217,
+      0.01
+    ],
+    "rightMiddleTip": [
+      -0.157205,
+      -0.057911,
+      0.01
+    ],
+    "rightRingProximal": [
+      -0.085,
+      0,
+      -0.01
+    ],
+    "rightRingIntermediate": [
+      -0.121339,
+      -0.016718,
+      -0.01
+    ],
+    "rightRingDistal": [
+      -0.137438,
+      -0.039627,
+      -0.01
+    ],
+    "rightRingTip": [
+      -0.142911,
+      -0.058864,
+      -0.01
+    ],
+    "rightLittleProximal": [
+      -0.085,
+      0,
+      -0.03
+    ],
+    "rightLittleIntermediate": [
+      -0.113192,
+      -0.015139,
+      -0.03
+    ],
+    "rightLittleDistal": [
+      -0.123267,
+      -0.034697,
+      -0.03
+    ],
+    "rightLittleTip": [
+      -0.124928,
+      -0.05262,
+      -0.03
+    ],
+    "rightThumbMetacarpal": [
+      -0.015,
+      0,
+      0.036
+    ],
+    "rightThumbProximal": [
+      -0.037323,
+      -0.005233,
+      0.058323
+    ],
+    "rightThumbDistal": [
+      -0.061298,
+      -0.010864,
+      0.075454
+    ],
+    "rightThumbTip": [
+      -0.083818,
+      -0.016164,
+      0.084929
+    ]
+  }
+}

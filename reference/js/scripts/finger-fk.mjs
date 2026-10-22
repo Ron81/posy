@@ -33,39 +33,86 @@ const axisQuat = (axis, deg) => {
  */
 export const eulerXYZ = (x, y, z) => mul(mul(axisQuat('x', x), axisQuat('y', y)), axisQuat('z', z));
 
-// §5.5 maximum flexion angles at curl 255.
+// §5.5 maximum flexion angles at curl 255, and the splay of index … little at ±127.
 const FLEXION = { Proximal: 90, Intermediate: 110, Distal: 70 };
-const THUMB_FLEXION = { Proximal: 60, Distal: 80 };
-const FINGERS = ['Thumb', 'Index', 'Middle', 'Ring', 'Little'];
+const SPLAY = 30;
+const FINGERS = ['Index', 'Middle', 'Ring', 'Little'];
+
+/** Unit quaternion for `deg` degrees about an arbitrary axis (normalised first). */
+export const axisAngle = ([x, y, z], deg) => {
+  const l = Math.hypot(x, y, z), s = Math.sin((deg * DEG) / 2);
+  return { x: (x / l) * s, y: (y / l) * s, z: (z / l) * s, w: Math.cos((deg * DEG) / 2) };
+};
+export const conj = (q) => ({ x: -q.x, y: -q.y, z: -q.z, w: q.w });
+/** The right hand is the mirror of the left (§5.5): (x, y, z, w) → (x, −y, −z, w). */
+const mirror = (q) => ({ x: q.x, y: -q.y, z: -q.z, w: q.w });
+
+/** The reference thumb's resting direction, metacarpal joint to distal joint (§5.5). */
+export const referenceThumb = (side) => [side === 'left' ? Math.SQRT1_2 : -Math.SQRT1_2, 0, Math.SQRT1_2];
+
+/** Shortest rotation taking unit vector a onto unit vector b. */
+const fromTo = (a, b) => {
+  const d = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const c = [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const q = { x: c[0], y: c[1], z: c[2], w: 1 + d };
+  const n = Math.hypot(q.x, q.y, q.z, q.w);
+  return { x: q.x / n, y: q.y / n, z: q.z / n, w: q.w / n };
+};
+
+/**
+ * The axes rule (§5.5): `T0`, the shortest rotation turning an avatar's resting thumb direction
+ * (metacarpal joint to distal joint, T-pose, avatar space) onto the reference direction.
+ */
+export const thumbRestTurn = (side, resting) => {
+  const n = Math.hypot(...resting);
+  return fromTo(resting.map((v) => v / n), referenceThumb(side));
+};
+
+/**
+ * The thumb from its three bytes (§5.5), on the reference hand's axes, left hand; the right hand
+ * mirrors. Splay ±127 = ±90°, outward (positive) spread 0.30 : 0.45 : 0.25 over metacarpal,
+ * proximal and distal, inward wholly on the metacarpal. Opposition 0…60° toward the palm side
+ * plus the same roll about the thumb's own axis. Curl 60° and 80° about Y on the outer joints.
+ */
+function thumbOnReference(bytes) {
+  const s = ((bytes.splay?.[0] ?? 0) / 127) * 90, o = ((bytes.opposition ?? 0) / 255) * 60, c = (bytes.curl?.[0] ?? 0) / 255;
+  const [sm, sp, sd] = s > 0 ? [0.3 * s, 0.45 * s, 0.25 * s] : [s, 0, 0];
+  return {
+    Metacarpal: mul(mul(axisAngle([0, 1, 0], -sm), axisAngle([1, 0, -1], o)), axisAngle([1, 0, 1], -o)),
+    Proximal: axisAngle([0, 1, 0], c * 60 - sp),
+    Distal: axisAngle([0, 1, 0], c * 80 - sd),
+  };
+}
 
 /**
  * §5.5 synthesis: the parent-relative rotation of every finger bone from one hand's bytes.
  * `bytes` = { curl:[5], splay:[5], opposition } for Thumb,Index,Middle,Ring,Little.
- * Returns { boneName: quaternion } for the named side ('left' | 'right'). Mirrors the demo's
- * fingerAngles(), by the spec text, not by importing it.
+ * `rest` = the hand's `T0` (axes rule) where the thumb does not rest like the reference; the
+ * reference hand's is identity. Returns { boneName: quaternion } for the named side ('left' |
+ * 'right'). By the spec text, not by importing the demo.
  */
-export function fingerPose(side, bytes) {
+export function fingerPose(side, bytes, rest = ID) {
   const sign = side === 'left' ? -1 : 1; // curl toward −Y and splay toward the thumb are −Z/−Y left, + right
   const pose = {};
-  FINGERS.forEach((finger, i) => {
-    const curl = (bytes.curl?.[i] ?? 0) / 255;
-    const splay = ((bytes.splay?.[i] ?? 0) / 127) * 15;
-    const table = finger === 'Thumb' ? THUMB_FLEXION : FLEXION;
-    for (const [joint, max] of Object.entries(table)) {
-      const y = joint === 'Proximal' ? sign * splay : 0;
-      if (finger === 'Thumb') {
-        // Thumb flexes about Y (palm plane); splay shares Y in the opposite sense (§5.5).
-        pose[`${side}${finger}${joint}`] = eulerXYZ(0, y - sign * curl * max, 0);
-      } else {
-        // Index … little flex about Z, splay about Y on the proximal only; q = q_splay · q_curl.
-        pose[`${side}${finger}${joint}`] = eulerXYZ(0, y, sign * curl * max);
-      }
+  FINGERS.forEach((finger, k) => {
+    const curl = (bytes.curl?.[k + 1] ?? 0) / 255;
+    const splay = ((bytes.splay?.[k + 1] ?? 0) / 127) * SPLAY;
+    for (const [joint, max] of Object.entries(FLEXION)) {
+      // Flexion about Z, splay about Y on the proximal only; q = q_splay · q_curl.
+      pose[`${side}${finger}${joint}`] = eulerXYZ(0, joint === 'Proximal' ? sign * splay : 0, sign * curl * max);
     }
   });
-  // Thumb opposition rotates the metacarpal about X, positive on both hands (§5.5).
-  pose[`${side}ThumbMetacarpal`] = eulerXYZ(((bytes.opposition ?? 0) / 255) * 60, 0, 0);
+  // The axes rule: metacarpal base · T0, outer joints T(before)⁻¹ · q · T(own). Direction only:
+  // the outer joints' own turns are identity, so T(before) = T(own) = T0.
+  const t = thumbOnReference(bytes), m = side === 'left' ? (q) => q : mirror;
+  pose[`${side}ThumbMetacarpal`] = mul(m(t.Metacarpal), rest);
+  pose[`${side}ThumbProximal`] = mul(mul(conj(rest), m(t.Proximal)), rest);
+  pose[`${side}ThumbDistal`] = mul(mul(conj(rest), m(t.Distal)), rest);
   return pose;
 }
+
+/** The rest hand of §5.5: what a frame without finger data shows, and a cleared finger bit's fall-back. */
+export const REST_HAND = { curl: [40, 50, 60, 70, 80], splay: [0, 0, 0, 0, 0], opposition: 40 };
 
 /**
  * joints: [{ name, parent, offset:[x,y,z] }], parents before children; the wrist is the root.

@@ -11,6 +11,10 @@ receiver behaviour:** the PMX driver rule binds both ends, the meaning of the ga
 stated, and a receiver may show an absent upper arm otherwise than at rest.
 `docs/DECISIONS.md` 0011.
 
+**Breaking** at the meaning of the finger block: splay of index to little finger is ±30°, and
+the thumb's three bytes are reworked as one piece. The layout, its size and the frame bytes do
+not change. `docs/DECISIONS.md` 0012.
+
 ### Changed
 - **§3.2** — the PMX (MMD) driver rule is normative and replaces the untested MMD row: space
   conversion, one rigid turn per arm for the T-pose, `r(b) = R(rig_parent(b))⁻¹ · A(b) · T(b)`
@@ -27,11 +31,35 @@ stated, and a receiver may show an absent upper arm otherwise than at rest.
   gravity; the rest rotation stays the default.
 - **§5.8** — an extra bone's rest on PMX is the driver's T-pose; the rotation conversion is
   given for PMX beside VRM 0.x.
+- **§5.5 splay** — index to little finger `−127 … +127` = `−30° … +30°` (was ±15°). At ±15° a
+  spread hand could not open at the little finger, on every avatar type.
+- **§5.5 thumb** — splay ±90° on `thumbMetacarpal`; opposition turns it toward the palm side and
+  rolls it by the same angle so the pad faces the fingers; curl unchanged. An outward splay is
+  spread `0.30 : 0.45 : 0.25` over the three bones, an inward one stays on the metacarpal. On the
+  reference hand the old thumb could not come closer than 5.1 cm to the little fingertip or 3.7 cm
+  to the index tip in a pinch; the new one reaches the shape list to 0.14 cm.
+- **§5.5 axes rule** — the block driver turns its avatar's resting thumb onto the reference
+  direction at load (`T0`) and applies it on both ends; worked example in the text. With fixed
+  axes the thumb tip missed its target by 51–61 % of the thumb's length on avatars whose thumb
+  rests turned, 17–38 % with the rule.
+- **§5.5, §10 item 11** — a cleared `finger_bones` bit takes the rest hand through the new
+  synthesis, axes rule included.
+- Pose vectors `f03`–`f07` derived again for the new synthesis.
 
 ### Added
 - **§5.4, §8.5, Appendix D** — the hips landmark: on PMX, `h` and `H` are measured at the
   midpoint of the leg roots, about 5 % of `H` below the VRM hips bone. VRM's `H` is unchanged.
 - **§3.4** — a toe rotation is the turn from the toe's own rest.
+- **§5.5** — the thumb shapes on the reference hand (informative table), and one sentence that
+  shape bytes made on one hand do not make another hand's fingertips meet.
+- Pose vectors `f08-all-splay`, `f09-thumb-inward` and `g02-cleared-bits-rest-hand`; negative
+  controls in `test/poses.test.mjs` for the 1.4.4 opposition, the missing roll, the unspread and
+  the wrongly spread thumb splay, the ±15° splay and a cleared bit left at identity; the axes
+  rule against a hand whose thumb rests turned.
+
+### Fixed
+- **§4** said a bone whose bit is cleared in a frame is treated as identity; §3.3 gives it its rest
+  rotation (the arms since 1.2, the rest hand for fingers). §4 now says so.
 
 ## [1.4.4] - 2026-10-13
 

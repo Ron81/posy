@@ -1,6 +1,6 @@
 {
   "name": "f07-half-curl-splay",
-  "description": "both hands half curled (128), index splayed +127, ring splayed −127, thumb splayed +100. The only pose with curl and splay on one joint, with a thumb splay and with a curl byte other than 0 or 255: it pins the product order q_splay · q_curl, the thumb splay sign and bone, and that flexion is linear in the byte.",
+  "description": "both hands half curled (128), index splayed +127, ring splayed −127, thumb splayed +100 (outward, 70.9°). The only pose with curl and splay on one finger joint and with a curl byte other than 0 or 255: it pins the product order q_splay · q_curl, that flexion is linear in the byte, and an outward thumb splay spread 0.30 : 0.45 : 0.25 over metacarpal, proximal and distal on top of the thumb curl.",
   "bytes": {
     "left": {
       "curl": [
@@ -49,19 +49,19 @@
       0.03
     ],
     "leftIndexIntermediate": [
-      0.112236,
+      0.109419,
       -0.028371,
-      0.037298
+      0.044099
     ],
     "leftIndexDistal": [
-      0.107706,
+      0.105358,
       -0.053945,
-      0.036084
+      0.041754
     ],
     "leftIndexTip": [
-      0.09392,
+      0.092998,
       -0.067956,
-      0.03239
+      0.034617
     ],
     "leftMiddleProximal": [
       0.085,
@@ -89,19 +89,19 @@
       -0.01
     ],
     "leftRingIntermediate": [
-      0.112236,
+      0.109419,
       -0.028371,
-      -0.017298
+      -0.024099
     ],
     "leftRingDistal": [
-      0.107358,
+      0.105045,
       -0.055912,
-      -0.015991
+      -0.021573
     ],
     "leftRingTip": [
-      0.093572,
+      0.092685,
       -0.069923,
-      -0.012297
+      -0.014437
     ],
     "leftLittleProximal": [
       0.085,
@@ -129,19 +129,19 @@
       0.036
     ],
     "leftThumbProximal": [
-      0.037627,
+      0.027883,
       0,
-      0.058627
+      0.065292
     ],
     "leftThumbDistal": [
-      0.06443,
+      0.039106,
       0,
-      0.072104
+      0.093114
     ],
     "leftThumbTip": [
-      0.088743,
+      0.0566,
       0,
-      0.066283
+      0.110973
     ],
     "rightIndexProximal": [
       -0.085,
@@ -149,19 +149,19 @@
       0.03
     ],
     "rightIndexIntermediate": [
-      -0.112236,
+      -0.109419,
       -0.028371,
-      0.037298
+      0.044099
     ],
     "rightIndexDistal": [
-      -0.107706,
+      -0.105358,
       -0.053945,
-      0.036084
+      0.041754
     ],
     "rightIndexTip": [
-      -0.09392,
+      -0.092998,
       -0.067956,
-      0.03239
+      0.034617
     ],
     "rightMiddleProximal": [
       -0.085,
@@ -189,19 +189,19 @@
       -0.01
     ],
     "rightRingIntermediate": [
-      -0.112236,
+      -0.109419,
       -0.028371,
-      -0.017298
+      -0.024099
     ],
     "rightRingDistal": [
-      -0.107358,
+      -0.105045,
       -0.055912,
-      -0.015991
+      -0.021573
     ],
     "rightRingTip": [
-      -0.093572,
+      -0.092685,
       -0.069923,
-      -0.012297
+      -0.014437
     ],
     "rightLittleProximal": [
       -0.085,
@@ -229,19 +229,19 @@
       0.036
     ],
     "rightThumbProximal": [
-      -0.037627,
+      -0.027883,
       0,
-      0.058627
+      0.065292
     ],
     "rightThumbDistal": [
-      -0.06443,
+      -0.039106,
       0,
-      0.072104
+      0.093114
     ],
     "rightThumbTip": [
-      -0.088743,
+      -0.0566,
       0,
-      0.066283
+      0.110973
     ]
   }
 }

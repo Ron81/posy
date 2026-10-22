@@ -14,6 +14,7 @@ The reference implementation generated these vectors, so on its own it proves no
 | `poses/f01` … `f07` | every joint position of every pose, rebuilt from the curl / splay / opposition bytes by the text of §5.5 and §3.1 items 5 and 6 with 3×3 rotation matrices (no quaternion product, nothing imported from `scripts/finger-fk.mjs`) | independent script from §5.5 | RaelRotschwinge | 2026-10-05 | ✅ on the reference hand; not yet applied to a real model (see Notes) |
 | `010-finger-bones` | length and bytes against the §5.1 formula with the finger bits in `bone_mask` (mask `0x70000001`, 4 quaternions, 32 B, no compact block); round-trip through the codec; the §1.2 grant check and the finger/compact exclusivity by hand | §5.1, §5.3, §4, §1.2; independent script from §5.1 + §5.3 | Ron81; RaelRotschwinge | 2026-10-12 | ✅ every byte rebuilt from the spec text (see Notes) |
 | `poses/g01-claw-left-index` | the left index chain positions, rebuilt by applying the parent-relative quaternions to `hand-skeleton.json` by FK; a flipped flexion axis as a negative control | §3.1, §4; independent script with 3×3 rotation matrices | Ron81; RaelRotschwinge | 2026-10-12 | ✅ on the reference hand; not yet applied to a real model (see Notes) |
+| `poses/f01` … `f09`, `g02` (1.4.5) | every joint of every pose (41 each), rebuilt from the bytes by the 1.4.5 text of §5.5 (splay ±30°, the thumb's three bytes with opposition, roll and the outward split, the mirror rule; for `g02` the listed quaternions and the rest hand for every cleared bit) and §3.1 items 5 and 6, with 3×3 rotation matrices (Rodrigues; nothing imported from `scripts/finger-fk.mjs`, the vectors' `expect` read only after the positions were written); the worked example's `T0`; the informative shape table; six deliberate errors as negative controls | independent script from §5.5 | RaelRotschwinge | 2026-10-22 | ✅ worst 7e-7 m (the rounding of the files); see Notes |
 | `011-later-block` | every byte: the header of `001` with flags `0x40` and `seq` 11, the hips identity quaternion, then `01 02 03 04`; 24 B, 4 more than the §5.1 formula gives; `004b` (the same without the flag bit) stays a reject | by hand from §5.1, §5.3, §9 | RaelRotschwinge | 2026-10-12 | ✅ |
 
 **Rules**
@@ -23,6 +24,26 @@ The reference implementation generated these vectors, so on its own it proves no
 - Record disagreements here, even after they're fixed. They're the most useful part of this file.
 
 ## Notes
+
+- **The finger block of 1.4.5 (`poses/f01`–`f09`, `g02`, 2026-10-22, branch `proposal/fingers-1.4.5`).**
+  The synthesis changed for the splay (±30°) and the thumb, so `f03`–`f07` were derived again; `f01`,
+  `f02` and `g01` came out byte-identical; `f08`, `f09` and `g02` are new. An independent script
+  rebuilt every joint from the §5.5 text alone: worst deviation 7.0e-7 m over 41 joints in all ten
+  vectors. It built the right hand as `M · R · M` with `M = diag(−1, 1, 1)`, which equals the text's
+  `(x, −y, −z, w)`. Its first run disagreed by 12.6 cm: a bug in that script (it dropped the index to
+  little bones), not in the text. The worked example's `T0` came out as printed to six decimals on
+  both hands (19.56°; the direction 31.03° in the palm's plane and 13.82° below it). The seven rows of
+  the shape table agree (0.063, 0.068, 0.070, 0.140, 0.102 cm; 57.69°, 68.32°). Deliberate errors,
+  worst joint moved: splay at ±15° on `f08` 1.88 cm, opposition about X on `f04` 3.79 cm, the roll left
+  out on `f05` 2.19 cm, an outward thumb splay wholly on the metacarpal on `f08` 1.33 cm, an inward
+  splay spread on `f09` 3.07 cm, every cleared `g02` bit at identity 6.61 cm. Of the 24 cleared bits
+  of `g02`, 15 move a joint by more than 1 cm when left at identity alone; the eight distal bones and
+  `rightThumbProximal` move 0.48–0.90 cm, so `g02` catches a receiver that ignores the fall-back
+  everywhere, not one bone at a time below 1 cm. Found in the text and fixed before the branch: §4
+  still said a cleared bit is identity (now its rest rotation, §3.3); the roll's sign was only in
+  the table (now in the prose); the shape table did not say how its fist target and angles are
+  measured. **Open:** the vectors have not been applied to a real model's hand; the design was judged
+  on five avatars by eye.
 
 - `001-minimal` reproduces byte-for-byte: `01 00 01 00 00 00 00 00 01 00 00 00 00 00 00 00 00 02 08 E0`. The hips identity quaternion packs to `0xE0080200` (little-endian `00 02 08 E0`), matching Appendix A.
 - `005` tie case `(0, s, 0, s)` with `s = 0.70710678`: `y` and `w` are equal-magnitude, so the **lowest index** (`y`, index 1) is dropped → `0x600803FF`. This matches the Appendix A anchor table, derived independently of the reference code.
