@@ -8,20 +8,26 @@
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 ![Spec: 1.4.5](https://img.shields.io/badge/spec-1.4.5-brightgreen.svg)
 
-Posy (**Po**se **Sy**nchronization) is an open, compact protocol for syncing humanoid avatar poses between lots of people in real time. It runs over WebRTC data channels for direct and browser-to-browser links, and over a reliable WebSocket for server-relay deployments — each transport is the right tool for its context, not a fallback for the other. A typical upper-body frame with fingers and face is ~116 bytes — about 25–35× smaller than the same pose over VMC — so a whole room can move at once without anybody's upload crying.
+Posy (**Po**se **Sy**nchronization) is an open, compact protocol for syncing humanoid avatar poses
+between lots of people in real time. It runs over WebRTC data channels for direct and
+browser-to-browser links, and over a reliable WebSocket for server-relay setups. A typical
+upper-body frame with fingers and face is ~116 bytes — about 25–35× smaller than the same pose over
+VMC — so a whole room can move at once without anybody's upload crying. Zero runtime dependencies,
+Apache-2.0, and contributions are very welcome — see [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
----> 🧪 **Try out the [interactive site](https://ron81.github.io/posy/)** <---
-It lets you build a frame byte by byte, play with the **[bandwidth calculator](https://ron81.github.io/posy/#bandwidth)** and browse the tables. Or try the **[loopback demo](https://ron81.github.io/posy/demo/)** to watch how an avatar looks on different connections from premium Fibre to the last copper cable, in a cave, at the end of the world.
+> 🧪 **Play with it on the [interactive site](https://ron81.github.io/posy/)** — build a frame byte
+> by byte, run the [bandwidth calculator](https://ron81.github.io/posy/#bandwidth), or watch the
+> [loopback demo](https://ron81.github.io/posy/demo/) survive a bad connection.
 
 ## Is this for me?
 
-- ✅ You build multi-user VTuber/avatar apps in the browser or with WebRTC
-- ✅ You need many participants over normal internet connections
+- ✅ You build multi-user VTuber/avatar apps in the browser or over WebRTC
+- ✅ You need many participants on normal internet connections
 - ✅ You just want to hang out with a few friends — one of you hosts the room from home
 - ❌ You need lossless studio mocap recording → use VMC/BVH instead
-- ❌ You need a fully serverless peer-to-peer mesh → Posy routes through one peer (which can simply be you)
+- ❌ You need a fully serverless P2P mesh → Posy routes through one peer (which can just be you)
 
-## The 60-second tour
+## How it works
 
 ```text
  Sender ────── pose frames ──────▶ Routing peer ────── drops / forwards ──────▶ Receivers
@@ -29,11 +35,15 @@ It lets you build a frame byte by byte, play with the **[bandwidth calculator](h
                                     or a hosted SFU)
 ```
 
-- Pose rides an **unordered, zero-retransmit** data channel — label `avatar-pose`, protocol `posy/1`. A late frame is a useless frame, so nothing is ever resent. (A reliable WebSocket can stand in where server-side WebRTC isn't available — same frames, same "drop don't resend" rule, see spec §1.1.)
-- Every frame is **self-contained**. Losing one is fine; dropping one to save bandwidth is always safe.
-- Rotations are quaternions in Posy avatar space (the normalized rig of VRM 1.0 runtimes), packed **smallest-three into 4 bytes** each.
-- The routing peer only forwards or drops frames — it never rewrites bytes. That's what keeps the job light enough to run at home.
-- Voice is plain WebRTC Opus. Posy doesn't touch audio.
+- Pose rides an **unordered, zero-retransmit** data channel (label `avatar-pose`, protocol
+  `posy/1`). A late frame is a useless frame, so nothing is ever resent.
+- Every frame is **self-contained** — losing one is fine, and dropping one to save bandwidth is
+  always safe.
+- Rotations are quaternions in Posy avatar space (the VRM 1.0 normalized rig), packed
+  **smallest-three into 4 bytes** each.
+- The routing peer only forwards or drops frames — it never rewrites bytes, which is what keeps
+  hosting light enough to run from home.
+- Voice is plain WebRTC Opus; Posy doesn't touch audio.
 
 ### What's in a frame
 
@@ -43,14 +53,15 @@ It lets you build a frame byte by byte, play with the **[bandwidth calculator](h
 | Bone rotations | 4 B × N | 13 bones for a typical upper body = 52 B |
 | Root position + hips height | 8 B | optional (`HAS_ROOT`) |
 | Fingers | 24 B | optional (`HAS_FINGERS`) — curl + splay per finger, both hands |
-| Face | 18 B / 54 B | optional (`HAS_EXPRESSIONS`) — 16 VRM expressions, or all 52 ARKit blendshapes with `PERFECT_SYNC`; plus 2 gaze bytes |
+| Face | 15 B / 54 B | optional (`HAS_EXPRESSIONS`) — 13 VRM expressions, or all 52 ARKit blendshapes with `PERFECT_SYNC`; plus 2 gaze bytes |
 | **Typical total** | **115 B** | **154 B** with Perfect-Sync |
 
-One thing that trips people up: **the face doesn't travel as bones.** Blinks, mouth shapes, emotions and eye direction all live in the expression block (`HAS_EXPRESSIONS`). The eye/jaw bone bits are only a fallback for rigs that are literally bone-driven — and if both are present, the gaze bytes win.
+The face doesn't travel as bones — blinks, mouth shapes, emotions and eye direction all live in the
+expression block. The eye/jaw bone bits are only a fallback for literally bone-driven rigs.
 
-## How much bandwidth does it eat?
+## Bandwidth
 
-**Almost nothing on your end — and that never changes with room size.** Each person uploads exactly one small stream of their own pose, no matter how many people are in the room:
+Each person uploads one small stream of their own pose, and that **never grows with room size**:
 
 | Your tracking (at 30 Hz) | Your upload |
 |---|---|
@@ -58,143 +69,21 @@ One thing that trips people up: **the face doesn't travel as bones.** Blinks, mo
 | Upper body + fingers + face | ≈ 40 kbit/s |
 | Full body | ≈ 48 kbit/s |
 
-That's smaller than the voice call riding alongside it. Drop to 15 Hz and it roughly halves.
-
-The part that actually grows with the crowd is what the **routing peer** (the host) has to forward back out to everyone. A few real rooms:
-
-| Room | What the host forwards |
-|---|---|
-| **Classic 1:1** — two VTubers, upper-body tracking | ≈ 0.08 Mbit/s |
-| **Round of 8 friends** — 2 full-body, 4 upper-body, 2 face-only | ≈ 2 Mbit/s |
-| **Big party** — 5 full-body, 20 upper-body, 25 just watching | ≈ 51 Mbit/s |
-
-So a friends-sized room is nothing — any home connection hosts it. Only once you get to a real crowd does the host want a proper uplink; viewers who only watch cost almost nothing, since they never send.
-
-Want your own numbers? The [interactive bandwidth calculator](https://ron81.github.io/posy/#bandwidth) lets you dial the room size and rate tiers and watch the totals move. (Same maths as spec §6.)
-
-## Host it yourself
-
-"Server" is a role, not a product. For a group of friends, one of you runs the routing peer on your own machine — same idea as hosting a game server — and everyone else connects to you. A handful of people is comfortable on ordinary home fibre. If upload is the tight spot:
-
-- drop everyone to 15 Hz (`NORMAL`) or 5 Hz (`MINIMAL`) — 15 Hz already looks fine with smoothing,
-- let non-performers join as receive-only viewers,
-- or hand the routing role to whoever has the best upstream.
-
-Bigger rooms want a cheap VPS, and public ones a hosted SFU (mediasoup does data-channel forwarding natively). A ready-made chat and collaboration system, full implementation of posy with client and server, is currently in the making in a separate repo. Stay tuned, release is not far away!
-
-## Try the demo-implementation
-
-The no-server loopback demo animates a pose, `encode()`s it to Posy bytes, sends it through a fake channel with packet-loss and jitter sliders, `decode()`s it and drives two avatars side by side — the sender and what actually survived the trip. All local, all in the browser.
-
-The quickest look is the [hosted version](https://ron81.github.io/posy/demo/) — nothing to install. If you fear me stealing your model, rest assured, nothing is uploaded it all - it stays in your browser only. You can check the sourcecode in [`examples/loopback-demo`]. 
-Or run or hack on it yourself:
-
-```sh
-cd examples/loopback-demo
-npm install
-npm start
-```
-
-NPM handels the installation of dependencies on your machine so you can run it localy. That can also be done by 'npm install posy-protocol', but just to be clear - the npm package is only required for the demo's JavaScript/TypeScript tooling, not for implementing or using the Posy protocol itself.
-
-## Implement it
-
-1. Read [`spec/Posy.md`] — §3 (coordinates), §4 (bones) and §5 (packets) are the normative core.
-2. Validate against [`testvectors/`] — if those pass, you're conformant.
-3. Grab code from [`reference/js/`] freely — or use it as a cross-check for your own.
-
-If the spec, the reference code and the test vectors ever disagree, **the spec wins** and the other two get fixed. Please report it so I actually find out.
-
-## What's where
-
-| Path | What it is |
-|---|---|
-| [`spec/`] | The spec, plus the generated bone and blendshape tables |
-| [`schemas/`]| JSON Schema for the signaling messages (§2) |
-| [`scripts/`]| Generator for the spec's lookup tables |
-| [`reference/js/`] | TypeScript reference encoder/decoder |
-| [`testvectors/`] | Binary frames and quaternions with expected results — the most valuable folder here |
-| [`docs/`] | The interactive site (static, no build step) |
-| [`FAQ.md`] | Why things are the way they are |
-| [`CHANGELOG.md`] | What changed |
-| [`examples/`] | Runnable demos — start with the loopback demo |
-
-## Status
-
-**1.4.5 — released.** The packet format (§5) and signaling messages (§2) are soft-locked rather than
-frozen: no implementation has shipped yet, so they can still change in a 1.x revision, but every change
-needs a stated justification. The road-to-1.5 window (see [`ROADMAP.md`]) has now shipped through 1.4.5:
-- **1.4.0** added the per-joint `finger_bones` type and folded in the `bone_mask` grant-check cleanup.
-- **1.4.1** moved the directional tongue out of the expression block (it rides as a declared extra value
-  now), renamed the compact face tier **VRM-Sync** (the honest name for the VRM preset set; Perfect-Sync,
-  the ecosystem term for the 52 ARKit shapes, is unchanged), and restated the §6 size-vs-VMC figure with
-  its arithmetic.
-- **1.4.2** brought the signaling schema up to the 1.3.0 declared extras, stated a few implicit spec
-  points (an `extra_max` limit MAY be 0), and completed the test-vector generator — no wire change.
-- **1.4.3** removed tongue protrusion (`tongueOut`) and the `"tongue"` type from the VRM-Sync block, so
-  the face is exactly two tiers (VRM-Sync and Perfect-Sync) and every data type is checkable in the frame
-  header; a VRM-Sync sender declares a tongue as a declared extra value.
-- **1.4.4** defined what "additive" means after the freeze: an older peer ignores a signaling message,
-  field, data type or error code it does not know, and accepts a frame with a later block behind flag bit
-  6 or 7 — anything an older peer cannot survive is `posy/2`.
-- **1.4.5** made the PMX (MMD) avatar driver rule normative (§3.2), so the former "untested MMD" row is
-  gone: an avatar driver maps PMX bones, builds the T-pose with one rigid turn per arm, and keeps every
-  IK chain. It also pinned a few meanings that a driver needs — the gaze bytes are the line of sight from
-  the head, a PMX bone/morph is named by its first name field, each avatar type keeps its own hips
-  landmark — and reworked the compact finger block: four-finger splay widened to ±30°, and the thumb's
-  three bytes drive its three bones together (splay, opposition with a roll, curl) from each avatar's
-  measured thumb rest. No frame, size or codec change.
-
-The version byte stays 4 across all of 1.4.x.
-
-Since 1.1.0 (which brought the full-body profile with leg/foot/toe bones, on-wire hips height, and
-tongue tracking):
-- **1.2** pinned the leg/foot/toe rotation conventions, added a VRM 0.x driver, and fixed the finger
-  rotation signs — no change to the frame layout.
-- **1.3** added **declared avatar-specific extras** — a sender names further bones (tail, ears, wings,
-  extra limbs, single toes) and scalar values (its own expressions, MMD morphs) from its own avatar
-  file and sends them in one block at the end of the frame. It's additive: a sender that declares no
-  extras produces the same frames as 1.2, so these cost 0 bytes when unused.
-
-Other-language implementations (Rust, C#, Python, …) are very welcome — please open a PR adding a link
-here.
+That's smaller than the voice call riding alongside it; drop to 15 Hz and it roughly halves. The
+part that scales with the crowd is what the host forwards back out — a friends-sized room is
+nothing, a real crowd wants a proper uplink. Dial your own numbers in the
+[bandwidth calculator](https://ron81.github.io/posy/#bandwidth) (same maths as spec §6).
 
 ## What's next
 
-1.x is in a short, time-boxed window where the last few breaking tidy-ups land together — a per-joint
-`finger_bones` option, a mask-check cleanup, and a tested PMX/MMD driver — after which the core locks
-for a long, calm, additive-only run. The full plan, the release sequence, and the real-use gate before
-1.5.0 are in **[`ROADMAP.md`]**.
-
-2.0 is deliberately far off — 1.x is where the work is.
-
-[`ROADMAP.md`]: ROADMAP.md
-
-## Thanks — standing on a lot of shoulders
-
-Posy is small on purpose. I didn't reinvent anything I could just borrow, so honestly this whole thing only exists because other people did the hard work first and shared it openly.
-
-Huge thank you to:
-
-- **[VRM](https://vrm.dev/) (@pixiv & the VRM Consortium)** — for making and keeping humanoid avatars an actually open standard. Posy's bones and expressions just speak VRM 1.0 natively, no translation needed. The fact that avatars *can* be open like this is a big reason any of this works.
-
-- **ARKit blendshapes** — for that 52-name facial vocabulary everyone uses now. I reused it verbatim for the face block, so it just drops straight in. Boring in the best way.
-
-- **The folks behind the [VMC protocol](https://protocol.vmc.info/)** — you already nailed local pose streaming. Posy is really just asking "what if we did that VMC thing, but with a bunch of friends over the internet?" Thanks for the blueprint and the inspiration — hope you don't mind me borrowing your idea ;)
-
-- **WebRTC** — for unordered, zero-retransmit data channels. Which turns out to be *exactly* what you want when a late mocap frame is a useless mocap frame. Thanks to everyone who builds and maintains that unglamorous plumbing.
+1.x is in a short window where the last breaking tidy-ups land, after which the core locks for a
+long, calm, additive-only run. The full plan, the release sequence, and the real-use gate before
+1.5.0 are in [`ROADMAP.md`](ROADMAP.md). 2.0 is deliberately far off — 1.x is where the work is.
 
 ## But why?
 
-For most things you can just reach for VMC and call it a day — it's great at what it was built for.
-But it's a local-machine protocol at heart, and what I kept wanting was something just as light that
-survives the trip over the internet to more than one person. The tools that already pull that off
-(Vupechat, VRChat, …) are all closed source. So here we are.
-
-## Contributing
-
-Issues are for the protocol, [Discussions] are for everything else. 
-Spec changes need an issue first. Details in [`CONTRIBUTING.md`].
-
-## License
-[Apache-2.0](LICENSE)
+For most things you can reach for VMC and call it a day — it's great at what it was built for. But
+the open options (VMC, VRChat's OSC) are local-machine protocols at heart, and the tools that
+actually stream poses to a bunch of people over the internet (VRChat's own sync, Vup, …) are
+closed. What I kept wanting was something just as light that survives the trip over the internet to
+more than one person — and open. So here we are.
