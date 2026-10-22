@@ -378,12 +378,13 @@ A sender that declares `"extra"` adds an `extra` object beside `sends` (in `caps
 ```
 
 - `bones` — up to 255 names. Each names one bone of the avatar file that is neither a
-  humanoid bone of §4 nor a finger bone (VRM: the glTF node name; MMD/PMX: the bone name).
-  It is transmitted as a rotation.
+  humanoid bone of §4 nor a finger bone (VRM: the glTF node name; PMX: the bone's first
+  name field). It is transmitted as a rotation.
 - `values` — up to 255 names. Each names one scalar control the avatar file defines
   (VRM: an expression that the sender's own expression block does not carry — beyond the
   13 presets for a VRM-Sync sender, beyond the 52 weights for a Perfect-Sync sender, §5.6;
-  MMD/PMX: a morph, including bone and group morphs). It is transmitted as one byte. This
+  PMX: a morph, including bone and group morphs, by its first name field). It is
+  transmitted as one byte. This
   is how richer face sets ride without any change to Posy: the tongue of a VRM-Sync
   sender, directional or curled tongue, ARKit shapes beyond the Perfect-Sync 52, or a
   community superset such as VRCFaceTracking Unified Expressions, are each carried by the
@@ -391,6 +392,11 @@ A sender that declares `"extra"` adds an `extra` object beside `sends` (in `caps
   mechanism is the standard, the names are the sender's.
 - A name MUST be unique in the avatar file among the items of its kind. An item without a
   unique name cannot be declared; that is a fault of the file and is not worked around.
+- A PMX bone or morph has two name fields. The name is always the **first** one, the
+  format's own primary identifier, even where the second is filled. The second field is
+  often empty or repeated, so it cannot keep names unique. The name is an opaque key:
+  sender and receiver hold the same file (§0) and match the name exactly, and Posy never
+  interprets it.
 - A name in `values` that begins with `app:` is not resolved against the avatar. Its
   meaning is agreed between applications and is outside Posy; a receiver that does not
   know it ignores the byte.
@@ -500,15 +506,15 @@ construct, not a term of the VRM specification.
 
 ### 3.2 Conversion from the capture is the sender's job, never the receiver's
 
-A receiver MUST apply incoming quaternions directly to the normalized humanoid rig of
-its local instance of the sender's avatar (§0), taken in the avatar space of §3.1. It
+A receiver MUST apply incoming quaternions to its local instance of the sender's avatar
+(§0), in the avatar space of §3.1, through its avatar driver (below). It
 MUST NOT need to know the sender's tracker or how the sender produced the rotations.
 
 | Sender avatar | Sender obligation |
 |---|---|
 | **VRM 1.0** | None. Normalized bones are native. Read and send. |
 | **VRM 0.x** | Send rotations in the avatar space of §3.1, exactly as for a VRM 1.0 avatar. If they are read from the runtime's normalized humanoid rig, convert them where that rig is not in avatar space (see below). MUST NOT read the raw glTF node rotations. VRM 0.x names the thumb joints one step further out: 0.x `ThumbProximal` / `ThumbIntermediate` are 1.0 `ThumbMetacarpal` / `ThumbProximal`. §4 and §5.5 use the 1.0 names; a sender that derives the finger block, or the thumb bones of the `finger_bones` type (bits 25–27 and 40–42), from 0.x bone names MUST apply this mapping. |
-| **MMD** (untested) | Map MMD bones to humanoid semantics, then send `q_wire = inverse(q_rest) · q_current` per bone in the parent-relative frame, where `q_rest` is that bone's rotation in the model's own rest (A- or T-) pose. `inverse(q_rest)` MUST be precomputed once at model load. **This formula has not been checked on an MMD/PMX model and may be wrong**: a PMX bone has a position and a parent but no rest rotation of its own. It stays until a PMX model passes the pose vectors (`testvectors/poses/`); do not build on it. |
+| **PMX** | Send rotations in the avatar space of §3.1, exactly as for a VRM 1.0 avatar. The rig is not in avatar space and has no rest rotations; its driver converts as given under "PMX avatars" below. |
 
 **The wire is always in avatar space; the avatar driver adapts the rig.** Rotations on
 the wire are in the avatar space of §3.1 for every avatar, whatever its file format. A
@@ -549,19 +555,63 @@ Whether a driver needs the conversion depends only on the avatar file and the ru
 and is known at load. It can be checked with pose vector `p02` (§10 item 8): the shin
 must point toward the avatar's back.
 
+**PMX avatars.** A PMX file has no normalized rig: a bone has a position and a parent but
+no rest rotation, and the file's rest pose usually has the arms lowered. What follows is the PMX
+avatar driver's obligation, on the sending and the receiving end alike. It is worked out
+from the avatar file at load and applied to each frame; nothing of it is carried on the
+wire, by a relay or by the server.
+
+- **Bones.** The driver maps the model's bones to §4 by the MMD semi-standard bone names.
+- **Space.** The file is left-handed, its left arm at +X and its face toward −Z. A
+  position converts to avatar space by negating z, a rotation by
+  `(x, y, z, w) → (−x, −y, z, w)`.
+- **T-pose.** In the file's rest pose every bone is at identity in the model's axes. The
+  driver makes the T-pose with one rigid turn per arm: `T` is the shortest rotation that
+  turns the direction from the upper-arm joint to the wrist joint in the file's rest pose
+  onto the avatar's
+  +X (left arm) or −X (right arm). `T` applies to the upper arm and every bone below it,
+  and is identity for every other bone. The file's own elbow bend and wrist angle are
+  kept.
+- **Rotation.** For every bone `b` of §4 that the model has, in avatar space:
+
+  ```
+  A(b) = A(posy_parent(b)) · q_wire(b)        A(hips) = q_wire(hips)
+  r(b) = R(rig_parent(b))⁻¹ · A(b) · T(b)     the rotation the driver sets on b
+  ```
+
+  `A` is the bone's rotation against the T-pose; `posy_parent` is its parent in §4.
+  `R(x)` is the accumulated (model-space) rotation that rig bone `x` actually has once
+  every bone above it is worked out, including a rotation it takes from another bone (as the deform copies of the
+  leg bones in many models take the leg bone's rotation). `R` is identity only for a
+  bone that neither the driver nor another bone turns. Bones are worked out in the file's
+  own order: by deform level, then as listed.
+- Where the rig and §4 give a bone the same parent, this comes to: `r = q_wire` for legs,
+  chest, upperChest, shoulders, neck and head; `r = q_wire · T` for the upper arm; `r = T⁻¹ · q_wire · T` for the
+  forearm, the hand and the fingers. Where the model's lower and upper body are siblings,
+  the lower body gets `q_hips` and the upper body `q_hips · q_spine`.
+- **IK.** The leg and toe IK chains are off; the leg bones are set from the frame, or at
+  rest (§3.3). Every other IK chain, one that no bone set from the frame belongs to (a
+  skirt, an eye limiter, hair, a tail), is solved for each frame in the file's
+  order, within its links' limits. Without it such a chain stays where it was while the
+  bones around it move.
+- Helper bones between two mapped bones (twist and cancel bones) stay at identity.
+  Whether a twist is spread onto them for better skinning is the driver's choice.
+- A declared extra bone (§2.6) is taken from the model's physics and IK while it is
+  declared. Its rest is the T-pose made above, so below an arm the rule of §5.8 comes to
+  `r = T⁻¹ · q · T` with that arm's turn, and elsewhere to `r = q`.
+
 Receiver side: decode `q_wire` to the avatar-space rotation of §3.1, then hand it to the
 avatar driver, which adapts it to the rig as above (the mirror of the sender's path).
 - VRM 1.0: the rig is in avatar space; the driver applies `q_wire` directly.
 - VRM 0.x facing −Z: the driver applies `q_rig = (−x, y, −z, w)` before setting the bone.
-- MMD (untested, see the table above): `q_local = q_rest · q_wire`, with `q_rest`
-  precomputed at load.
+- PMX: the driver sets `r(b)` as above, converted into the file's space.
 
 ### 3.3 Missing bones
 
 A sender that cannot solve a bone, or whose avatar lacks it (e.g. an MMD model without
 `upperChest`), MUST clear that bone's bit in `bone_mask` and omit its quaternion. Receivers MUST treat an absent
 bone as holding its **rest rotation**, not "hold last value", except during the
-packet-loss concealment window defined in §8.3.
+packet-loss concealment window defined in §8.3 and as allowed below for an upper arm.
 
 The rest rotation is the identity quaternion (no rotation delta from the T-pose) for
 every bone except the four below. Those rest with the arm hanging at the side:
@@ -579,6 +629,12 @@ no `"bones"` at all and to one that sends `"bones"` without the arms (face track
 head rotation). Without it both are rendered with the arms held out sideways. A sender
 that wants an arm in the T-pose sends the identity quaternion for it.
 
+The rest rotation is local to the shoulder, so while the trunk bends the arm leans with
+it: a sender that leans forward without sending arms is shown with the arms rising in
+front. For an absent upper arm, a receiver MAY show the arm differently, for example
+hanging by gravity. The rest rotation stays the default; the concealment window of §8.3
+is unaffected.
+
 A frame with no finger data at all — no compact block and no finger bones — is rendered
 with the rest hand of §5.5. Under `finger_bones`, a single finger bone whose bit is clear
 takes its rest-hand value for that joint (§5.5), consistent with this rule.
@@ -591,6 +647,9 @@ that §3.1 does not imply; if the two ever disagree, §3.1 wins.
 
 **T-pose of the legs.** Legs straight and vertical, feet parallel, toes pointing +Z, soles
 flat on the floor.
+
+**Toes.** A `toes` rotation is the turn from the toe bone's own rest in the avatar file.
+A model whose toe bone rests at an angle is driven from that angle, not from a flat toe.
 
 Each row is a rotation of that bone alone about one axis, starting from the T-pose:
 
@@ -780,6 +839,12 @@ in the room. `h / 32768` is the height of the hips above the floor as a fraction
 feet in the avatar's T-pose. `32768` = standing, `0` = hips on the floor, values above
 `32768` (up to ≈ 2.0) = raised, e.g. a jump. Sender rules are in §8.5.
 
+On a PMX avatar, `h` and `H` are both measured at the midpoint between the two leg roots
+(the upper-leg joints): the **hips landmark** of a PMX avatar. On every other avatar the
+landmark is the hips bone. Each avatar type keeps its own: on VRM avatars the hips bone
+sits 4.5–9.8 % of `H` above the leg-root midpoint (eleven models), so the PMX landmark is
+about 5 % lower. A sender and its receivers measure on the same avatar, so they agree.
+
 If `HAS_ROOT` is clear, the receiver MUST keep the avatar's last known position and
 hips height.
 
@@ -900,6 +965,22 @@ else.
 | 11 | `surprised` | `u8` | `v / 255` |
 | 12 | `neutral` | `u8` | `v / 255` |
 
+**Avatars without the presets.** A slot means its expression at that weight. The PMX
+format defines no moods, and files name their face morphs differently, so Posy names no
+morph for a mood: a receiver shows a mood as well as its avatar can, and ignores a slot it
+cannot bind. A
+sender that wants its exact face on such an avatar sends the morphs as extra `values`
+(§2.6). For the visemes and the lids, MMD faces share these morph names:
+
+| Slots | PMX morph |
+|---|---|
+| `aa`, `ih`, `ou`, `ee`, `oh` | `あ`, `い`, `う`, `え`, `お` |
+| `blinkLeft` and `blinkRight` together | `まばたき` |
+| `blinkLeft`, `blinkRight` alone | `ウィンク２`, `ｳｨﾝｸ２右` |
+
+How a receiver composes the two lid slots from these morphs is its choice. A file whose
+morphs are named otherwise is the implementation's to map.
+
 **Tongue.** The tongue is not a VRM preset. The VRM-Sync block has no slot for it, and
 there is no tongue type.
 - A VRM-Sync sender whose avatar file defines a tongue expression declares it as extra
@@ -926,6 +1007,19 @@ A sender MUST NOT set `PERFECT_SYNC` unless `"perfect_sync"` is in `allowed`.
 `i8` values, `−127 … +127` mapped linearly to `−45° … +45°`.
 - **yaw:** positive = toward the avatar's own left.
 - **pitch:** positive = upward.
+
+The two bytes are the **line of sight**: where the person looks, in real degrees, measured
+from the head. They are not the angle of any bone. Zero is the sender's calibrated
+straight-ahead; what the sender calibrates against is its own choice. A receiver shows
+zero as eyes centred.
+
+Each receiver maps the line of sight onto what its avatar can show; the mapping is the
+implementation's. Two things to watch:
+- **VRM:** a look-at range map applied one to one moves the eyes of many avatars by a
+  small part of the look. VRoid Studio writes 90° in, 10° out for every direction, so a
+  look of 30° turns the eyes about 3° of their 10°.
+- **PMX:** the angle applied one to one to the eye bones (`両目`, or an eye IK chain)
+  overshoots what the eyes of some models can show.
 
 Receivers SHOULD drive `leftEye`/`rightEye` from gaze rather than from bone bits 6–7;
 if both are present, the gaze bytes take precedence.
@@ -959,13 +1053,13 @@ identifier: both ends know them from the declaration.
 - A frame carries the whole block or none of it. A sender that declared extras MAY omit
   the block in any frame.
 - **Extra bone.** The quaternion has the meaning of every other bone (§3.1 items 3, 5
-  and 6): the bone's local rotation delta from its rest pose in the avatar file, in avatar
-  axes, composed parent first. In the rest pose it is the identity. The avatar driver
-  (§3.2) turns it into the node's own local rotation:
-  `q_node = q_rest · W⁻¹ · q · W`, where `q_rest` is the node's local rotation at rest
-  and `W` its rotation in avatar space at rest, with the avatar facing +Z. A driver that
-  measures `W` in a rig that faces −Z applies `(−x, y, −z, w)` to `q` first, as for the
-  humanoid bones (§3.2).
+  and 6): the bone's local rotation delta from its rest pose in the avatar file (on PMX,
+  the T-pose the driver makes, §3.2), in avatar axes, composed parent first. In the rest
+  pose it is the identity. The avatar driver (§3.2) turns it into the node's own local
+  rotation: `q_node = q_rest · W⁻¹ · q · W`, where `q_rest` is the node's local rotation
+  at rest and `W` its rotation in avatar space at rest, with the avatar facing +Z. A
+  driver whose rig is not in avatar space converts `q` first, as for the humanoid bones
+  (§3.2): `(−x, y, −z, w)` on a VRM 0.x rig that faces −Z, `(−x, −y, z, w)` on PMX.
 - **Value.** `0` … `255` is the weight `0.0` … `1.0`, linear. For an `app:` name the byte
   is not interpreted by Posy.
 - **A declared extra bone is driven by the sender.** A receiver MUST set it from the frame
@@ -1098,8 +1192,8 @@ can all carry similar leg angles. The sender therefore transmits the hips height
 (§5.4), and the receiver applies it.
 
 **Sender.**
-1. `h` is the height of the hips above the floor divided by the standing hip height
-   `H` of the sender's avatar, for the pose as the sender's own avatar shows it.
+1. `h` is the height of the hips landmark (§5.4) above the floor divided by the standing
+   hip height `H` of the sender's avatar, for the pose as the sender's own avatar shows it.
 2. A sender with a floor reference (calibrated trackers) derives `h` from the tracked
    hips height, scaled by the performer's standing hips height from calibration.
 3. A sender without a floor reference (e.g. a single camera) estimates `h` from the
@@ -1108,8 +1202,8 @@ can all carry similar leg angles. The sender therefore transmits the hips height
 5. `h` SHOULD be filtered like any other tracked value (§7).
 
 **Receiver.**
-1. Place the hips of the sender's avatar at `h / 32768 × H` above that avatar's floor
-   line, with `H` taken from the receiver's local instance of the avatar.
+1. Place the hips landmark (§5.4) of the sender's avatar at `h / 32768 × H` above that
+   avatar's floor line, with `H` taken from the receiver's local instance of the avatar.
 2. Interpolate `h` per §8.2.
 3. The receiver performs no forward kinematics, grounding or clamping of its own. The
    sender renders the same avatar and is responsible for a plausible result.
@@ -1323,12 +1417,12 @@ toes if the avatar has them, both knees — record its clearance `clear[c]`, the
 that bone's origin above the floor line. For the knees use the shin radius `r_shin`
 instead, since a knee only touches the floor when kneeling.
 
-Per frame, with the solved rotations applied and the hips at the origin:
+Per frame, with the solved rotations applied and the hips landmark (§5.4) at the origin:
 
 ```
 h_est = 0
 for c in contacts:
-    y = world_y(c)                 // ≤ 0 when the point is below the hips
+    y = world_y(c)                 // ≤ 0 when the point is below the landmark
     k = clear[c]
     if c is a foot and its local +Y axis points below the horizontal:
         k = r_shin                 // sole up: the foot rests on its instep

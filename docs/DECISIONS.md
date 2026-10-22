@@ -6,6 +6,91 @@ that commit messages and the spec text do not keep in one place.
 
 ---
 
+## 0011 — PMX avatars: the driver rule, names, hips height, toes, the gaze bytes, moods, absent arms
+
+**Date:** 2026-10-22 · **Status:** Proposed · **Affects:** §2.6, §3.2, §3.3, §3.4, §5.4, §5.6, §5.8, §8.5, Appendix D
+
+### Context
+
+The MMD row of §3.2 was marked untested and not to be built on (`q_wire = inverse(q_rest) ·
+q_current`; a PMX bone has no rest rotation). PMX over Posy was then checked in an
+implementation with a PMX driver, on three PMX models beside VRM ones. Each model was shown
+twice, side by side: driven straight from the tracker, and through encode, relay, decode and
+the driver. The pose vectors `p01`–`p09`, `f01`–`f07` and `g01` were run through the driver on
+four PMX and eleven VRM models.
+
+- **The wire fits PMX.** Every leg segment stays within the model's own rest lean; fingers are
+  within 1.2°. Where something looked wrong it looked wrong on both figures, so it was the
+  sender's tracking or the driver, not the wire. No change of the frame layout is needed.
+- **The driver rule had two gaps.** A bone that copies another bone's rotation (the deform
+  copies of the leg bones) was counted as unturned, so the toe turned with the leg twice. IK
+  chains that no driven bone belongs to (skirt, eyes) were left unsolved, so a standing leg
+  looked slanted and the eyes stayed still.
+- **Names.** The first name field is filled and unique for every bone and morph of the models;
+  the second is sparse and repeats (one model: 21 of 206 bones).
+- **Hips height.** §5.4 defines `H` by the VRM hips bone; PMX needed a landmark of its own, the
+  midpoint of the leg roots. A PMX and a VRM avatar side by side at the same `h` showed no
+  visible difference standing or crouching, although the two landmarks differ by 4.5–9.8 % of
+  `H` on eleven VRM models.
+- **Gaze.** §5.6 gave a range and a sign but not what the angle is. A tracker's eye-bone angle
+  put on the wire moved one model's pupils out of the eye at 35°; PMX files scale their eye
+  bones differently, move the eyes by an IK chain, or by morphs only. Through VRM's look-at range
+  map applied one to one, the eyes of VRoid avatars hardly move (90° in, 10° out).
+- **Moods.** PMX has no moods, only morphs for parts of the face. Bound to one morph per mood, a
+  mood shows on one part only; the models name their whole-face morphs differently, and one has
+  none.
+- **Absent arms.** The rest rotation of §3.3 is local to the shoulder, so a sender who leans
+  forward without sending arms is shown with the arms rising, on PMX and VRM alike. A receiver
+  that hangs such an arm by gravity broke the MUST of §3.3.
+
+### Decision
+
+- **§3.2: the PMX driver rule is normative,** as the PMX driver's obligation at load and per
+  frame, carried by no wire, relay or server: the space conversion, one rigid turn `T` per arm
+  for the T-pose, `r(b) = R(rig_parent(b))⁻¹ · A(b) · T(b)` with `R` the parent's actual
+  rotation including copied rotations, leg IK off while `legs` is declared, every other IK chain
+  solved, helper bones at identity.
+- **§2.6: a PMX name is the first name field,** an opaque key.
+- **§5.4: each avatar type keeps its own hips landmark.** For PMX, `h` and `H` are both measured
+  at the midpoint of the leg roots; the offset of about 5 % against VRM is stated. VRM's `H` does
+  not move. §8.5 and Appendix D refer to the landmark.
+- **§5.8: an extra bone's rest on PMX is the driver's T-pose,** and the rotation conversion is
+  given per rig, so a PMX driver does not take VRM 0.x's.
+- **§3.4: a toe rotation is the turn from the toe's own rest.**
+- **§5.6: the gaze bytes are the line of sight** from the head, in real degrees; zero is the
+  sender's calibrated straight-ahead. Mapping it onto an avatar is the receiver's, with one
+  clarification each for VRM and PMX.
+- **§5.6: Posy names no morphs for moods.** A slot means that expression at that weight; an
+  unbound slot is ignored; an exact face goes through extras. The visemes and lids keep the
+  names MMD faces share.
+- **§3.3: the rest rotation stays the default,** and a receiver MAY show an absent upper arm
+  otherwise, for example hanging by gravity. No formula.
+
+### Alternatives rejected
+
+- **The second (English) name field when it is filled.** It is sparse and repeats, so names
+  would no longer be unique, and the wire name would depend on whether a modeller filled it.
+- **Moving VRM's `H` to the leg-root midpoint.** It would change `h` for every VRM avatar, for a
+  difference that did not show.
+- **The gaze bytes as the eye-bone angle of the sender's avatar.** Meaningless for eyes moved by
+  IK or morphs, it bypasses VRM's look-at, ties the bytes to one file, and a tracker that
+  measures the real eye direction would have to convert it for one avatar.
+- **VRM's look-at range map as the mapping.** It leaves the eyes of the most common VRM avatars
+  nearly still.
+- **A PMX eye factor, or a morph set per mood, in the spec.** Both differ per file; they are an
+  implementation's choice.
+- **A gravity hang as a MUST with a formula.** The frame carries no arm data, so where the arms
+  are is unknown; hanging them is a display guess.
+
+### Consequences
+
+- A PMX driver can be built from §3.2; the `untested` label is gone.
+- No frame, vector or codec change. A receiver that maps gaze one to one through VRM's range map
+  is still conformant but shows little; the clarification says why.
+- PMX bone and morph names in the spec are limited to the MMD semi-standard face names and `両目`.
+
+---
+
 ## 0010 — What "additive" means: what an older peer does with what it does not know
 
 **Date:** 2026-10-12 · **Status:** Accepted · **Affects:** §1.2, §2.1, §2.7 (new), §5.1, §5.2, §9, §10, Appendix B, schema, codec, vector 011

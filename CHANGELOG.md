@@ -3,6 +3,36 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
+## [Unreleased]
+
+PMX avatars over Posy, from a check in an implementation with a PMX driver on three PMX
+models beside VRM ones: the wire fits PMX, no change to any frame. **Changes sender and
+receiver behaviour:** the PMX driver rule binds both ends, the meaning of the gaze bytes is
+stated, and a receiver may show an absent upper arm otherwise than at rest.
+`docs/DECISIONS.md` 0011.
+
+### Changed
+- **§3.2** — the PMX (MMD) driver rule is normative and replaces the untested MMD row: space
+  conversion, one rigid turn per arm for the T-pose, `r(b) = R(rig_parent(b))⁻¹ · A(b) · T(b)`
+  with the parent's actual rotation, IK chains no driven bone belongs to solved, leg IK off while
+  `legs` is declared. It is the driver's obligation at load and per frame; nothing of it travels.
+- **§2.6** — a PMX bone or morph is named by its first name field, an opaque key.
+- **§5.6** — the gaze bytes are the line of sight from the head in real degrees, zero at the
+  sender's calibrated straight-ahead; the mapping onto an avatar is the receiver's, with one
+  clarification for VRM (a look-at range map used one to one barely moves VRoid eyes) and one for
+  PMX (one to one on the eye bones overshoots).
+- **§5.6** — Posy names no morphs for moods; an unbound slot is ignored; the MMD morph names of
+  the visemes and lids are stated.
+- **§3.3** — a receiver MAY show an absent upper arm otherwise than at rest, e.g. hanging by
+  gravity; the rest rotation stays the default.
+- **§5.8** — an extra bone's rest on PMX is the driver's T-pose; the rotation conversion is
+  given for PMX beside VRM 0.x.
+
+### Added
+- **§5.4, §8.5, Appendix D** — the hips landmark: on PMX, `h` and `H` are measured at the
+  midpoint of the leg roots, about 5 % of `H` below the VRM hips bone. VRM's `H` is unchanged.
+- **§3.4** — a toe rotation is the turn from the toe's own rest.
+
 ## [1.4.4] - 2026-10-13
 
 Defines "additive" for the time after the freeze. No change to any frame a sender of this
