@@ -214,15 +214,15 @@
       "examples": [{ "t": "subscribe", "peer_uid": "u_8f31", "tier": "FULL" }]
     },
     "rate": {
-      "description": "Server → Client (§2.4). The highest tier currently demanded by any of the sender's subscribers, in Hz. Senders MUST NOT exceed it (+10% tolerance).",
+      "description": "Server → Client (§2.4). The highest tier currently demanded by any of the sender's subscribers, in Hz. Senders MUST NOT exceed it (+10% tolerance). 0: nobody wants the sender's frames; it sends none until a rate above 0 arrives, its declaration and grant stay valid.",
       "type": "object",
       "required": ["t", "hz"],
       "additionalProperties": false,
       "properties": {
         "t": { "const": "rate" },
-        "hz": { "type": "number", "exclusiveMinimum": 0 }
+        "hz": { "type": "number", "minimum": 0 }
       },
-      "examples": [{ "t": "rate", "hz": 15 }]
+      "examples": [{ "t": "rate", "hz": 15 }, { "t": "rate", "hz": 0 }]
     },
     "error": {
       "description": "Server → Client (§2.5). Error handling is server-enforced. 'action' is free-form text in 1.0-draft (the only value that appears in the spec is the example \"POSE_MUTED\").",

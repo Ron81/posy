@@ -6,7 +6,6 @@ import {
   FLAG_HAS_ROOT,
   FLAG_HAS_FINGERS,
   FLAG_HAS_EXPRESSIONS,
-  FLAG_IDLE,
   FLAG_HAS_EXTRA,
   FLAG_LATER_BLOCK,
 } from './index.js';
@@ -85,7 +84,6 @@ export function decode(bytes: Uint8Array, extra?: ExtraCounts): Frame {
     version,
     seq,
     timestampMs,
-    idle: (flags & FLAG_IDLE) !== 0,
     bones,
   };
 

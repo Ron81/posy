@@ -3,6 +3,36 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
+## [Unreleased]
+
+Four corrections from a review of an implementation's sender, relay and receiver against 1.4.5,
+judged by real use (a phone that loses its signal for a while, a home PC on a steady line).
+No frame changes size or layout. **Changes sender and relay behaviour:** flag bit 4 is no longer
+set, and a sender honours `rate` 0. `docs/DECISIONS.md` 0014.
+
+### Changed
+- **§2.2** — one clock exchange at join is required (was five, with the median), and a sender's
+  timestamps must not run backwards. Repeating the exchange with a slew is a MAY, for
+  applications that put several senders on one timeline; nothing in this revision compares two
+  senders' timestamps.
+- **§2.4** — `rate` may be 0: nobody wants the sender's frames (all subscribers on `OFF`, or
+  nobody else in the room). The sender sends none until a `rate` above 0 arrives; declaration
+  and grant stay valid. A sender that stops on its own account declares nothing (§2.1).
+- **§2.4** — lowering a subscription is the receiver's decision (MAY); it was a MUST under load.
+- **§5.2, §7** — flag bit 4 (`IDLE`) is reserved: MUST be 0, ignored on receive, and a relay
+  does not reject it (§1.2). §7's "set `IDLE` after 2 s and drop to `MINIMAL`" is replaced: a
+  sender MAY send fewer frames than its rate allows, or none for a while, and a sender whose user
+  is away declares nothing. §9 lists bit 4 as free for a later meaning.
+
+### Reference implementation
+- `Frame.idle` and `FLAG_IDLE` are removed; the encoder never sets bit 4, the decoder ignores it.
+- Schema: `rate.hz` minimum 0, with an example.
+- No test vector changes (none set bit 4); a unit test pins the reserved bit.
+
+### Not changed
+- The loopback demo and the site keep their `IDLE` toggle and field until their rework (they are
+  frozen); the demo builds against the codec.
+
 ## [1.4.5] - 2026-10-22
 
 PMX avatars over Posy, from a check in an implementation with a PMX driver on three PMX

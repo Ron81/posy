@@ -6,7 +6,6 @@ import {
   FLAG_HAS_ROOT,
   FLAG_HAS_FINGERS,
   FLAG_HAS_EXPRESSIONS,
-  FLAG_IDLE,
   FLAG_HAS_EXTRA,
   FINGER_BIT_LOW,
   FINGER_BIT_HIGH,
@@ -58,7 +57,6 @@ export function encode(frame: Frame): Uint8Array {
   }
 
   let flags = 0;
-  if (frame.idle) flags |= FLAG_IDLE;
   if (frame.root) flags |= FLAG_HAS_ROOT;
   if (frame.fingers) flags |= FLAG_HAS_FINGERS;
   if (frame.expressions) {

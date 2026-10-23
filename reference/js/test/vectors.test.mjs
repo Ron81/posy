@@ -80,7 +80,6 @@ for (const jf of jsonFiles) {
         version: f.version,
         seq: f.seq,
         timestampMs: f.timestampMs,
-        idle: f.idle,
         bones: f.bones,
         root: f.root,
         fingers: f.fingers,

@@ -6,6 +6,58 @@ that commit messages and the spec text do not keep in one place.
 
 ---
 
+## 0014 — The session layer by real use: one clock sync, `rate` 0 pauses, no `IDLE`
+
+**Date:** 2026-10-23 · **Status:** Proposed · **Affects:** §1.2, §2.2, §2.4, §5.2, §7, §9, schema `rate`, `reference/js` (`Frame.idle`, `FLAG_IDLE`)
+
+### Context
+
+An implementation's sender, relay and receiver were reviewed against 1.4.5 and judged by real use:
+a phone that loses its signal under a bridge for 20 s, and a home PC on a steady line all
+session. Four rules asked more than any use needs, or lacked a case that occurs every day.
+
+- §2.2 demanded five clock exchanges at join, the median, a repeat every 30 s and a slew. Nothing
+  compares two senders' timestamps: a receiver times each sender by arrival (§8.1), an extras
+  `since` is compared with frames of the same sender, the relay never reads timestamps.
+- A sender that nobody watches, or that is alone in a room, kept uploading: `rate` had to be
+  above 0, so the server could stop forwarding but not stop the upload.
+- §2.4 made it a MUST for a receiver under load to lower its subscriptions, which is a receiver's
+  choice.
+- `IDLE` marked frames of a sender "idle/AFK" while frames kept flowing. A receiver gains
+  nothing from it (skipping interpolation is negligible), a sender may send fewer frames without
+  it, and an absent user is better served by sending nothing: a tracker that misfires on noise
+  then cannot move the avatar of someone who said they are away.
+
+### Decision
+
+- §2.2: one exchange at join; a sender's timestamps stay monotonic; re-sync with slew is a MAY.
+- §2.4: `rate` 0 = pause. The sender sends nothing until a `rate` above 0 arrives and resumes at
+  once, with its declaration and grant unchanged. The server decides it; a sender that stops on
+  its own account declares nothing (§2.1).
+- §2.4: lowering a subscription is a MAY.
+- Flag bit 4 is reserved (MUST be 0, ignored on receive, not rejected by a relay). §7 says
+  instead that a sender MAY send fewer frames than its rate, or none for a while, and that a
+  sender whose user is away declares nothing.
+
+### Alternatives rejected
+
+- *Keeping `IDLE` and softening §7's SHOULD to a MAY.* The flag would stay in the frame after
+  1.5.0 with nothing that needs it; removing it is possible only before the lock.
+- *`rate` 0 setting `IDLE`.* At `rate` 0 no frame is sent, so there is nothing to carry a flag.
+- *A pause requested by the sender.* A sender pauses by not sending, or stops by declaring
+  nothing; only the server knows that nobody wants its frames.
+- *Keeping five exchanges as a SHOULD.* No use in this revision depends on the accuracy; the
+  option stays open as a MAY for applications that need it.
+
+### Consequences
+
+- A sender sets no flag bit 4; a 1.4.5 receiver that still reads `IDLE` sees it clear.
+- A relay MAY pause senders nobody wants; a sender MUST honour `hz` 0 (it MUST honour `rate`, §7).
+- No frame, vector or table changes. The demo and the site keep their `IDLE` toggle until their
+  rework.
+
+---
+
 ## 0012 — The finger block: splay ±30°, and the thumb's three bytes reworked as one piece
 
 **Date:** 2026-10-22 · **Status:** Accepted · **Affects:** §5.5, §10 items 9 and 11, pose vectors `f03`–`f09`, `g02`, `scripts/finger-fk.mjs`

@@ -121,7 +121,7 @@ A frame failing check 1, 2 or 3 is dropped. A violation of the frame-structure r
 (a bad version, a length mismatch, a reserved bit 55–63 set, or both finger carriages at
 once) counts toward `MALFORMED_THRESHOLD` (§2.5), reported once the threshold is crossed, not
 per frame. A bone or flag bit set for a type the sender was not granted is counted as
-`UNAUTHORIZED_TYPE` instead. Reserved flag bits 6–7 MUST NOT cause rejection: they are
+`UNAUTHORIZED_TYPE` instead. Reserved flag bits 4, 6 and 7 MUST NOT cause rejection: they are
 reserved for extensions (§9) and ignored on receive (§5.2). The relay's length check stays
 exact all the same: a frame that carries a block the relay does not know behind one of
 these bits fails check 2. A receiver likewise still
@@ -277,15 +277,20 @@ forwarded packets.
 Client → Server: `{ "t": "ping", "t1": <client_monotonic_ms> }`
 Server → Client: `{ "t": "pong", "t1": <echo>, "ts": <server_ms_since_epoch> }`
 
-The client MUST perform at least 5 exchanges at join. For each sample, with `t1` the
-client's send time, `t2` its receive time and `rtt = t2 - t1`, compute
-`offset = ts + rtt/2 - t2` (equivalently `ts - t1 - rtt/2`), and take the **median** as its
-session offset, so that `session_time = capture_monotonic_ms + offset`. The client
-SHOULD repeat this every 30 s and apply the new offset with a slew of ≤ 5 ms/s to
-avoid pose discontinuities.
+The client MUST perform at least one exchange at join. With `t1` the client's send time,
+`t2` its receive time and `rtt = t2 - t1`, it takes `offset = ts + rtt/2 - t2`
+(equivalently `ts - t1 - rtt/2`) as its session offset, so that
+`session_time = capture_monotonic_ms + offset`.
 
-All `timestamp_ms` values written into packets MUST be
-`capture_monotonic_ms + offset`.
+All `timestamp_ms` values written into packets MUST be `capture_monotonic_ms + offset`, and
+a sender's timestamps MUST NOT run backwards.
+
+Nothing in this revision compares the timestamps of two senders: a receiver times each
+sender's frames by their arrival (§8.1), and an extras `since` is compared with frames of the
+same sender (§2.6). An application that puts several senders on one timeline (an analysis, a
+recording) MAY repeat the exchange, take the sample with the smallest `rtt` or the median of
+several, and apply a new offset with a slew of ≤ 5 ms/s, so that the sender's timestamps stay
+monotonic.
 
 ### 2.3 Peer directory and identity
 
@@ -323,8 +328,9 @@ fallback:
 - Default tier for every peer is `default_tier` from `session`.
 - The server enforces a tier by forwarding only every *N*-th frame. Because v1 sends
   full independent frames, dropping any frame is always safe.
-- A receiver under load MUST reduce its own subscriptions rather than expecting the
-  sender to adapt. It MAY re-upgrade at any time with no handshake.
+- A receiver MAY lower a subscription at any time, for example for a peer it does not draw
+  moving (shown as a picture, or blocked) or under load, and MAY raise it again with no
+  handshake. Which peers it wants is the receiver's decision.
 
 The server MUST inform each sender of the highest tier currently demanded by any of
 its subscribers, so the sender can throttle capture:
@@ -335,10 +341,16 @@ its subscribers, so the sender can throttle capture:
 
 Senders MUST NOT exceed the granted `hz` (tolerance +10%).
 
+When no receiver wants a sender's frames (every other member has it on `OFF`, or nobody else
+is in the room), the server MAY send `hz` 0. The sender then sends no frames until a `rate`
+above 0 arrives, and sends again at once: its declaration and grant stay valid, and nothing is
+negotiated anew. A sender that stops on its own account (its user is away, the camera is off)
+declares nothing instead (§2.1).
+
 Per-subscriber rate tiering is OPTIONAL for a relay. A relay without it forwards every
 accepted frame to every subscriber whose tier is not `OFF`, treats `FULL`, `NORMAL` and
 `MINIMAL` alike, and bounds load through the sender `rate` grant alone. It MUST still
-honour `OFF`, which needs no per-frame state.
+honour `OFF`, which needs no per-frame state, and MAY pause a sender nobody wants with `hz` 0.
 
 ### 2.5 Errors
 
@@ -788,7 +800,7 @@ receivers only: a frame with flag bit 6 or 7 set MAY be longer (§9).
 | 1 | `HAS_ROOT` | Root position block present |
 | 2 | `HAS_FINGERS` | Finger block present |
 | 3 | `HAS_EXPRESSIONS` | Expression block present |
-| 4 | `IDLE` | Sender is idle/AFK; receiver MAY skip interpolation work |
+| 4 | reserved | MUST be 0 in this revision; ignored on receive (it was `IDLE` until 1.4.5, §7) |
 | 5 | `HAS_EXTRA` | Extras block present (§5.8) |
 | 6–7 | reserved | MUST be 0 in this revision. A receiver ignores the bit, and the bytes after the blocks it knows (§9) |
 
@@ -1213,8 +1225,9 @@ datacentre or fibre-grade uplink, not a home connection.
   SHOULD be used only for the active speaker and for Perfect-Sync faces, where fast
   hand and mouth motion is visible.
 - Senders MUST honour the `rate` message (§2.4).
-- Senders SHOULD set `IDLE` when no significant motion has occurred for 2 s and drop to
-  `MINIMAL` until motion resumes.
+- A sender MAY send fewer frames than its `rate` allows, or none for a while; receivers
+  bridge the gap (§8.3). A sender whose user is away declares nothing (§2.1), so that no frame,
+  not even from a tracker that misfires on noise, reaches anyone until it declares again.
 - A sender without tracking for a body part MAY transmit a pose or an animation of its
   own choosing for it (seated, leaning, an idle loop) as ordinary bones and blocks of the
   types it declared. To a receiver this is indistinguishable from tracked motion. A part
@@ -1309,8 +1322,8 @@ legs, kneeling, lying down and jumping without any pose-specific rule on the rec
   signaling change ships as a 1.x revision under `posy/1`. Once the maintainers declare
   the format frozen, any such change requires `posy/2`.
 - Extension mechanism: avatar-specific data travels as declared extras (§2.6), which
-  need no further change to the format. Reserved for other extensions: flag bits 6–7,
-  bone bits 55–63 and the reserved finger byte. A relay rejects a frame that sets a reserved
+  need no further change to the format. Reserved for other extensions: flag bit 4 (a flag
+  without a block), flag bits 6–7, bone bits 55–63 and the reserved finger byte. A relay rejects a frame that sets a reserved
   bone bit 55–63 (§1.2), since those bits belong to no granted type; a **receiver** still
   ignores an unknown mask bit so a future minor can define one without breaking older
   receivers. A block placed behind a flag bit changes the frame length, so a relay that
@@ -1330,8 +1343,8 @@ legs, kneeling, lying down and jumping without any pose-specific rule on the rec
   it (§2.7), the sender does not send the block, and its relay never has to size it.
 - **Additive.** Once the format is frozen, a 1.x revision makes only changes that a peer
   of an earlier 1.x revision survives by the rules above and those of §2.7: a new message,
-  field, data type or error code; a block behind flag bit 6 or 7; a bone on bits 55–63; a
-  meaning for a reserved byte. Everything else requires `posy/2`: changing or removing
+  field, data type or error code; a meaning for flag bit 4; a block behind flag bit 6 or 7; a
+  bone on bits 55–63; a meaning for a reserved byte. Everything else requires `posy/2`: changing or removing
   what exists, a block in front of an existing one, and any addition an older peer has to
   understand for the session to work.
 

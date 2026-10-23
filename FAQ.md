@@ -48,9 +48,9 @@ Not in v1. It MUST NOT change a forwarded frame's bytes — it may only drop who
 
 Expressions. The expression block (`HAS_EXPRESSIONS`) carries blendshape weights (blinks, mouth shapes, emotions) plus two gaze bytes for eye direction. The eye and jaw *bone* bits (6–8) are a fallback for rigs driven by literal bone rotation; if both gaze and eye bones are present, gaze wins.
 
-## What are `PERFECT_SYNC` and `IDLE`?
+## What is `PERFECT_SYNC`, and how is someone shown as away?
 
-`PERFECT_SYNC` only changes the *size and contents of the face block*: off = 16 VRM expressions (18 bytes), on = all 52 ARKit blendshapes (54 bytes). `IDLE` is a zero-byte hint that the sender is AFK, so receivers can skip interpolation work; it never changes the layout.
+`PERFECT_SYNC` only changes the *size and contents of the face block*: off = the 13 VRM presets and the gaze (15 bytes), on = all 52 ARKit blendshapes and the gaze (54 bytes). Someone who is away declares nothing (`sends: []`), so none of their frames go out; the application shows "away" in its own presence. The `IDLE` flag of earlier revisions is gone since 1.4.6; its bit is reserved.
 
 ## What if the spec, the reference code and the test vectors disagree?
 
