@@ -6,62 +6,66 @@ that commit messages and the spec text do not keep in one place.
 
 ---
 
-## 0015 — Concealment by intent: freeze an unexplained silence, ease to idle only when it is announced
+## 0015 — Concealment: freeze an unexplained silence; leaving is the server's to report
 
-**Date:** 2026-10-23 · **Status:** Proposed · **Affects:** §8.3 (and the §8.1/§2.3 boundary it names)
+**Date:** 2026-10-23 · **Status:** Proposed · **Affects:** §2.3, §7, §8.3
 
 ### Context
 
 Removing `IDLE` (0014) left one question sharp: what should a receiver show when a sender's
 frames stop? §8.3 step 3 eased the avatar to a neutral idle pose after 1 s. Judged by real use,
-that is wrong for a social room, and for two separate reasons.
+that is wrong for a social room.
 
-- **Silence has two intents that want opposite renders.** An *unexplained* stop (a crash, a
-  frozen device, a phone that lost its signal, the person walked off) should read as a problem:
-  other people should notice and stop talking to someone who may be gone. An *announced* stop
-  (the user set themselves "away", or the server granted `rate` 0 because nobody is watching)
-  is calm and fine. A timer cannot tell the two apart; only the signaling layer knows the
-  intent. This is exactly what the old `IDLE` flag reached for and could not deliver — it rode
-  inside frames that were still flowing, so it could not survive an actual silence. The clean
-  signal for "intended" is out-of-band: `rate` 0 (§2.4), or the application's own presence.
 - **A live tracker never goes quiet on its own.** A camera-based sender (e.g. MediaPipe) emits a
   pose every frame even for a motionless person — micro-corrections and noise. "Holding still"
   and "playing asleep" are therefore ordinary streams, not silences, and need no rule. Real
   silence means the stream died.
+- **An unexplained silence should read as a problem.** A crash, a frozen device, a phone that
+  lost its signal: other people should notice and stop talking to someone who may be gone. A
+  calm idle pose hides that.
+- **An intended pause is not a silence on the pose layer.** A sender whose user is away declares
+  nothing (0014) and is removed from `peers` (§2.3); whether that user is still in the room is
+  the application's presence. `rate` 0 (§2.4) is no case for a receiver: the server sends it
+  only to the sender, and only when every receiver has that sender on `OFF`, so no receiver that
+  draws the avatar meets the pause.
 - **One border was too tight.** A home connection with ping spikes above a second (seen on poor
   VDSL, ~1.2 s) would trip the 1 s rule and glitch the avatar to idle on every spike.
+- **Leaving was not stated.** §2.3 removed a peer whose declaration became empty, but said
+  nothing about a peer whose connection ended.
 
 ### Decision
 
-- §8.3 extends the hold window to **1.5 s** and, past it, **keeps holding the last pose — a
-  freeze — rather than easing to idle**, with the receiver SHOWING (its own cue) that the peer
-  may have a problem. The freeze is the default for an *unexplained* silence.
-- When the silence is **announced** — `rate` 0, or the application's "away" — a receiver MAY
-  ease to a resting/idle animation instead. Posy defines no idle or away pose; the choice and
-  its look are the receiver's.
-- A silence is a **concealment** decision, never a **presence** one. Whether a peer has left is
-  the transport's to report (WebRTC ICE `failed`, a WebSocket heartbeat timeout) and surfaces as
-  removal from `peers` (§2.3); the pose layer never infers departure from missing frames.
+- §8.3: the hold window is **1.5 s**. Past it the receiver keeps holding the last pose — a
+  freeze — and SHOULD show that the peer may have a problem (its own cue).
+- §8.3: a receiver does not infer from missing frames that a peer has left. After a removal
+  from `peers`, whether it drops the avatar or keeps showing it (an away user still in the
+  room) follows the application's presence. Posy defines no idle or away pose.
+- §2.3: when a peer's connection ends, the server removes it from `peers`. How it detects that,
+  and how fast, is the server's.
+- §7: a sender that pauses on purpose for longer than the hold window declares nothing, like one
+  whose user is away.
 
 ### Alternatives rejected
 
-- *Keep easing to idle after a short gap.* Hides a fault behind a calm pose; the §8.3 freeze is
-  the honest default for an unexplained stall.
+- *Keep easing to idle after a short gap.* Hides a fault behind a calm pose.
 - *A new in-frame flag for "away".* The same mistake as `IDLE`: a flag cannot ride a silence.
-  Intent belongs in the signaling layer (`rate` 0, presence), which carries it without a frame.
-- *Define an "away" or "idle" pose in Posy.* That is a render/UX choice that drifts per avatar
-  and per application; the protocol stays out of it and only fixes the default for an
-  unannounced silence.
-- *Infer departure from a long silence.* Confuses a bad connection with a lost peer; departure
-  is the transport's and the roster's job.
+  Intent belongs in signaling (declaring nothing) and in the application's presence.
+- *Define an "away" or "idle" pose in Posy.* That is a render choice that differs per avatar and
+  per application.
+- *Infer departure from a long silence.* Confuses a bad connection with a lost peer.
+- *Ease to idle on `rate` 0.* No receiver that draws the sender sees a `rate` 0 pause.
+- *Name the transport's liveness mechanisms (ICE `failed`, a WebSocket heartbeat) and their
+  timing.* They differ per transport and per server; Posy states only that a peer whose
+  connection ended is removed.
 
 ### Consequences
 
-- The hold window widens to 1.5 s; a sub-1.5 s outage shows no state change (helps poor links).
-- An unannounced stall freezes; an announced one MAY idle — receivers gain a rule that matches
-  what users expect without any wire change.
-- No frame, schema, vector or table change — §8.3 is receiver behaviour, text only. Builds on
-  0014 (the out-of-band signals it relies on are `rate` 0 and declaring nothing).
+- A gap under 1.5 s shows no state change (helps poor links).
+- An unexplained stall freezes with a cue; an away user is shown as the application's presence
+  says.
+- This is not the receiver-chosen idle pose that 0004 rejects: that was about absent bones of a
+  peer that sends; here the peer sends nothing and is no longer in `peers`.
+- No frame, schema, vector or table change. Builds on 0014.
 
 ---
 

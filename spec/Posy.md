@@ -283,7 +283,8 @@ The client MUST perform at least one exchange at join. With `t1` the client's se
 `session_time = capture_monotonic_ms + offset`.
 
 All `timestamp_ms` values written into packets MUST be `capture_monotonic_ms + offset`, and
-a sender's timestamps MUST NOT run backwards.
+a sender's timestamps MUST NOT run backwards when compared as in §5.7; the wrap of the `u32`
+is not a step back.
 
 Nothing in this revision compares the timestamps of two senders: a receiver times each
 sender's frames by their arrival (§8.1), and an extras `since` is compared with frames of the
@@ -308,7 +309,8 @@ peer's avatar before the first frame arrives; a type absent from it never arrive
 the receiver leaves that part of the avatar in its rest state (§3.3, §5.5). An `add` for a `uid`
 already known replaces the earlier entry. The entry of a peer that was granted `"extra"`
 also carries its `extra` object (§2.6). A peer whose granted set is empty has no pose
-producer and is not listed; if its set becomes empty it is removed.
+producer and is not listed; if its set becomes empty it is removed. When a peer's connection
+ends, the server removes it too; how it detects that, and how fast, is the server's.
 
 Receivers MUST associate an inbound data consumer with the `uid` given here. No UID
 bytes appear in the pose frame. Clients MUST send their UID only in `hello`; the
@@ -1225,9 +1227,10 @@ datacentre or fibre-grade uplink, not a home connection.
   SHOULD be used only for the active speaker and for Perfect-Sync faces, where fast
   hand and mouth motion is visible.
 - Senders MUST honour the `rate` message (§2.4).
-- A sender MAY send fewer frames than its `rate` allows, or none for a while; receivers
-  bridge the gap (§8.3). A sender whose user is away declares nothing (§2.1), so that no frame,
-  not even from a tracker that misfires on noise, reaches anyone until it declares again.
+- A sender MAY send fewer frames than its `rate` allows. Receivers bridge a gap of up to
+  1.5 s and show a longer silence as a possible problem (§8.3), so a sender that pauses on
+  purpose for longer, or whose user is away, declares nothing (§2.1): no frame, not even from
+  a tracker that misfires on noise, then reaches anyone until it declares again.
 - A sender without tracking for a body part MAY transmit a pose or an animation of its
   own choosing for it (seated, leaning, an idle loop) as ordinary bones and blocks of the
   types it declared. To a receiver this is indistinguishable from tracked motion. A part
@@ -1262,34 +1265,15 @@ frame is visible as a freeze-and-jump unless step 1 carries the motion across th
 receiver that renders at these rates MUST implement at least step 1.
 1. **0 – 250 ms gap:** continue the last motion with decaying angular velocity
    (exponential decay, ~150 ms half-life).
-2. **250 ms – 1.5 s:** hold the last received pose. This window is deliberately wide: a
-   home connection with occasional ping spikes above a second should ride the gap as a
-   brief hold, not a visible state change.
-3. **> 1.5 s:** keep holding the last received pose — a frozen avatar — and a receiver
-   SHOULD show that the peer may have a problem (the application's own "connection lost"
-   or "not responding" cue). A frozen pose is the honest default for an *unexplained*
-   silence: the receiver does not know whether the sender is still there, so it must not
-   relax the avatar into a calm neutral pose that reads as "fine" while the device may be
-   failing or the person may be gone.
+2. **250 ms – 1.5 s:** hold the last received pose.
+3. **> 1.5 s:** keep holding the last received pose; a receiver SHOULD show that the peer
+   may have a problem (its own cue).
 4. On resumption, blend back in over 200 ms to avoid a visible snap.
 
-The freeze in step 3 is the default **only when the silence was not announced**. When the
-sender's silence is intentional and known from the signaling layer — the server granted
-`rate` 0 (§2.4, nobody wants the sender's frames), or the application marks the user "away"
-in its own presence — a receiver MAY instead ease the avatar to a resting or idle
-animation of its choosing. Posy defines no "away" or "idle" pose: the choice between a
-freeze and an idle animation, and what that animation looks like, is the receiver's. The
-protocol's only requirement is that an *unannounced* silence default to the freeze, so that
-a stalled or departed sender is not mistaken for a relaxed one.
-
-A silence longer than a concealment window is still only a *concealment* decision, never a
-presence decision. Whether a peer has truly left is not inferred from missing frames: it is
-the transport's to report — a WebRTC data channel going to ICE `failed`, or a WebSocket
-heartbeat (ping/pong) timing out, on the order of the few seconds those mechanisms already
-use — and it surfaces as the server removing the peer from `peers` (§2.3). A receiver whose
-peer is removed from the roster drops the avatar; a receiver still holding a roster entry
-whose frames have stopped freezes it (step 3). The pose layer, the transport layer and the
-presence roster stay separate.
+A receiver does not infer from missing frames that a peer has left. A peer removed from
+`peers` (§2.3) sends no more frames; whether a receiver then drops its avatar or keeps
+showing it (its user is away but still in the room) follows the application's presence.
+Posy defines no idle or away pose.
 
 ### 8.4 Audio-driven mouth shapes (Optional)
 Receivers MAY synthesise `aa/ih/ou/ee/oh` from the incoming Opus stream instead of

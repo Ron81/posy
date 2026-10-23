@@ -5,31 +5,33 @@ The spec follows the versioning rules in §9 (major version = channel protocol s
 
 ## [Unreleased]
 
-Four corrections from a review of an implementation's sender, relay and receiver against 1.4.5,
-judged by real use (a phone that loses its signal for a while, a home PC on a steady line).
-No frame changes size or layout. **Changes sender and relay behaviour:** flag bit 4 is no longer
-set, and a sender honours `rate` 0. `docs/DECISIONS.md` 0014 and 0015.
+Corrections of the session layer and of concealment from a review of an implementation's sender,
+relay and receiver against 1.4.5, judged by real use (a phone that loses its signal for a while, a
+home PC on a steady line). No frame changes size or layout. **Changes sender, relay and receiver
+behaviour:** flag bit 4 is no longer set, a sender honours `rate` 0, and a receiver freezes a long
+silence instead of easing to idle. `docs/DECISIONS.md` 0014 and 0015.
 
 ### Changed
 - **§2.2** — one clock exchange at join is required (was five, with the median), and a sender's
-  timestamps must not run backwards. Repeating the exchange with a slew is a MAY, for
+  timestamps must not run backwards in the order of §5.7 (the `u32` wrap is not a step back).
+  Repeating the exchange with a slew is a MAY, for
   applications that put several senders on one timeline; nothing in this revision compares two
   senders' timestamps.
 - **§2.4** — `rate` may be 0: nobody wants the sender's frames (all subscribers on `OFF`, or
   nobody else in the room). The sender sends none until a `rate` above 0 arrives; declaration
   and grant stay valid. A sender that stops on its own account declares nothing (§2.1).
+- **§2.3** — when a peer's connection ends, the server removes it from `peers`; how it detects
+  that, and how fast, is the server's.
 - **§2.4** — lowering a subscription is the receiver's decision (MAY); it was a MUST under load.
 - **§5.2, §7** — flag bit 4 (`IDLE`) is reserved: MUST be 0, ignored on receive, and a relay
   does not reject it (§1.2). §7's "set `IDLE` after 2 s and drop to `MINIMAL`" is replaced: a
-  sender MAY send fewer frames than its rate allows, or none for a while, and a sender whose user
-  is away declares nothing. §9 lists bit 4 as free for a later meaning.
-- **§8.3** — concealment now turns on intent. The hold window widens to 1.5 s; past it a receiver
-  keeps holding the last pose (a freeze) for an *unannounced* silence and SHOULD show the peer may
-  have a problem, rather than easing to a neutral idle that hides a stall. When the silence is
-  *announced* — `rate` 0, or the application's "away" — a receiver MAY ease to an idle animation
-  instead; Posy defines no idle or away pose. A silence is a concealment decision, never a
-  presence one: departure is the transport's to report (ICE/WebSocket liveness) and surfaces as
-  removal from `peers` (§2.3). `docs/DECISIONS.md` 0015.
+  sender MAY send fewer frames than its rate allows; one that pauses on purpose for longer than
+  1.5 s, or whose user is away, declares nothing. §9 lists bit 4 as free for a later meaning.
+- **§8.3** — the hold window widens to 1.5 s; past it a receiver keeps holding the last pose (a
+  freeze) and SHOULD show that the peer may have a problem, rather than easing to a neutral idle
+  that hides a stall. A receiver does not infer from missing frames that a peer has left; after a
+  removal from `peers`, whether it drops the avatar or keeps showing it follows the
+  application's presence. Posy defines no idle or away pose. `docs/DECISIONS.md` 0015.
 
 ### Reference implementation
 - `Frame.idle` and `FLAG_IDLE` are removed; the encoder never sets bit 4, the decoder ignores it.
