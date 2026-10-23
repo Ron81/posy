@@ -8,7 +8,7 @@ The spec follows the versioning rules in §9 (major version = channel protocol s
 Four corrections from a review of an implementation's sender, relay and receiver against 1.4.5,
 judged by real use (a phone that loses its signal for a while, a home PC on a steady line).
 No frame changes size or layout. **Changes sender and relay behaviour:** flag bit 4 is no longer
-set, and a sender honours `rate` 0. `docs/DECISIONS.md` 0014.
+set, and a sender honours `rate` 0. `docs/DECISIONS.md` 0014 and 0015.
 
 ### Changed
 - **§2.2** — one clock exchange at join is required (was five, with the median), and a sender's
@@ -23,6 +23,13 @@ set, and a sender honours `rate` 0. `docs/DECISIONS.md` 0014.
   does not reject it (§1.2). §7's "set `IDLE` after 2 s and drop to `MINIMAL`" is replaced: a
   sender MAY send fewer frames than its rate allows, or none for a while, and a sender whose user
   is away declares nothing. §9 lists bit 4 as free for a later meaning.
+- **§8.3** — concealment now turns on intent. The hold window widens to 1.5 s; past it a receiver
+  keeps holding the last pose (a freeze) for an *unannounced* silence and SHOULD show the peer may
+  have a problem, rather than easing to a neutral idle that hides a stall. When the silence is
+  *announced* — `rate` 0, or the application's "away" — a receiver MAY ease to an idle animation
+  instead; Posy defines no idle or away pose. A silence is a concealment decision, never a
+  presence one: departure is the transport's to report (ICE/WebSocket liveness) and surfaces as
+  removal from `peers` (§2.3). `docs/DECISIONS.md` 0015.
 
 ### Reference implementation
 - `Frame.idle` and `FLAG_IDLE` are removed; the encoder never sets bit 4, the decoder ignores it.

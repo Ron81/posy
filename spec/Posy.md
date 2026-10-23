@@ -1262,9 +1262,34 @@ frame is visible as a freeze-and-jump unless step 1 carries the motion across th
 receiver that renders at these rates MUST implement at least step 1.
 1. **0 – 250 ms gap:** continue the last motion with decaying angular velocity
    (exponential decay, ~150 ms half-life).
-2. **250 ms – 1 s:** hold the last received pose.
-3. **> 1 s:** ease to the avatar's idle pose over 500 ms.
+2. **250 ms – 1.5 s:** hold the last received pose. This window is deliberately wide: a
+   home connection with occasional ping spikes above a second should ride the gap as a
+   brief hold, not a visible state change.
+3. **> 1.5 s:** keep holding the last received pose — a frozen avatar — and a receiver
+   SHOULD show that the peer may have a problem (the application's own "connection lost"
+   or "not responding" cue). A frozen pose is the honest default for an *unexplained*
+   silence: the receiver does not know whether the sender is still there, so it must not
+   relax the avatar into a calm neutral pose that reads as "fine" while the device may be
+   failing or the person may be gone.
 4. On resumption, blend back in over 200 ms to avoid a visible snap.
+
+The freeze in step 3 is the default **only when the silence was not announced**. When the
+sender's silence is intentional and known from the signaling layer — the server granted
+`rate` 0 (§2.4, nobody wants the sender's frames), or the application marks the user "away"
+in its own presence — a receiver MAY instead ease the avatar to a resting or idle
+animation of its choosing. Posy defines no "away" or "idle" pose: the choice between a
+freeze and an idle animation, and what that animation looks like, is the receiver's. The
+protocol's only requirement is that an *unannounced* silence default to the freeze, so that
+a stalled or departed sender is not mistaken for a relaxed one.
+
+A silence longer than a concealment window is still only a *concealment* decision, never a
+presence decision. Whether a peer has truly left is not inferred from missing frames: it is
+the transport's to report — a WebRTC data channel going to ICE `failed`, or a WebSocket
+heartbeat (ping/pong) timing out, on the order of the few seconds those mechanisms already
+use — and it surfaces as the server removing the peer from `peers` (§2.3). A receiver whose
+peer is removed from the roster drops the avatar; a receiver still holding a roster entry
+whose frames have stopped freezes it (step 3). The pose layer, the transport layer and the
+presence roster stay separate.
 
 ### 8.4 Audio-driven mouth shapes (Optional)
 Receivers MAY synthesise `aa/ih/ou/ee/oh` from the incoming Opus stream instead of

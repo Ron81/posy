@@ -50,7 +50,7 @@ Expressions. The expression block (`HAS_EXPRESSIONS`) carries blendshape weights
 
 ## What is `PERFECT_SYNC`, and how is someone shown as away?
 
-`PERFECT_SYNC` only changes the *size and contents of the face block*: off = the 13 VRM presets and the gaze (15 bytes), on = all 52 ARKit blendshapes and the gaze (54 bytes). Someone who is away declares nothing (`sends: []`), so none of their frames go out; the application shows "away" in its own presence. The `IDLE` flag of earlier revisions is gone since 1.4.6; its bit is reserved.
+`PERFECT_SYNC` only changes the *size and contents of the face block*: off = the 13 VRM presets and the gaze (15 bytes), on = all 52 ARKit blendshapes and the gaze (54 bytes). Someone who is away declares nothing (`sends: []`), so none of their frames go out; the application shows "away" in its own presence. The `IDLE` flag of earlier revisions is gone since 1.4.6; its bit is reserved. A sender that just stops sending without announcing it (a crash, a lost connection) is held frozen in its last pose by the receiver after about 1.5 s (§8.3), so a stall reads as a problem rather than as a calm idle; when the silence *is* announced — the server's `rate` 0, or the application's own "away" — the receiver MAY ease to an idle animation instead. Posy defines no idle or away pose; that is the receiver's to choose.
 
 ## What if the spec, the reference code and the test vectors disagree?
 
