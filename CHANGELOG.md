@@ -7,9 +7,10 @@ The spec follows the versioning rules in §9 (major version = channel protocol s
 
 Corrections of the session layer and of concealment from a review of an implementation's sender,
 relay and receiver against 1.4.5, judged by real use (a phone that loses its signal for a while, a
-home PC on a steady line). No frame changes size or layout. **Changes sender, relay and receiver
-behaviour:** flag bit 4 is no longer set, a sender honours `rate` 0, and a receiver freezes a long
-silence instead of easing to idle. `docs/DECISIONS.md` 0014 and 0015.
+home PC on a steady line), and a new message by which a sender states why its frames stop. No
+frame changes size or layout. **Changes sender, relay and receiver behaviour:** flag bit 4 is no
+longer set, a sender honours `rate` 0, a receiver freezes a long silence instead of easing to idle,
+and a server forwards `silence`. `docs/DECISIONS.md` 0014, 0015 and 0016.
 
 ### Changed
 - **§2.2** — one clock exchange at join is required (was five, with the median), and a sender's
@@ -33,9 +34,20 @@ silence instead of easing to idle. `docs/DECISIONS.md` 0014 and 0015.
   removal from `peers`, whether it drops the avatar or keeps showing it follows the
   application's presence. Posy defines no idle or away pose. `docs/DECISIONS.md` 0015.
 
+### Added
+- **§2.8** — `silence`: a sender that is still connected and stops sending frames MAY say why
+  (`tracking_error`, `client_delay`, `other`); the server adds the `uid` and forwards it to the
+  room. The next frame ends it. Sent for a silence that will outlast the 1.5 s bridge, not for a
+  short drop; the server MAY drop such messages beyond a limit, and a dropped one leaves the §8.3
+  default. A sender uses `other` for a reason not listed; a receiver treats an unknown reason as
+  `other`. **§8.3** — during a stated silence the receiver holds without the problem
+  cue and MAY show its own. **§7** — a sender that will send again MAY state the silence; one
+  that stops for longer on purpose, or whose user is away, declares nothing. Additive: an older
+  receiver ignores the message (§2.7). `docs/DECISIONS.md` 0016.
+
 ### Reference implementation
 - `Frame.idle` and `FLAG_IDLE` are removed; the encoder never sets bit 4, the decoder ignores it.
-- Schema: `rate.hz` minimum 0, with an example.
+- Schema: `rate.hz` minimum 0, with an example. `silence` in both directions, with examples.
 - No test vector changes (none set bit 4); a unit test pins the reserved bit.
 
 ### Not changed

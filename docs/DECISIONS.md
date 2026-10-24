@@ -6,6 +6,74 @@ that commit messages and the spec text do not keep in one place.
 
 ---
 
+## 0016 — A sender may state why its frames stop
+
+**Date:** 2026-10-24 · **Status:** Proposed · **Affects:** §2.8 (new), §7, §8.3, schema `silence`
+
+### Context
+
+0015 made a receiver freeze a sender whose frames stop and show a problem cue after 1.5 s. A
+receiver cannot do better on its own: at a gap it plays out its 50–100 ms jitter buffer, carries
+the motion on with decay for 250 ms (§8.3 step 1) and then stops. During motion the freeze is
+visible after about 0.3 s; nothing on the receiver hides it longer, since it does not know where
+the motion would have gone. The 1.5 s is when the freeze is labelled, not how long it is hidden.
+
+Only the sender knows why its frames stopped. A tracker that sees the person emits a pose every
+frame (0015), but one that finds no person or face emits nothing, and a client that loads an
+avatar or calibrates sends nothing for a while. Such a sender is alive and will send again. It
+may fill the gap with a pose of its own (§7), and many will; but a sender or consumer that wants
+the real tracking only does not, and to its viewers a lost tracker then looks the same as a dead
+connection.
+
+Posy carries what is sent, not how it was produced. An idle loop or a held pose a sender
+transmits in place of tracking is that application's data and reaches receivers as ordinary
+frames. The silence is the one case Posy cannot carry in frames, and the one where the
+distinction "the tracker lost the person" versus "the connection died" matters to every
+consumer, raw-tracking ones above all.
+
+### Decision
+
+- §2.8: a sender that is still connected and stops sending frames MAY send
+  `{ "t": "silence", "reason": … }` with `tracking_error`, `client_delay` or `other`. The server
+  adds the `uid` and forwards it to the room. A sender uses `other` for a reason not listed; a
+  receiver treats an unknown reason as `other`.
+- The next frame ends the stated silence; a new `silence` replaces the reason. No clear message.
+- A sender states a silence that will outlast the 1.5 s bridge, not a short drop of its tracker;
+  a silence known in advance is stated at once. The server MAY drop `silence` messages beyond a
+  limit of its choosing; a dropped message leaves the receiver at the §8.3 default.
+- §8.3: during a stated silence the receiver holds without the problem cue and MAY show a cue of
+  its own for the reason.
+- §7: a sender that is still running and will send again MAY state the silence; one that stops
+  for longer on purpose, or whose user is away, declares nothing. This narrows the §7 line of
+  0015, under which every intended pause declared nothing.
+
+### Alternatives rejected
+
+- *A reason while stand-in frames run.* Gives frames a second meaning; what a sender transmits
+  in place of tracking is its own data (§7).
+- *A SHOULD that a running sender keeps sending (hold or its own pose).* Removes the freeze for
+  viewers, but forces smoothing on senders and consumers that want the real tracking.
+- *The reason in the application's own channel only.* Free to shape and fine for details and
+  performance data, which stay out of Posy; but other implementations, recorders and analysis
+  consumers in the room would see only the freeze.
+- *A fixed wait before sending.* A number no measurement supports, and wrong for a silence known
+  in advance.
+- *A message that clears the reason.* One more message, and if lost the receiver stays in the
+  wrong state while frames already run.
+- *A reason for a backgrounded client.* Ends either as a lost connection or as a performance
+  matter; away stays `sends: []`.
+
+### Consequences
+
+- An older receiver ignores the message (§2.7) and shows the 0015 cue; that is correct for it.
+  The change is additive.
+- A member who joins during a stated silence gets no message (the server keeps no state) and
+  shows the cue until frames resume.
+- One small message per change, forwarded; no per-frame work at the server. No frame, codec,
+  table or vector change.
+
+---
+
 ## 0015 — Concealment: freeze an unexplained silence; leaving is the server's to report
 
 **Date:** 2026-10-23 · **Status:** Proposed · **Affects:** §2.3, §7, §8.3

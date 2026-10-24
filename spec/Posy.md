@@ -490,6 +490,38 @@ on anything else:
 **sends**: it is closed, and a message with a further field fails it. A recipient MUST NOT
 use it to refuse a message.
 
+### 2.8 Stated silence
+
+Posy carries what a sender sends, not how it was produced. The one case it explains is a
+silence: a sender that is still connected but stops sending frames MAY say why.
+
+Client → Server:
+```json
+{ "t": "silence", "reason": "tracking_error" }
+```
+
+| `reason` | Meaning |
+|---|---|
+| `tracking_error` | The capture delivers nothing: it finds no person or face, or the camera stopped delivering. |
+| `client_delay` | The client is busy and sends nothing for a while: it loads an avatar, it calibrates. |
+| `other` | Any other reason. |
+
+The server adds the sender's `uid` and forwards the message to the other members of the room:
+```json
+{ "t": "silence", "uid": "u_8f31", "reason": "tracking_error" }
+```
+
+- The message explains a silence only. A sender sends it when it stops sending frames; its next
+  frame ends the stated silence, and a new `silence` replaces the reason. A pose or animation a
+  sender transmits in place of tracked motion (§7) is ordinary frames and needs no message.
+- A sender states a silence that will outlast the 1.5 s a receiver bridges (§8.3), not a short
+  drop of its tracker. A silence known in advance, such as loading an avatar, is stated at once.
+  The server MAY drop a sender's `silence` messages beyond a limit of its choosing; a dropped
+  message leaves the receiver at the §8.3 default.
+- A sender uses `other` for a reason not listed. A receiver treats a `reason` it does not know as
+  `other`. What it shows is in §8.3.
+- A user who is away is no silence: that sender declares nothing (§2.1).
+
 ---
 
 ## 3. Coordinate System and Retargeting (Normative)
@@ -1228,9 +1260,11 @@ datacentre or fibre-grade uplink, not a home connection.
   hand and mouth motion is visible.
 - Senders MUST honour the `rate` message (§2.4).
 - A sender MAY send fewer frames than its `rate` allows. Receivers bridge a gap of up to
-  1.5 s and show a longer silence as a possible problem (§8.3), so a sender that pauses on
-  purpose for longer, or whose user is away, declares nothing (§2.1): no frame, not even from
-  a tracker that misfires on noise, then reaches anyone until it declares again.
+  1.5 s and show a longer silence as a possible problem (§8.3). A sender that is still running
+  and will send again (its tracker lost the person, it loads an avatar) MAY state the silence
+  (§2.8). One that stops for longer on purpose, or whose user is away, declares nothing (§2.1):
+  no frame, not even from a tracker that misfires on noise, then reaches anyone until it
+  declares again.
 - A sender without tracking for a body part MAY transmit a pose or an animation of its
   own choosing for it (seated, leaning, an idle loop) as ordinary bones and blocks of the
   types it declared. To a receiver this is indistinguishable from tracked motion. A part
@@ -1267,7 +1301,8 @@ receiver that renders at these rates MUST implement at least step 1.
    (exponential decay, ~150 ms half-life).
 2. **250 ms – 1.5 s:** hold the last received pose.
 3. **> 1.5 s:** keep holding the last received pose; a receiver SHOULD show that the peer
-   may have a problem (its own cue).
+   may have a problem (its own cue). If the peer stated the silence (§2.8), the receiver holds
+   without that cue and MAY show one of its own for the reason.
 4. On resumption, blend back in over 200 ms to avoid a visible snap.
 
 A receiver does not infer from missing frames that a peer has left. A peer removed from

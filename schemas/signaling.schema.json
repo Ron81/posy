@@ -12,7 +12,9 @@
     { "$ref": "#/$defs/peers" },
     { "$ref": "#/$defs/subscribe" },
     { "$ref": "#/$defs/rate" },
-    { "$ref": "#/$defs/error" }
+    { "$ref": "#/$defs/error" },
+    { "$ref": "#/$defs/silence" },
+    { "$ref": "#/$defs/silenceForwarded" }
   ],
   "$defs": {
     "tier": {
@@ -238,6 +240,33 @@
       "examples": [
         { "t": "error", "code": "MALFORMED_THRESHOLD", "detail": "34 invalid frames / 10s", "action": "POSE_MUTED" }
       ]
+    },
+    "silenceReason": {
+      "description": "Why a sender that is still connected stops sending frames (§2.8). A receiver treats a reason it does not know as 'other'.",
+      "enum": ["tracking_error", "client_delay", "other"]
+    },
+    "silence": {
+      "description": "Client → Server (§2.8). A sender states why its frames stop. Its next frame ends the stated silence; a new silence replaces the reason.",
+      "type": "object",
+      "required": ["t", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "t": { "const": "silence" },
+        "reason": { "$ref": "#/$defs/silenceReason" }
+      },
+      "examples": [{ "t": "silence", "reason": "tracking_error" }]
+    },
+    "silenceForwarded": {
+      "description": "Server → Client (§2.8). The server forwards a sender's silence to the other members of the room, with the sender's uid added.",
+      "type": "object",
+      "required": ["t", "uid", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "t": { "const": "silence" },
+        "uid": { "$ref": "#/$defs/uid" },
+        "reason": { "$ref": "#/$defs/silenceReason" }
+      },
+      "examples": [{ "t": "silence", "uid": "u_8f31", "reason": "tracking_error" }]
     }
   }
 }
