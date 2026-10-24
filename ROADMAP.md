@@ -27,9 +27,10 @@ same byte until 1.5.0; the sub-numbers below are release labels, not wire versio
 |---|---|---|
 | **1.3.2** *(done)* | `session.multiplexed` handshake field, so a receiver knows up front whether a connection carries the §1.3 multi-sender `uid` prefix. | No — signaling only. |
 | **1.4.0** *(done)* | A per-joint **`finger_bones`** type: full per-joint finger rotations as a declared alternative to the compact one-curl-per-finger block (§5.5), for rigs and poses the compact block can't express (e.g. a claw). Carried on reserved `bone_mask` bits, mutually exclusive with the existing `fingers` type. Folds in the long-planned mask-check tidy-up (one unified grant check over the whole mask; bits that belong to no type are rejected by relays). | **Yes.** |
-| **1.4.1** | Small spec cleanups batched together: directional tongue moves into declared extras, the expression tiers are renamed, and a size estimate is corrected. | Mixed. |
-| **1.4.5** | A tested **PMX / MMD driver** and normative per-type driver sections (§3.2), verified against the pose vectors in a real MMD runtime, plus pinning a single hips-height landmark across avatar types. | **Yes.** |
-| *(free gaps)* | The numbers between the planned steps (1.4.2–1.4.4, 1.4.6–1.4.9) are kept free, so a surprise fix never has to wait for the next planned step. | — |
+| **1.4.1** *(done)* | Small spec cleanups batched together: directional tongue moves into declared extras, the expression tiers are renamed, and a size estimate is corrected. | Mixed. |
+| **1.4.5** *(done)* | A tested **PMX / MMD driver** and normative per-type driver sections (§3.2), verified against the pose vectors in a real MMD runtime, plus pinning a single hips-height landmark across avatar types. | **Yes.** |
+| **1.4.6** *(done)* | The session layer reviewed by real use (one clock sync at join, `rate` 0 pauses a sender nobody wants, `IDLE` removed), loss concealment by intent (a long unexplained silence freezes rather than easing to a neutral idle, §8.3), and a `silence` message by which a still-connected sender may say why its frames stopped (§2.8). | No — no frame changes size or layout. |
+| *(free gaps)* | The numbers between the planned steps (1.4.2–1.4.4, 1.4.7–1.4.9) are kept free, so a surprise fix never has to wait for the next planned step. | — |
 | **1.5.0** | The window closes. The core is locked for a long additive-only 1.x. | Locks it. |
 
 ## The gate before 1.5.0

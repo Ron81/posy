@@ -834,7 +834,7 @@ receivers only: a frame with flag bit 6 or 7 set MAY be longer (§9).
 | 1 | `HAS_ROOT` | Root position block present |
 | 2 | `HAS_FINGERS` | Finger block present |
 | 3 | `HAS_EXPRESSIONS` | Expression block present |
-| 4 | reserved | MUST be 0 in this revision; ignored on receive (it was `IDLE` until 1.4.5, §7) |
+| 4 | reserved | MUST be 0 in this revision; ignored on receive (it was `IDLE` until 1.4.6, §7) |
 | 5 | `HAS_EXTRA` | Extras block present (§5.8) |
 | 6–7 | reserved | MUST be 0 in this revision. A receiver ignores the bit, and the bytes after the blocks it knows (§9) |
 
