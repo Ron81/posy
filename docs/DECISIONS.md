@@ -8,7 +8,7 @@ that commit messages and the spec text do not keep in one place.
 
 ## 0016 — A sender may state why its frames stop
 
-**Date:** 2026-10-24 · **Status:** Proposed · **Affects:** §2.8 (new), §7, §8.3, schema `silence`
+**Date:** 2026-10-24 · **Status:** Accepted · **Affects:** §2.8 (new), §7, §8.3, schema `silence`
 
 ### Context
 
@@ -76,7 +76,7 @@ consumer, raw-tracking ones above all.
 
 ## 0015 — Concealment: freeze an unexplained silence; leaving is the server's to report
 
-**Date:** 2026-10-23 · **Status:** Proposed · **Affects:** §2.3, §7, §8.3
+**Date:** 2026-10-23 · **Status:** Accepted · **Affects:** §2.3, §7, §8.3
 
 ### Context
 
@@ -139,7 +139,7 @@ that is wrong for a social room.
 
 ## 0014 — The session layer by real use: one clock sync, `rate` 0 pauses, no `IDLE`
 
-**Date:** 2026-10-23 · **Status:** Proposed · **Affects:** §1.2, §2.2, §2.4, §5.2, §7, §9, schema `rate`, `reference/js` (`Frame.idle`, `FLAG_IDLE`)
+**Date:** 2026-10-23 · **Status:** Accepted · **Affects:** §1.2, §2.2, §2.4, §5.2, §7, §9, schema `rate`, `reference/js` (`Frame.idle`, `FLAG_IDLE`)
 
 ### Context
 

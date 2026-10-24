@@ -3,7 +3,7 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
-## [Unreleased]
+## [1.4.6] - 2026-10-24
 
 Corrections of the session layer and of concealment from a review of an implementation's sender,
 relay and receiver against 1.4.5, judged by real use (a phone that loses its signal for a while, a

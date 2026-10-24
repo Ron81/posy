@@ -6,7 +6,7 @@
 [![npm](https://img.shields.io/npm/v/posy-protocol.svg)](https://www.npmjs.com/package/posy-protocol)
 [![runtime deps](https://img.shields.io/badge/runtime%20deps-0-brightgreen.svg)](https://www.npmjs.com/package/posy-protocol?activeTab=dependencies)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-![Spec: 1.4.5](https://img.shields.io/badge/spec-1.4.5-brightgreen.svg)
+![Spec: 1.4.6](https://img.shields.io/badge/spec-1.4.6-brightgreen.svg)
 
 Posy (**Po**se **Sy**nchronization) is an open, compact protocol for syncing humanoid avatar poses
 between lots of people in real time. It runs over WebRTC data channels for direct and
