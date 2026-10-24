@@ -17,14 +17,13 @@ function baseFrame(over = {}) {
     version: 1,
     seq: 7,
     timestampMs: 1000,
-    idle: false,
     bones: upperBodyBones(),
     ...over,
   };
 }
 
 test('001-minimal is 20 bytes with exact spec bytes', () => {
-  const bytes = encode({ version: 1, seq: 1, timestampMs: 0, idle: false, bones: new Map([[0, idQuat]]) });
+  const bytes = encode({ version: 1, seq: 1, timestampMs: 0, bones: new Map([[0, idQuat]]) });
   assert.equal(bytes.length, 20);
   const hex = [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
   assert.equal(hex, '010001000000000001000000000000000002 08e0'.replaceAll(' ', ''));
@@ -75,26 +74,26 @@ test('reject: length < 16', () => {
 });
 
 test('reject: truncated frame (last byte removed)', () => {
-  const bytes = encode({ version: 1, seq: 1, timestampMs: 0, idle: false, bones: new Map([[0, idQuat]]) });
+  const bytes = encode({ version: 1, seq: 1, timestampMs: 0, bones: new Map([[0, idQuat]]) });
   assert.throws(() => decode(bytes.slice(0, bytes.length - 1)), PosyDecodeError);
 });
 
 test('reject: extended frame (trailing byte)', () => {
-  const bytes = encode({ version: 1, seq: 1, timestampMs: 0, idle: false, bones: new Map([[0, idQuat]]) });
+  const bytes = encode({ version: 1, seq: 1, timestampMs: 0, bones: new Map([[0, idQuat]]) });
   const longer = new Uint8Array(bytes.length + 1);
   longer.set(bytes);
   assert.throws(() => decode(longer), PosyDecodeError);
 });
 
 test('reject: high version nibble != 0', () => {
-  const bytes = encode({ version: 1, seq: 1, timestampMs: 0, idle: false, bones: new Map([[0, idQuat]]) });
+  const bytes = encode({ version: 1, seq: 1, timestampMs: 0, bones: new Map([[0, idQuat]]) });
   bytes[0] = 0x10; // major version 1
   assert.throws(() => decode(bytes), PosyDecodeError);
 });
 
 test('extras: round trip, and the counts decide the length', () => {
   const frame = {
-    version: 3, seq: 1, timestampMs: 0, idle: false, bones: new Map([[0, idQuat]]),
+    version: 3, seq: 1, timestampMs: 0, bones: new Map([[0, idQuat]]),
     extra: { bones: [idQuat, idQuat], values: new Uint8Array([1, 2, 3]) },
   };
   const bytes = encode(frame);
@@ -109,13 +108,22 @@ test('extras: round trip, and the counts decide the length', () => {
 });
 
 test('extras: encoder refuses an empty block and more than 255 entries', () => {
-  const base = { version: 3, seq: 1, timestampMs: 0, idle: false, bones: new Map([[0, idQuat]]) };
+  const base = { version: 3, seq: 1, timestampMs: 0, bones: new Map([[0, idQuat]]) };
   assert.throws(() => encode({ ...base, extra: { bones: [], values: new Uint8Array(0) } }), PosyEncodeError);
   assert.throws(() => encode({ ...base, extra: { bones: [], values: new Uint8Array(256) } }), PosyEncodeError);
 });
 
+test('flag bit 4 is reserved since 1.4.6: never set by the encoder, ignored by the decoder', () => {
+  const bytes = encode({ version: 4, seq: 1, timestampMs: 0, idle: true, bones: new Map([[0, idQuat]]) });
+  assert.equal(bytes[1] & 0x10, 0, 'an old caller asking for IDLE sets nothing');
+  bytes[1] |= 0x10; // a frame of an earlier revision with IDLE set
+  const f = decode(bytes);
+  assert.equal(f.bones.size, 1);
+  assert.equal('idle' in f, false);
+});
+
 test('extras: HAS_EXTRA without a block is rejected', () => {
-  const bytes = encode({ version: 3, seq: 1, timestampMs: 0, idle: false, bones: new Map([[0, idQuat]]) });
+  const bytes = encode({ version: 3, seq: 1, timestampMs: 0, bones: new Map([[0, idQuat]]) });
   bytes[1] |= 0x20;
   assert.throws(() => decode(bytes), PosyDecodeError);
   assert.throws(() => decode(bytes, { bones: 1, values: 0 }), PosyDecodeError);
@@ -124,7 +132,7 @@ test('extras: HAS_EXTRA without a block is rejected', () => {
 test('encoder allows per-joint finger bones (finger_bones) without the compact block', () => {
   // bits 28 (leftIndexProximal) and 30 (leftIndexDistal) — a claw-like partial hand.
   const m = new Map([[0, idQuat], [28, idQuat], [30, idQuat]]);
-  const bytes = encode({ version: 4, seq: 1, timestampMs: 0, idle: false, bones: m });
+  const bytes = encode({ version: 4, seq: 1, timestampMs: 0, bones: m });
   assert.equal(bytes.length, 16 + 4 * 3); // three quaternions, no compact finger block
   const back = decode(bytes);
   assert.ok(back.bones.has(28));
@@ -135,7 +143,7 @@ test('encoder allows per-joint finger bones (finger_bones) without the compact b
 test('encoder refuses the compact finger block together with finger bones (mutually exclusive)', () => {
   const m = new Map([[0, idQuat], [28, idQuat]]); // 28 is a finger bit
   const f = {
-    version: 4, seq: 1, timestampMs: 0, idle: false, bones: m,
+    version: 4, seq: 1, timestampMs: 0, bones: m,
     fingers: {
       left: { curl: [0, 0, 0, 0, 0], splay: [0, 0, 0, 0, 0], thumbOpposition: 0 },
       right: { curl: [0, 0, 0, 0, 0], splay: [0, 0, 0, 0, 0], thumbOpposition: 0 },
@@ -172,7 +180,7 @@ test('reserved bone bit is consumed and preserved, rest parses', () => {
 });
 
 test('reserved flag bits 6-7 are ignored, not rejected', () => {
-  const bytes = encode({ version: 1, seq: 1, timestampMs: 0, idle: false, bones: new Map([[0, idQuat]]) });
+  const bytes = encode({ version: 1, seq: 1, timestampMs: 0, bones: new Map([[0, idQuat]]) });
   bytes[1] |= 0xc0; // set flags 6,7
   const f = decode(bytes); // must not throw
   assert.equal(f.bones.size, 1);

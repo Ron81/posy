@@ -6,6 +6,189 @@ that commit messages and the spec text do not keep in one place.
 
 ---
 
+## 0016 — A sender may state why its frames stop
+
+**Date:** 2026-10-24 · **Status:** Proposed · **Affects:** §2.8 (new), §7, §8.3, schema `silence`
+
+### Context
+
+0015 made a receiver freeze a sender whose frames stop and show a problem cue after 1.5 s. A
+receiver cannot do better on its own: at a gap it plays out its 50–100 ms jitter buffer, carries
+the motion on with decay for 250 ms (§8.3 step 1) and then stops. During motion the freeze is
+visible after about 0.3 s; nothing on the receiver hides it longer, since it does not know where
+the motion would have gone. The 1.5 s is when the freeze is labelled, not how long it is hidden.
+
+Only the sender knows why its frames stopped. A tracker that sees the person emits a pose every
+frame (0015), but one that finds no person or face emits nothing, and a client that loads an
+avatar or calibrates sends nothing for a while. Such a sender is alive and will send again. It
+may fill the gap with a pose of its own (§7), and many will; but a sender or consumer that wants
+the real tracking only does not, and to its viewers a lost tracker then looks the same as a dead
+connection.
+
+Posy carries what is sent, not how it was produced. An idle loop or a held pose a sender
+transmits in place of tracking is that application's data and reaches receivers as ordinary
+frames. The silence is the one case Posy cannot carry in frames, and the one where the
+distinction "the tracker lost the person" versus "the connection died" matters to every
+consumer, raw-tracking ones above all.
+
+### Decision
+
+- §2.8: a sender that is still connected and stops sending frames MAY send
+  `{ "t": "silence", "reason": … }` with `tracking_error`, `client_delay` or `other`. The server
+  adds the `uid` and forwards it to the room. A sender uses `other` for a reason not listed; a
+  receiver treats an unknown reason as `other`.
+- The next frame ends the stated silence; a new `silence` replaces the reason. No clear message.
+- A sender states a silence that will outlast the 1.5 s bridge, not a short drop of its tracker;
+  a silence known in advance is stated at once. The server MAY drop `silence` messages beyond a
+  limit of its choosing; a dropped message leaves the receiver at the §8.3 default.
+- §8.3: during a stated silence the receiver holds without the problem cue and MAY show a cue of
+  its own for the reason.
+- §7: a sender that is still running and will send again MAY state the silence; one that stops
+  for longer on purpose, or whose user is away, declares nothing. This narrows the §7 line of
+  0015, under which every intended pause declared nothing.
+
+### Alternatives rejected
+
+- *A reason while stand-in frames run.* Gives frames a second meaning; what a sender transmits
+  in place of tracking is its own data (§7).
+- *A SHOULD that a running sender keeps sending (hold or its own pose).* Removes the freeze for
+  viewers, but forces smoothing on senders and consumers that want the real tracking.
+- *The reason in the application's own channel only.* Free to shape and fine for details and
+  performance data, which stay out of Posy; but other implementations, recorders and analysis
+  consumers in the room would see only the freeze.
+- *A fixed wait before sending.* A number no measurement supports, and wrong for a silence known
+  in advance.
+- *A message that clears the reason.* One more message, and if lost the receiver stays in the
+  wrong state while frames already run.
+- *A reason for a backgrounded client.* Ends either as a lost connection or as a performance
+  matter; away stays `sends: []`.
+
+### Consequences
+
+- An older receiver ignores the message (§2.7) and shows the 0015 cue; that is correct for it.
+  The change is additive.
+- A member who joins during a stated silence gets no message (the server keeps no state) and
+  shows the cue until frames resume.
+- One small message per change, forwarded; no per-frame work at the server. No frame, codec,
+  table or vector change.
+
+---
+
+## 0015 — Concealment: freeze an unexplained silence; leaving is the server's to report
+
+**Date:** 2026-10-23 · **Status:** Proposed · **Affects:** §2.3, §7, §8.3
+
+### Context
+
+Removing `IDLE` (0014) left one question sharp: what should a receiver show when a sender's
+frames stop? §8.3 step 3 eased the avatar to a neutral idle pose after 1 s. Judged by real use,
+that is wrong for a social room.
+
+- **A live tracker never goes quiet on its own.** A camera-based sender (e.g. MediaPipe) emits a
+  pose every frame even for a motionless person — micro-corrections and noise. "Holding still"
+  and "playing asleep" are therefore ordinary streams, not silences, and need no rule. Real
+  silence means the stream died.
+- **An unexplained silence should read as a problem.** A crash, a frozen device, a phone that
+  lost its signal: other people should notice and stop talking to someone who may be gone. A
+  calm idle pose hides that.
+- **An intended pause is not a silence on the pose layer.** A sender whose user is away declares
+  nothing (0014) and is removed from `peers` (§2.3); whether that user is still in the room is
+  the application's presence. `rate` 0 (§2.4) is no case for a receiver: the server sends it
+  only to the sender, and only when every receiver has that sender on `OFF`, so no receiver that
+  draws the avatar meets the pause.
+- **One border was too tight.** A home connection with ping spikes above a second (seen on poor
+  VDSL, ~1.2 s) would trip the 1 s rule and glitch the avatar to idle on every spike.
+- **Leaving was not stated.** §2.3 removed a peer whose declaration became empty, but said
+  nothing about a peer whose connection ended.
+
+### Decision
+
+- §8.3: the hold window is **1.5 s**. Past it the receiver keeps holding the last pose — a
+  freeze — and SHOULD show that the peer may have a problem (its own cue).
+- §8.3: a receiver does not infer from missing frames that a peer has left. After a removal
+  from `peers`, whether it drops the avatar or keeps showing it (an away user still in the
+  room) follows the application's presence. Posy defines no idle or away pose.
+- §2.3: when a peer's connection ends, the server removes it from `peers`. How it detects that,
+  and how fast, is the server's.
+- §7: a sender that pauses on purpose for longer than the hold window declares nothing, like one
+  whose user is away.
+
+### Alternatives rejected
+
+- *Keep easing to idle after a short gap.* Hides a fault behind a calm pose.
+- *A new in-frame flag for "away".* The same mistake as `IDLE`: a flag cannot ride a silence.
+  Intent belongs in signaling (declaring nothing) and in the application's presence.
+- *Define an "away" or "idle" pose in Posy.* That is a render choice that differs per avatar and
+  per application.
+- *Infer departure from a long silence.* Confuses a bad connection with a lost peer.
+- *Ease to idle on `rate` 0.* No receiver that draws the sender sees a `rate` 0 pause.
+- *Name the transport's liveness mechanisms (ICE `failed`, a WebSocket heartbeat) and their
+  timing.* They differ per transport and per server; Posy states only that a peer whose
+  connection ended is removed.
+
+### Consequences
+
+- A gap under 1.5 s shows no state change (helps poor links).
+- An unexplained stall freezes with a cue; an away user is shown as the application's presence
+  says.
+- This is not the receiver-chosen idle pose that 0004 rejects: that was about absent bones of a
+  peer that sends; here the peer sends nothing and is no longer in `peers`.
+- No frame, schema, vector or table change. Builds on 0014.
+
+---
+
+## 0014 — The session layer by real use: one clock sync, `rate` 0 pauses, no `IDLE`
+
+**Date:** 2026-10-23 · **Status:** Proposed · **Affects:** §1.2, §2.2, §2.4, §5.2, §7, §9, schema `rate`, `reference/js` (`Frame.idle`, `FLAG_IDLE`)
+
+### Context
+
+An implementation's sender, relay and receiver were reviewed against 1.4.5 and judged by real use:
+a phone that loses its signal under a bridge for 20 s, and a home PC on a steady line all
+session. Four rules asked more than any use needs, or lacked a case that occurs every day.
+
+- §2.2 demanded five clock exchanges at join, the median, a repeat every 30 s and a slew. Nothing
+  compares two senders' timestamps: a receiver times each sender by arrival (§8.1), an extras
+  `since` is compared with frames of the same sender, the relay never reads timestamps.
+- A sender that nobody watches, or that is alone in a room, kept uploading: `rate` had to be
+  above 0, so the server could stop forwarding but not stop the upload.
+- §2.4 made it a MUST for a receiver under load to lower its subscriptions, which is a receiver's
+  choice.
+- `IDLE` marked frames of a sender "idle/AFK" while frames kept flowing. A receiver gains
+  nothing from it (skipping interpolation is negligible), a sender may send fewer frames without
+  it, and an absent user is better served by sending nothing: a tracker that misfires on noise
+  then cannot move the avatar of someone who said they are away.
+
+### Decision
+
+- §2.2: one exchange at join; a sender's timestamps stay monotonic; re-sync with slew is a MAY.
+- §2.4: `rate` 0 = pause. The sender sends nothing until a `rate` above 0 arrives and resumes at
+  once, with its declaration and grant unchanged. The server decides it; a sender that stops on
+  its own account declares nothing (§2.1).
+- §2.4: lowering a subscription is a MAY.
+- Flag bit 4 is reserved (MUST be 0, ignored on receive, not rejected by a relay). §7 says
+  instead that a sender MAY send fewer frames than its rate, or none for a while, and that a
+  sender whose user is away declares nothing.
+
+### Alternatives rejected
+
+- *Keeping `IDLE` and softening §7's SHOULD to a MAY.* The flag would stay in the frame after
+  1.5.0 with nothing that needs it; removing it is possible only before the lock.
+- *`rate` 0 setting `IDLE`.* At `rate` 0 no frame is sent, so there is nothing to carry a flag.
+- *A pause requested by the sender.* A sender pauses by not sending, or stops by declaring
+  nothing; only the server knows that nobody wants its frames.
+- *Keeping five exchanges as a SHOULD.* No use in this revision depends on the accuracy; the
+  option stays open as a MAY for applications that need it.
+
+### Consequences
+
+- A sender sets no flag bit 4; a 1.4.5 receiver that still reads `IDLE` sees it clear.
+- A relay MAY pause senders nobody wants; a sender MUST honour `hz` 0 (it MUST honour `rate`, §7).
+- No frame, vector or table changes. The demo and the site keep their `IDLE` toggle until their
+  rework.
+
+---
+
 ## 0012 — The finger block: splay ±30°, and the thumb's three bytes reworked as one piece
 
 **Date:** 2026-10-22 · **Status:** Accepted · **Affects:** §5.5, §10 items 9 and 11, pose vectors `f03`–`f09`, `g02`, `scripts/finger-fk.mjs`

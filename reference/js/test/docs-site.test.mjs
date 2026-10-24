@@ -98,7 +98,7 @@ test.skip('docs: packetSize equals encoded frame length (site frozen; re-enable 
   for (const bits of sets) for (const hasRoot of [false, true]) for (const hasFingers of [false, true]) {
     for (const expr of [null, false, true]) {
       const frame = {
-        version: 1, seq: 0, timestampMs: 0, idle: false,
+        version: 1, seq: 0, timestampMs: 0,
         bones: new Map([...bits].map((b) => [b, { x: 0, y: 0, z: 0, w: 1 }])),
       };
       if (hasRoot) frame.root = { x: 0, y: 0, z: 0, h: 32768 };

@@ -24,7 +24,6 @@ export interface Frame {
   version: number;
   seq: number;
   timestampMs: number;
-  idle: boolean;
   /** key = bit index; encoded in ascending bit order */
   bones: Map<number, Quat>;
   /** x, y: u16 playspace-normalised; z: i16 depth in mm; h: u16 hips height, 32768 = standing (§5.4) */
@@ -56,7 +55,7 @@ export const FLAG_PERFECT_SYNC = 1 << 0;
 export const FLAG_HAS_ROOT = 1 << 1;
 export const FLAG_HAS_FINGERS = 1 << 2;
 export const FLAG_HAS_EXPRESSIONS = 1 << 3;
-export const FLAG_IDLE = 1 << 4;
+/** Bit 4: reserved since 1.4.6 (it was `IDLE`); never set, ignored on receive. */
 export const FLAG_HAS_EXTRA = 1 << 5;
 /** Bits 6–7: unset in this revision. Behind one of them a later revision appends a block (§9). */
 export const FLAG_LATER_BLOCK = (1 << 6) | (1 << 7);

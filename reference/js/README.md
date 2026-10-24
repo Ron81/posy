@@ -10,7 +10,7 @@ npm install posy-protocol
 import { encode, decode } from 'posy-protocol';
 
 const bytes = encode({
-  version: 1, seq: 1, timestampMs: 0, idle: false,
+  version: 1, seq: 1, timestampMs: 0,
   bones: new Map([[0, { x: 0, y: 0, z: 0, w: 1 }]]), // hips, identity
 });
 const frame = decode(bytes); // throws on any malformed frame

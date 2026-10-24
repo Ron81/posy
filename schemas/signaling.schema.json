@@ -12,7 +12,9 @@
     { "$ref": "#/$defs/peers" },
     { "$ref": "#/$defs/subscribe" },
     { "$ref": "#/$defs/rate" },
-    { "$ref": "#/$defs/error" }
+    { "$ref": "#/$defs/error" },
+    { "$ref": "#/$defs/silence" },
+    { "$ref": "#/$defs/silenceForwarded" }
   ],
   "$defs": {
     "tier": {
@@ -214,15 +216,15 @@
       "examples": [{ "t": "subscribe", "peer_uid": "u_8f31", "tier": "FULL" }]
     },
     "rate": {
-      "description": "Server → Client (§2.4). The highest tier currently demanded by any of the sender's subscribers, in Hz. Senders MUST NOT exceed it (+10% tolerance).",
+      "description": "Server → Client (§2.4). The highest tier currently demanded by any of the sender's subscribers, in Hz. Senders MUST NOT exceed it (+10% tolerance). 0: nobody wants the sender's frames; it sends none until a rate above 0 arrives, its declaration and grant stay valid.",
       "type": "object",
       "required": ["t", "hz"],
       "additionalProperties": false,
       "properties": {
         "t": { "const": "rate" },
-        "hz": { "type": "number", "exclusiveMinimum": 0 }
+        "hz": { "type": "number", "minimum": 0 }
       },
-      "examples": [{ "t": "rate", "hz": 15 }]
+      "examples": [{ "t": "rate", "hz": 15 }, { "t": "rate", "hz": 0 }]
     },
     "error": {
       "description": "Server → Client (§2.5). Error handling is server-enforced. 'action' is free-form text in 1.0-draft (the only value that appears in the spec is the example \"POSE_MUTED\").",
@@ -238,6 +240,33 @@
       "examples": [
         { "t": "error", "code": "MALFORMED_THRESHOLD", "detail": "34 invalid frames / 10s", "action": "POSE_MUTED" }
       ]
+    },
+    "silenceReason": {
+      "description": "Why a sender that is still connected stops sending frames (§2.8). A receiver treats a reason it does not know as 'other'.",
+      "enum": ["tracking_error", "client_delay", "other"]
+    },
+    "silence": {
+      "description": "Client → Server (§2.8). A sender states why its frames stop. Its next frame ends the stated silence; a new silence replaces the reason.",
+      "type": "object",
+      "required": ["t", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "t": { "const": "silence" },
+        "reason": { "$ref": "#/$defs/silenceReason" }
+      },
+      "examples": [{ "t": "silence", "reason": "tracking_error" }]
+    },
+    "silenceForwarded": {
+      "description": "Server → Client (§2.8). The server forwards a sender's silence to the other members of the room, with the sender's uid added.",
+      "type": "object",
+      "required": ["t", "uid", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "t": { "const": "silence" },
+        "uid": { "$ref": "#/$defs/uid" },
+        "reason": { "$ref": "#/$defs/silenceReason" }
+      },
+      "examples": [{ "t": "silence", "uid": "u_8f31", "reason": "tracking_error" }]
     }
   }
 }

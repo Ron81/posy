@@ -3,6 +3,57 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
+## [Unreleased]
+
+Corrections of the session layer and of concealment from a review of an implementation's sender,
+relay and receiver against 1.4.5, judged by real use (a phone that loses its signal for a while, a
+home PC on a steady line), and a new message by which a sender states why its frames stop. No
+frame changes size or layout. **Changes sender, relay and receiver behaviour:** flag bit 4 is no
+longer set, a sender honours `rate` 0, a receiver freezes a long silence instead of easing to idle,
+and a server forwards `silence`. `docs/DECISIONS.md` 0014, 0015 and 0016.
+
+### Changed
+- **§2.2** — one clock exchange at join is required (was five, with the median), and a sender's
+  timestamps must not run backwards in the order of §5.7 (the `u32` wrap is not a step back).
+  Repeating the exchange with a slew is a MAY, for
+  applications that put several senders on one timeline; nothing in this revision compares two
+  senders' timestamps.
+- **§2.4** — `rate` may be 0: nobody wants the sender's frames (all subscribers on `OFF`, or
+  nobody else in the room). The sender sends none until a `rate` above 0 arrives; declaration
+  and grant stay valid. A sender that stops on its own account declares nothing (§2.1).
+- **§2.3** — when a peer's connection ends, the server removes it from `peers`; how it detects
+  that, and how fast, is the server's.
+- **§2.4** — lowering a subscription is the receiver's decision (MAY); it was a MUST under load.
+- **§5.2, §7** — flag bit 4 (`IDLE`) is reserved: MUST be 0, ignored on receive, and a relay
+  does not reject it (§1.2). §7's "set `IDLE` after 2 s and drop to `MINIMAL`" is replaced: a
+  sender MAY send fewer frames than its rate allows; one that pauses on purpose for longer than
+  1.5 s, or whose user is away, declares nothing. §9 lists bit 4 as free for a later meaning.
+- **§8.3** — the hold window widens to 1.5 s; past it a receiver keeps holding the last pose (a
+  freeze) and SHOULD show that the peer may have a problem, rather than easing to a neutral idle
+  that hides a stall. A receiver does not infer from missing frames that a peer has left; after a
+  removal from `peers`, whether it drops the avatar or keeps showing it follows the
+  application's presence. Posy defines no idle or away pose. `docs/DECISIONS.md` 0015.
+
+### Added
+- **§2.8** — `silence`: a sender that is still connected and stops sending frames MAY say why
+  (`tracking_error`, `client_delay`, `other`); the server adds the `uid` and forwards it to the
+  room. The next frame ends it. Sent for a silence that will outlast the 1.5 s bridge, not for a
+  short drop; the server MAY drop such messages beyond a limit, and a dropped one leaves the §8.3
+  default. A sender uses `other` for a reason not listed; a receiver treats an unknown reason as
+  `other`. **§8.3** — during a stated silence the receiver holds without the problem
+  cue and MAY show its own. **§7** — a sender that will send again MAY state the silence; one
+  that stops for longer on purpose, or whose user is away, declares nothing. Additive: an older
+  receiver ignores the message (§2.7). `docs/DECISIONS.md` 0016.
+
+### Reference implementation
+- `Frame.idle` and `FLAG_IDLE` are removed; the encoder never sets bit 4, the decoder ignores it.
+- Schema: `rate.hz` minimum 0, with an example. `silence` in both directions, with examples.
+- No test vector changes (none set bit 4); a unit test pins the reserved bit.
+
+### Not changed
+- The loopback demo and the site keep their `IDLE` toggle and field until their rework (they are
+  frozen); the demo builds against the codec.
+
 ## [1.4.5] - 2026-10-22
 
 PMX avatars over Posy, from a check in an implementation with a PMX driver on three PMX

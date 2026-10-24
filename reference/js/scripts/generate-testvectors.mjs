@@ -92,7 +92,7 @@ function writeReject(name, description, bytes, reason) {
 const v001 = writeAccept(
   '001-minimal',
   'one bone (hips, identity), nothing else',
-  { version: VERSION, seq: 1, timestampMs: 0, idle: false, bones: new Map([[0, idQuat]]) },
+  { version: VERSION, seq: 1, timestampMs: 0, bones: new Map([[0, idQuat]]) },
   { flags: 0 },
 );
 
@@ -107,7 +107,6 @@ const v001 = writeAccept(
       version: VERSION,
       seq: 2,
       timestampMs: 33,
-      idle: false,
       bones,
       root: { x: 0x8000, y: 0x4000, z: -1500, h: 0x8000 },
       fingers: {
@@ -133,7 +132,6 @@ const v001 = writeAccept(
       version: VERSION,
       seq: 3,
       timestampMs: 66,
-      idle: false,
       bones,
       root: { x: 100, y: 200, z: 0, h: 0x8000 },
       fingers: {
@@ -178,7 +176,6 @@ writeReject('004d-length-too-short', 'a 15-byte buffer (< 16)', new Uint8Array(1
     version: VERSION,
     seq: 8,
     timestampMs: 5000,
-    idle: false,
     bones: new Map([[0, idQuat]]),
     expressions: { perfectSync: false, weights: new Uint8Array(13), gazeYaw: 0, gazePitch: 0 },
     extra: { bones: [rot('x', 30), rot('z', -45)], values: new Uint8Array([0, 128, 255]) },
@@ -219,7 +216,6 @@ writeReject('004d-length-too-short', 'a 15-byte buffer (< 16)', new Uint8Array(1
     version: VERSION,
     seq: 5,
     timestampMs: 0,
-    idle: false,
     bones,
   }, { flags: 0 });
 }
@@ -338,7 +334,6 @@ writeReject('004d-length-too-short', 'a 15-byte buffer (< 16)', new Uint8Array(1
       version: VERSION,
       seq: 7,
       timestampMs: 100,
-      idle: false,
       bones,
       root: { x: 0x8000, y: 0xc000, z: 250, h: 18022 },
       fingers: {

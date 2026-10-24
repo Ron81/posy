@@ -121,7 +121,7 @@ A frame failing check 1, 2 or 3 is dropped. A violation of the frame-structure r
 (a bad version, a length mismatch, a reserved bit 55–63 set, or both finger carriages at
 once) counts toward `MALFORMED_THRESHOLD` (§2.5), reported once the threshold is crossed, not
 per frame. A bone or flag bit set for a type the sender was not granted is counted as
-`UNAUTHORIZED_TYPE` instead. Reserved flag bits 6–7 MUST NOT cause rejection: they are
+`UNAUTHORIZED_TYPE` instead. Reserved flag bits 4, 6 and 7 MUST NOT cause rejection: they are
 reserved for extensions (§9) and ignored on receive (§5.2). The relay's length check stays
 exact all the same: a frame that carries a block the relay does not know behind one of
 these bits fails check 2. A receiver likewise still
@@ -277,15 +277,21 @@ forwarded packets.
 Client → Server: `{ "t": "ping", "t1": <client_monotonic_ms> }`
 Server → Client: `{ "t": "pong", "t1": <echo>, "ts": <server_ms_since_epoch> }`
 
-The client MUST perform at least 5 exchanges at join. For each sample, with `t1` the
-client's send time, `t2` its receive time and `rtt = t2 - t1`, compute
-`offset = ts + rtt/2 - t2` (equivalently `ts - t1 - rtt/2`), and take the **median** as its
-session offset, so that `session_time = capture_monotonic_ms + offset`. The client
-SHOULD repeat this every 30 s and apply the new offset with a slew of ≤ 5 ms/s to
-avoid pose discontinuities.
+The client MUST perform at least one exchange at join. With `t1` the client's send time,
+`t2` its receive time and `rtt = t2 - t1`, it takes `offset = ts + rtt/2 - t2`
+(equivalently `ts - t1 - rtt/2`) as its session offset, so that
+`session_time = capture_monotonic_ms + offset`.
 
-All `timestamp_ms` values written into packets MUST be
-`capture_monotonic_ms + offset`.
+All `timestamp_ms` values written into packets MUST be `capture_monotonic_ms + offset`, and
+a sender's timestamps MUST NOT run backwards when compared as in §5.7; the wrap of the `u32`
+is not a step back.
+
+Nothing in this revision compares the timestamps of two senders: a receiver times each
+sender's frames by their arrival (§8.1), and an extras `since` is compared with frames of the
+same sender (§2.6). An application that puts several senders on one timeline (an analysis, a
+recording) MAY repeat the exchange, take the sample with the smallest `rtt` or the median of
+several, and apply a new offset with a slew of ≤ 5 ms/s, so that the sender's timestamps stay
+monotonic.
 
 ### 2.3 Peer directory and identity
 
@@ -303,7 +309,8 @@ peer's avatar before the first frame arrives; a type absent from it never arrive
 the receiver leaves that part of the avatar in its rest state (§3.3, §5.5). An `add` for a `uid`
 already known replaces the earlier entry. The entry of a peer that was granted `"extra"`
 also carries its `extra` object (§2.6). A peer whose granted set is empty has no pose
-producer and is not listed; if its set becomes empty it is removed.
+producer and is not listed; if its set becomes empty it is removed. When a peer's connection
+ends, the server removes it too; how it detects that, and how fast, is the server's.
 
 Receivers MUST associate an inbound data consumer with the `uid` given here. No UID
 bytes appear in the pose frame. Clients MUST send their UID only in `hello`; the
@@ -323,8 +330,9 @@ fallback:
 - Default tier for every peer is `default_tier` from `session`.
 - The server enforces a tier by forwarding only every *N*-th frame. Because v1 sends
   full independent frames, dropping any frame is always safe.
-- A receiver under load MUST reduce its own subscriptions rather than expecting the
-  sender to adapt. It MAY re-upgrade at any time with no handshake.
+- A receiver MAY lower a subscription at any time, for example for a peer it does not draw
+  moving (shown as a picture, or blocked) or under load, and MAY raise it again with no
+  handshake. Which peers it wants is the receiver's decision.
 
 The server MUST inform each sender of the highest tier currently demanded by any of
 its subscribers, so the sender can throttle capture:
@@ -335,10 +343,16 @@ its subscribers, so the sender can throttle capture:
 
 Senders MUST NOT exceed the granted `hz` (tolerance +10%).
 
+When no receiver wants a sender's frames (every other member has it on `OFF`, or nobody else
+is in the room), the server MAY send `hz` 0. The sender then sends no frames until a `rate`
+above 0 arrives, and sends again at once: its declaration and grant stay valid, and nothing is
+negotiated anew. A sender that stops on its own account (its user is away, the camera is off)
+declares nothing instead (§2.1).
+
 Per-subscriber rate tiering is OPTIONAL for a relay. A relay without it forwards every
 accepted frame to every subscriber whose tier is not `OFF`, treats `FULL`, `NORMAL` and
 `MINIMAL` alike, and bounds load through the sender `rate` grant alone. It MUST still
-honour `OFF`, which needs no per-frame state.
+honour `OFF`, which needs no per-frame state, and MAY pause a sender nobody wants with `hz` 0.
 
 ### 2.5 Errors
 
@@ -475,6 +489,38 @@ on anything else:
 `schemas/signaling.schema.json` describes what an implementation of this revision
 **sends**: it is closed, and a message with a further field fails it. A recipient MUST NOT
 use it to refuse a message.
+
+### 2.8 Stated silence
+
+Posy carries what a sender sends, not how it was produced. The one case it explains is a
+silence: a sender that is still connected but stops sending frames MAY say why.
+
+Client → Server:
+```json
+{ "t": "silence", "reason": "tracking_error" }
+```
+
+| `reason` | Meaning |
+|---|---|
+| `tracking_error` | The capture delivers nothing: it finds no person or face, or the camera stopped delivering. |
+| `client_delay` | The client is busy and sends nothing for a while: it loads an avatar, it calibrates. |
+| `other` | Any other reason. |
+
+The server adds the sender's `uid` and forwards the message to the other members of the room:
+```json
+{ "t": "silence", "uid": "u_8f31", "reason": "tracking_error" }
+```
+
+- The message explains a silence only. A sender sends it when it stops sending frames; its next
+  frame ends the stated silence, and a new `silence` replaces the reason. A pose or animation a
+  sender transmits in place of tracked motion (§7) is ordinary frames and needs no message.
+- A sender states a silence that will outlast the 1.5 s a receiver bridges (§8.3), not a short
+  drop of its tracker. A silence known in advance, such as loading an avatar, is stated at once.
+  The server MAY drop a sender's `silence` messages beyond a limit of its choosing; a dropped
+  message leaves the receiver at the §8.3 default.
+- A sender uses `other` for a reason not listed. A receiver treats a `reason` it does not know as
+  `other`. What it shows is in §8.3.
+- A user who is away is no silence: that sender declares nothing (§2.1).
 
 ---
 
@@ -788,7 +834,7 @@ receivers only: a frame with flag bit 6 or 7 set MAY be longer (§9).
 | 1 | `HAS_ROOT` | Root position block present |
 | 2 | `HAS_FINGERS` | Finger block present |
 | 3 | `HAS_EXPRESSIONS` | Expression block present |
-| 4 | `IDLE` | Sender is idle/AFK; receiver MAY skip interpolation work |
+| 4 | reserved | MUST be 0 in this revision; ignored on receive (it was `IDLE` until 1.4.5, §7) |
 | 5 | `HAS_EXTRA` | Extras block present (§5.8) |
 | 6–7 | reserved | MUST be 0 in this revision. A receiver ignores the bit, and the bytes after the blocks it knows (§9) |
 
@@ -1213,8 +1259,12 @@ datacentre or fibre-grade uplink, not a home connection.
   SHOULD be used only for the active speaker and for Perfect-Sync faces, where fast
   hand and mouth motion is visible.
 - Senders MUST honour the `rate` message (§2.4).
-- Senders SHOULD set `IDLE` when no significant motion has occurred for 2 s and drop to
-  `MINIMAL` until motion resumes.
+- A sender MAY send fewer frames than its `rate` allows. Receivers bridge a gap of up to
+  1.5 s and show a longer silence as a possible problem (§8.3). A sender that is still running
+  and will send again (its tracker lost the person, it loads an avatar) MAY state the silence
+  (§2.8). One that stops for longer on purpose, or whose user is away, declares nothing (§2.1):
+  no frame, not even from a tracker that misfires on noise, then reaches anyone until it
+  declares again.
 - A sender without tracking for a body part MAY transmit a pose or an animation of its
   own choosing for it (seated, leaning, an idle loop) as ordinary bones and blocks of the
   types it declared. To a receiver this is indistinguishable from tracked motion. A part
@@ -1249,9 +1299,16 @@ frame is visible as a freeze-and-jump unless step 1 carries the motion across th
 receiver that renders at these rates MUST implement at least step 1.
 1. **0 – 250 ms gap:** continue the last motion with decaying angular velocity
    (exponential decay, ~150 ms half-life).
-2. **250 ms – 1 s:** hold the last received pose.
-3. **> 1 s:** ease to the avatar's idle pose over 500 ms.
+2. **250 ms – 1.5 s:** hold the last received pose.
+3. **> 1.5 s:** keep holding the last received pose; a receiver SHOULD show that the peer
+   may have a problem (its own cue). If the peer stated the silence (§2.8), the receiver holds
+   without that cue and MAY show one of its own for the reason.
 4. On resumption, blend back in over 200 ms to avoid a visible snap.
+
+A receiver does not infer from missing frames that a peer has left. A peer removed from
+`peers` (§2.3) sends no more frames; whether a receiver then drops its avatar or keeps
+showing it (its user is away but still in the room) follows the application's presence.
+Posy defines no idle or away pose.
 
 ### 8.4 Audio-driven mouth shapes (Optional)
 Receivers MAY synthesise `aa/ih/ou/ee/oh` from the incoming Opus stream instead of
@@ -1309,8 +1366,8 @@ legs, kneeling, lying down and jumping without any pose-specific rule on the rec
   signaling change ships as a 1.x revision under `posy/1`. Once the maintainers declare
   the format frozen, any such change requires `posy/2`.
 - Extension mechanism: avatar-specific data travels as declared extras (§2.6), which
-  need no further change to the format. Reserved for other extensions: flag bits 6–7,
-  bone bits 55–63 and the reserved finger byte. A relay rejects a frame that sets a reserved
+  need no further change to the format. Reserved for other extensions: flag bit 4 (a flag
+  without a block), flag bits 6–7, bone bits 55–63 and the reserved finger byte. A relay rejects a frame that sets a reserved
   bone bit 55–63 (§1.2), since those bits belong to no granted type; a **receiver** still
   ignores an unknown mask bit so a future minor can define one without breaking older
   receivers. A block placed behind a flag bit changes the frame length, so a relay that
@@ -1330,8 +1387,8 @@ legs, kneeling, lying down and jumping without any pose-specific rule on the rec
   it (§2.7), the sender does not send the block, and its relay never has to size it.
 - **Additive.** Once the format is frozen, a 1.x revision makes only changes that a peer
   of an earlier 1.x revision survives by the rules above and those of §2.7: a new message,
-  field, data type or error code; a block behind flag bit 6 or 7; a bone on bits 55–63; a
-  meaning for a reserved byte. Everything else requires `posy/2`: changing or removing
+  field, data type or error code; a meaning for flag bit 4; a block behind flag bit 6 or 7; a
+  bone on bits 55–63; a meaning for a reserved byte. Everything else requires `posy/2`: changing or removing
   what exists, a block in front of an existing one, and any addition an older peer has to
   understand for the session to work.
 
