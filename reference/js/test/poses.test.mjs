@@ -18,28 +18,21 @@ const maxError = (got, expect) =>
 for (const file of files) {
   const vec = JSON.parse(readFileSync(join(POSES, file), 'utf8'));
 
-  test(`pose ${vec.name}: quaternions give the expected joint positions`, () => {
+  test(`pose ${vec.name}: joint positions, wire encoding, h and the Appendix D estimate`, () => {
     const pose = Object.fromEntries(vec.bones.map((b) => [b.name, toQuat(b.quat)]));
-    assert.ok(maxError(fk(skeleton.joints, pose), vec.expect) < 1e-4);
-  });
+    assert.ok(maxError(fk(skeleton.joints, pose), vec.expect) < 1e-4, 'quaternions give the expected joint positions');
 
-  test(`pose ${vec.name}: still within 1 cm after the wire encoding`, () => {
-    const pose = Object.fromEntries(vec.bones.map((b) => [b.name, unpackQuat(packQuat(toQuat(b.quat)))]));
     // Absent bones are identity on the wire side too, so only the listed bones are quantised.
-    assert.ok(maxError(fk(skeleton.joints, pose), vec.expect) < 0.01);
-  });
+    const wire = Object.fromEntries(vec.bones.map((b) => [b.name, unpackQuat(packQuat(toQuat(b.quat)))]));
+    assert.ok(maxError(fk(skeleton.joints, wire), vec.expect) < 0.01, 'within 1 cm after the wire encoding');
 
-  test(`pose ${vec.name}: h matches hips_height`, () => {
-    assert.equal(vec.h, Math.round((vec.hips_height / skeleton.standing_hip_height) * 32768));
-  });
+    assert.equal(vec.h, Math.round((vec.hips_height / skeleton.standing_hip_height) * 32768), 'h matches hips_height');
 
-  // Appendix D on the reference skeleton: ankle 0.08 m and toes 0.01 m above the floor in
-  // the T-pose, shin radius 0.05 m. p09 is its documented failure: nothing touches the floor.
-  test(`pose ${vec.name}: Appendix D estimate ${vec.name.startsWith('p09') ? 'fails' : 'gives hips_height'}`, () => {
-    const pose = Object.fromEntries(vec.bones.map((b) => [b.name, toQuat(b.quat)]));
+    // Appendix D on the reference skeleton: ankle 0.08 m and toes 0.01 m above the floor in
+    // the T-pose, shin radius 0.05 m. p09 is its documented failure: nothing touches the floor.
     const error = Math.abs(estimateHipsHeight(skeleton.joints, pose, { foot: 0.08, toes: 0.01, shin: 0.05 }) - vec.hips_height);
-    if (vec.name.startsWith('p09')) assert.ok(error > 0.1);
-    else assert.ok(error < 1e-3);
+    if (vec.name.startsWith('p09')) assert.ok(error > 0.1, 'the estimate fails where nothing touches the floor');
+    else assert.ok(error < 1e-3, 'the estimate gives hips_height');
   });
 }
 
@@ -144,14 +137,11 @@ for (const file of gFiles) {
   const vec = JSON.parse(readFileSync(join(POSES, file), 'utf8'));
 
   // A cleared finger bit takes the rest hand of §5.5 for that joint.
-  test(`finger_bones ${vec.name}: direct quaternions give the expected joint positions`, () => {
+  test(`finger_bones ${vec.name}: joint positions, also after the wire encoding`, () => {
     const pose = { ...restHand, ...Object.fromEntries(vec.bones.map((b) => [b.name, toQuat(b.quat)])) };
-    assert.ok(maxError(fkHand(handSkeleton.joints, pose), vec.expect) < 1e-4);
-  });
-
-  test(`finger_bones ${vec.name}: still within 1 cm after the wire encoding`, () => {
-    const pose = { ...restHand, ...Object.fromEntries(vec.bones.map((b) => [b.name, unpackQuat(packQuat(toQuat(b.quat)))])) };
-    assert.ok(maxError(fkHand(handSkeleton.joints, pose), vec.expect) < 0.01);
+    assert.ok(maxError(fkHand(handSkeleton.joints, pose), vec.expect) < 1e-4, 'direct quaternions give the expected joint positions');
+    const wire = { ...restHand, ...Object.fromEntries(vec.bones.map((b) => [b.name, unpackQuat(packQuat(toQuat(b.quat)))])) };
+    assert.ok(maxError(fkHand(handSkeleton.joints, wire), vec.expect) < 0.01, 'within 1 cm after the wire encoding');
   });
 }
 
