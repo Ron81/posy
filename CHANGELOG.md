@@ -3,6 +3,18 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
+## [Unreleased]
+
+### Changed
+- **Posy defines no audio** (§0, §1.1, §6, §8.2, §8.4). Removed: the requirement that voice use
+  WebRTC Opus tracks (§1.1), and the rule that playout time is derived from the audio clock of
+  the same peer (§8.2); a receiver times frames by their arrival (§2.2, §8.1). §8.4 (mouth
+  shapes from audio) is informative and has no MUST left: an application that transmits voice
+  can use it for the mouth shapes and for the playout timing. "Active speaker" (§2.4, §6, §7) is
+  "the peer in focus", and Appendix C says "Posy avatar space" for what it still called "VRM 1.0
+  normalized rotations". No frame, message or check
+  changes. `docs/DECISIONS.md` 0017.
+
 ## [1.4.6] - 2026-10-24
 
 Corrections of the session layer and of concealment from a review of an implementation's sender,

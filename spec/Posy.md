@@ -9,8 +9,9 @@
 ## 0. Scope and Conventions
 
 Posy is a lightweight, server-authoritative protocol for streaming humanoid avatar
-pose, finger and facial-expression data between many participants in real time,
-alongside ordinary WebRTC Opus voice.
+pose, finger and facial-expression data between many participants in real time. It
+defines pose data only: audio and other media are the application's and are not part of
+Posy.
 
 **Key words** MUST, MUST NOT, SHOULD, SHOULD NOT, MAY are to be interpreted as in
 RFC 2119.
@@ -34,8 +35,7 @@ physics, props, scene state.
 
 ## 1. Transport
 
-### 1.1 Media and data
-- Voice MUST use standard WebRTC Opus audio tracks. Posy does not define audio.
+### 1.1 Pose data
 - Pose data MAY be carried on either of two transport lanes, depending on deployment:
 
   **SCTP data channel** — the lane for direct and browser-to-browser links:
@@ -318,7 +318,7 @@ server MUST reject frames arriving on an unauthenticated producer.
 
 ### 2.4 Subscription and rate tiers
 
-One message covers active-speaker rates, grid-thumbnail rates **and** congestion
+One message covers the rate of the peer in focus, grid-thumbnail rates **and** congestion
 fallback:
 
 ```json
@@ -1227,8 +1227,7 @@ below are the right order of magnitude for either lane.
 | NORMAL | 15 | ~20 kbit/s |
 | MINIMAL | 5 | ~6.6 kbit/s |
 
-Pose data is smaller than the accompanying Opus stream, and about **25–35× smaller than
-the same pose over raw VMC**. VMC sends one OSC message per bone — address
+Pose data is about **25–35× smaller than the same pose over raw VMC**. VMC sends one OSC message per bone — address
 `/VMC/Ext/Bone/Pos` (20 B padded) + type tags (12 B) + the bone-name string (~16 B padded)
 + 7 floats of position and rotation (28 B) ≈ **76 B per bone**. The pose in the 115 B frame
 above (13 body bones with the hands as a 24 B finger block) is, in VMC, those 13 bones plus
@@ -1237,7 +1236,7 @@ is ≈ 4.2 KB, about **36×**. The win comes from the smallest-three quaternion 
 per bone), the compact finger block, and sending no bone names on the wire; the exact factor
 depends on the bone count and on whether a VMC sender bundles its messages.
 
-**50-person room, realistic tiering** (1 speaker FULL, 49 peers MINIMAL):
+**50-person room, realistic tiering** (1 peer in focus at FULL, 49 peers MINIMAL):
 - Per client downstream: ~358 kbit/s (~45 KB/s) — trivial.
 - **Server upstream: ~18 Mbit/s.** Feasible on fibre, not on typical consumer upload.
 
@@ -1256,7 +1255,7 @@ datacentre or fibre-grade uplink, not a home connection.
   what allows low send rates to look smooth.
 - Default send rate is `NORMAL` (15 Hz). With client-side One-Euro smoothing and
   receiver-side slerp, 15 Hz is visually sufficient for body motion. `FULL` (30 Hz)
-  SHOULD be used only for the active speaker and for Perfect-Sync faces, where fast
+  SHOULD be used only for the peer in focus and for Perfect-Sync faces, where fast
   hand and mouth motion is visible.
 - Senders MUST honour the `rate` message (§2.4).
 - A sender MAY send fewer frames than its `rate` allows. Receivers bridge a gap of up to
@@ -1284,8 +1283,6 @@ datacentre or fibre-grade uplink, not a home connection.
   `timestamp_ms`.
 - Blendshapes, finger curls/splays, gaze, root position and hips height: **linear
   interpolation**, same timing.
-- Playout time MUST be derived from the audio clock of the same peer so that lips and
-  voice remain aligned.
 - Receivers MAY apply a light low-pass filter (e.g. One-Euro) to the interpolated output
   to round off the velocity discontinuities at frame boundaries. This is not a substitute
   for sender-side filtering (§7): it cannot recover detail lost to downsampling, and it
@@ -1310,13 +1307,19 @@ A receiver does not infer from missing frames that a peer has left. A peer remov
 showing it (its user is away but still in the room) follows the application's presence.
 Posy defines no idle or away pose.
 
-### 8.4 Audio-driven mouth shapes (Optional)
-Receivers MAY synthesise `aa/ih/ou/ee/oh` from the incoming Opus stream instead of
-using the transmitted viseme weights. This guarantees lip-sync alignment and saves
-bytes, **but it only works for speech** — laughing, humming, coughing and background
-noise produce wrong mouth shapes. Implementations offering this MUST make it a
-user-visible option and MUST fall back to transmitted weights when the sender's audio
-track is muted or absent.
+### 8.4 Audio-driven mouth shapes (Optional, Informative)
+
+Posy carries no audio, and nothing in this section is needed for conformance. Where an
+application transmits a peer's voice next to its pose, it can use the audio to improve
+what the mouth shows:
+
+- A receiver can synthesise the mouth shapes `aa/ih/ou/ee/oh` from the peer's audio in
+  place of the transmitted weights. Lips and voice are then aligned by construction. This
+  works for speech only: laughing, humming, coughing and background noise give wrong mouth
+  shapes. The transmitted weights stay the fallback, above all when the peer's audio is
+  muted or absent, and the choice is best left to the user.
+- A receiver can time the playout of a peer's frames by the clock of that peer's audio, so
+  that lips and voice stay aligned.
 
 ### 8.5 Hips height (Normative)
 
@@ -1528,9 +1531,9 @@ Quat unpack_smallest3(uint32_t w) {
 ## Appendix C — Integration Notes (Informative)
 
 **Dependency risk.** Posy is deliberately **solver-agnostic**: nothing in §3–§5 
-references MediaPipe or Kalidokit, so any source that can produce VRM 1.0 
-normalized rotations (OpenXR body tracking, VMC bridge, IK from controllers, 
-a canned animation) is a valid sender.
+references MediaPipe or Kalidokit, so any source that can produce rotations in Posy
+avatar space (§3.1) is a valid sender: OpenXR body tracking, a VMC bridge, IK from
+controllers, a canned animation.
 
 **SFU requirements.** Any SFU may be used. It MUST support per-producer data-channel
 forwarding and the signaling messages of §2; per-subscriber frame dropping is needed only
