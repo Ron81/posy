@@ -89,8 +89,8 @@ little for a group of friends, a datacentre uplink for a crowd. The
 
 ## Status
 
-Until 1.5.0 the packet format and the signaling may still change, each change with a stated
-justification. 1.5.0 closes that: from then on 1.x releases only add. The plan and its state are
+The packet format and the signaling are frozen since 1.5.0: a 1.x release only adds (§9), and
+anything that changes or removes what exists needs `posy/2`. The posture and what it means are
 in [`ROADMAP.md`](ROADMAP.md), the changes in [`CHANGELOG.md`](CHANGELOG.md), the reasons behind
 the harder decisions in [`docs/DECISIONS.md`](docs/DECISIONS.md) and the common questions in
 [`FAQ.md`](FAQ.md). Contributions are welcome: [`CONTRIBUTING.md`](CONTRIBUTING.md).

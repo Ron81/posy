@@ -734,7 +734,7 @@ change to the pose frame, the codec, or any test vector.
 
 ## 0005 — Declared extras for everything beyond the humanoid core
 
-**Date:** 2026-10-06 · **Status:** Proposed · **Affects:** §2.1, §2.3, §2.6, §5.1, §5.2, §5.8, §1.2, §9 (flag bit 5, signaling)
+**Date:** 2026-10-06 · **Status:** Accepted · **Affects:** §2.1, §2.3, §2.6, §5.1, §5.2, §5.8, §1.2, §9 (flag bit 5, signaling)
 
 ### Context
 
@@ -789,7 +789,7 @@ One block at the end of the frame carries them in declaration order, behind flag
 
 ## 0004 — Rest rotation of absent arm bones and the rest hand
 
-**Date:** 2026-10-05 · **Status:** Proposed · **Affects:** §3.3, §5.5, §2.3, §7 (receiver behaviour; nothing on the wire)
+**Date:** 2026-10-05 · **Status:** Accepted · **Affects:** §3.3, §5.5, §2.3, §7 (receiver behaviour; nothing on the wire)
 
 ### Context
 
@@ -830,7 +830,7 @@ animations are transmitted by the sender as ordinary bones (§7).
 
 ## 0003 — The version byte is the minor revision
 
-**Date:** 2026-10-05 · **Status:** Proposed · **Affects:** §5.1, §9, §1.2 (byte 0 of every frame)
+**Date:** 2026-10-05 · **Status:** Accepted · **Affects:** §5.1, §9, §1.2 (byte 0 of every frame)
 
 ### Context
 
@@ -866,7 +866,7 @@ minor revision above 15 were needed, releases continue as patch releases of 1.15
 
 ## 0002 — Thumb flexion axis, and stated signs for splay and opposition
 
-**Date:** 2026-10-04 · **Status:** Proposed · **Affects:** §5.5 (finger block)
+**Date:** 2026-10-04 · **Status:** Accepted · **Affects:** §5.5 (finger block)
 
 ### Context
 
