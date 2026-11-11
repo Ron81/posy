@@ -3,6 +3,39 @@
 All notable changes to the Posy spec, reference implementation and test vectors. 
 The spec follows the versioning rules in §9 (major version = channel protocol string `posy/N`).
 
+## [Unreleased]
+
+The format is frozen: from this release on a 1.x revision only adds (§9).
+
+### Changed
+- **Posy defines no audio** (§0, §1.1, §6, §8.2, §8.4). Removed: the requirement that voice use
+  WebRTC Opus tracks (§1.1), and the rule that playout time is derived from the audio clock of
+  the same peer (§8.2); a receiver times frames by their arrival (§2.2, §8.1). §8.4 (mouth
+  shapes from audio) is informative and has no MUST left: an application that transmits voice
+  can use it for the mouth shapes and for the playout timing. "Active speaker" (§2.4, §6, §7) is
+  "the peer in focus", and Appendix C says "Posy avatar space" for what it still called "VRM 1.0
+  normalized rotations". No frame, message or check
+  changes. `docs/DECISIONS.md` 0017.
+- **The format is frozen** (Status, §2, §9). Up to 1.4.x a justified layout or signaling change
+  shipped as a 1.x revision; from 1.5.0 such a change needs `posy/2`. `docs/DECISIONS.md` 0018.
+- **The `version` byte is 5** (§5.1, §9). Codec: `VERSION = 5`. All frame vectors regenerated;
+  each differs in byte 0 only (`testvectors/VERIFICATION.md`).
+- CONTRIBUTING and the protocol-change issue template describe the frozen format.
+- **Loopback demo** brought to this revision; its do-not-use notice is gone. It built the
+  16-slot expression block of 1.4.0, which the encoder refuses since 1.4.1. Now: the 13-slot
+  VRM-Sync block; the tongue as a declared extra value (`tongueOut` on the stick figure, and
+  on a model whose file has it); the finger block as §5.5 defines it since 1.4.5, through
+  `reference/js/scripts/finger-fk.mjs` and with the thumb's rest measured on a loaded model;
+  a switch to per-joint fingers (`finger_bones`) and a pose that needs them (a claw).
+- **Interactive site** brought to this revision, shortened and restyled, with a German version
+  (`docs/de/`); its notice is gone. It described
+  1.1.0 (118 B, "70× smaller than VMC", 16 expression slots, finger bits that must be 0, the
+  `IDLE` flag, a 6-byte root term in the formula, an MMD formula). The packet builder knows
+  `finger_bones` and the extras block and shows the declaration a frame needs. Texts that
+  repeated the FAQ, and data and code for parts the page no longer has, are removed.
+- The two site tests skipped since 1.4.1 run again; the site's release tag is tested against
+  `package.json`.
+
 ## [1.4.6] - 2026-10-24
 
 Corrections of the session layer and of concealment from a review of an implementation's sender,

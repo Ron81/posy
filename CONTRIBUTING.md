@@ -10,7 +10,7 @@ Some defenitions, just the usual, but to spell them out:
 - **Issues are for the protocol** (spec bugs, ambiguities, conformance problems). 
 - **Discussions are for everything else** — "how do I do rooms in mediasoup?" belongs there.
 - **Spec changes need an issue first.** Say what's wrong or unclear, so we can agree on the fix before anyone writes anything big.
-- **The packet format and signaling are soft-locked.** Byte layout, bit meanings, the bone/blendshape tables and the §2 messages can still change while no implementation has shipped, but every such change needs a stated justification: what it solves, what it costs, what was rejected. Once the format is declared frozen, these changes need a major version (`posy/2`).
+- **The packet format and signaling are frozen since 1.5.0.** A 1.x release only adds: a message, a field, a data type, an error code, a block behind a reserved flag bit (spec §9). Changing or removing what exists (byte layout, bit meanings, the bone/blendshape tables, the §2 messages) needs a major version (`posy/2`). An addition still needs a stated justification: what it solves, what it costs, what was rejected.
 - **One normative source:** if the spec, the reference code and the test vectors disagree, the spec wins and the others get fixed. (The one exception is a spec that is plainly wrong — say so in the issue.)
 - **Behaviour changes touch all three together:** spec text, reference implementation and test vectors, in the same PR, with `npm test` green (run it in `reference/js`).
 - **Generated files stay generated:** don't hand-edit `spec/blendshape-order.json`, `spec/bone-index-table.md` or `reference/js/src/tables.generated.ts` — change `scripts/generate-spec-tables.mjs` and re-run it.

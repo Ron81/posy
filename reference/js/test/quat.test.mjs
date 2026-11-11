@@ -37,17 +37,7 @@ function angleBetween(a, b) {
   return 2 * Math.acos(Math.min(1, dot));
 }
 
-test('Appendix A anchors pack exactly', () => {
-  const cases = [
-    [{ x: 0, y: 0, z: 0, w: 1 }, 0xe0080200],
-    [{ x: 0, y: 0, z: 0, w: -1 }, 0xe0080200],
-    [{ x: 1, y: 0, z: 0, w: 0 }, 0x20080200],
-    [{ x: 0, y: 0.70710678, z: 0, w: 0.70710678 }, 0x600803ff],
-    [{ x: 0.5, y: 0.5, z: 0.5, w: 0.5 }, 0x369da769],
-    [{ x: 0.5, y: -0.5, z: 0.5, w: -0.5 }, 0x096da496],
-  ];
-  for (const [q, u] of cases) assert.equal(packQuat(q) >>> 0, u >>> 0);
-});
+// Exact packed values (identity, half turns, ties) are in testvectors/quaternions.csv.
 
 test('q and -q pack to the same u32', () => {
   const rnd = mulberry32(12345);

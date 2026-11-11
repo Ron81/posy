@@ -17,7 +17,7 @@ export interface HandFingers {
 }
 
 /** The `version` byte this release writes: the minor revision of the spec (§9). */
-export const VERSION = 4;
+export const VERSION = 5;
 
 export interface Frame {
   /** Senders write `VERSION`. Any value 0–15 decodes (§9). */

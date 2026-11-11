@@ -6,6 +6,86 @@ that commit messages and the spec text do not keep in one place.
 
 ---
 
+## 0018 — 1.5.0 freezes the format
+
+**Date:** 2026-11-11 · **Status:** Proposed · **Affects:** Status, §2, §5.1, §9, the `version` byte
+
+### Context
+
+Since 1.4.0 the format was open for justified breaking changes, to be closed at 1.5.0 after a run
+of real use (ROADMAP). The changes of the window are released (1.4.0 to 1.4.6), and a run with
+real people, live tracking, a relay and VRM and PMX avatars in one room found no fault in the
+protocol.
+
+### Decision
+
+- The packet format (§5) and signaling (§2) are frozen from 1.5.0. A 1.x revision makes only the
+  additive changes §9 lists; everything else needs `posy/2`.
+- 1.5 writes 5 in the `version` byte (0003). A value below 5 does not identify a layout, since
+  the releases before 1.5 changed the layout under one value.
+
+### Alternatives rejected
+
+- *Keeping the byte at 4.* 0003 makes it the minor revision; a frozen layout is the first one
+  the value identifies.
+- *Freezing later.* Nothing breaking is open, and implementers wait for a stable wire.
+
+### Consequences
+
+- Sender, relay and receiver of a session before 1.5 have to be on the same release; from 1.5 on
+  a later 1.x peer and an earlier one work together by §2.7 and §9.
+- All frame vectors change in byte 0.
+
+---
+
+## 0017 — Posy defines no audio
+
+**Date:** 2026-11-11 · **Status:** Proposed · **Affects:** §0, §1.1, §6, §8.2, §8.4
+
+### Context
+
+Since 1.0 the spec named voice in five places. §0 placed Posy "alongside ordinary WebRTC Opus
+voice". §1.1 required that voice use WebRTC Opus tracks. §8.2 required that playout time be
+derived from the audio clock of the same peer. §8.4 allowed mouth shapes made from the audio,
+under two MUSTs. §6 compared the pose stream with the Opus stream.
+
+Posy defines pose data. It has no means to carry, negotiate or check audio, so §1.1 stated a
+requirement on something outside it, and §8.2 made conformance depend on it: a receiver that
+does not have the sender's audio cannot derive a playout time from it. That is the normal case
+for a consumer that records or analyses motion, and for an application that has no voice or
+carries it by other means. Such a receiver times frames by their arrival, which §2.2 and §8.1
+already describe.
+
+### Decision
+
+- §0: Posy defines pose data only; audio and other media are the application's.
+- §1.1: the requirement on voice is removed. The section is named "Pose data".
+- §8.2: the audio-clock rule is removed. A receiver times a sender's frames by their arrival
+  (§2.2, §8.1).
+- §8.4 is informative. Where an application transmits a peer's voice, a receiver can make the
+  mouth shapes from the audio and can time that peer's playout by its audio clock. No MUST
+  is left in it.
+- §6: the comparison with the Opus stream is removed.
+- §2.4, §6, §7: "the active speaker" is "the peer in focus". The text meant whoever a receiver
+  subscribes to at the full rate; Posy knows no speaker.
+
+### Alternatives rejected
+
+- *Removing §8.4.* Mouth shapes from audio improve what a voice application shows, and an
+  informative section costs an implementation without audio nothing.
+- *The §8.2 rule as a SHOULD "where audio exists".* Still a normative rule about a stream Posy
+  does not define. The note in §8.4 says the same and leaves conformance alone.
+- *Keeping the §1.1 rule.* Posy cannot check it, and an application that carries voice with
+  another codec or transport changes nothing about its pose frames.
+
+### Consequences
+
+- No frame, message or check changes. A receiver that times playout by audio still conforms.
+- A sender or receiver without audio conforms without an exception.
+- It removes two requirements, so it is made before 1.5.0 closes the format.
+
+---
+
 ## 0016 — A sender may state why its frames stop
 
 **Date:** 2026-10-24 · **Status:** Accepted · **Affects:** §2.8 (new), §7, §8.3, schema `silence`

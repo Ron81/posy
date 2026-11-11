@@ -2,9 +2,9 @@
   "name": "011-later-block",
   "description": "hips, flag bit 6 set, and 4 bytes of a block this revision does not know; the frame is accepted and the known part decoded",
   "expect": "accept",
-  "bytes_hex": "04 40 0b 00 00 00 00 00 01 00 00 00 00 00 00 00 00 02 08 e0 01 02 03 04",
+  "bytes_hex": "05 40 0b 00 00 00 00 00 01 00 00 00 00 00 00 00 00 02 08 e0 01 02 03 04",
   "frame": {
-    "version": 4,
+    "version": 5,
     "flags": 64,
     "seq": 11,
     "timestamp_ms": 0,

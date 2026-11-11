@@ -10,8 +10,9 @@
 // from the solved legs with the lowest-contact method of spec Appendix D, and only the
 // poses where that method is known to fail carry an explicit height.
 import * as THREE from 'three';
-import type { Frame, Quat } from 'posy';
+import { BONE_NAMES, type Quat } from 'posy';
 import { BIT, SLOT } from './bones.ts';
+import type { Fingers } from './hands.ts';
 
 type BoneName = keyof typeof BIT;
 type Axis = 'x' | 'y' | 'z';
@@ -21,15 +22,19 @@ type Quat4 = [number, number, number, number];
 /** Per bone: rotations composed left to right (leftmost is outermost), or a ready quaternion. */
 type Bones = Partial<Record<BoneName, Rot[] | Quat4>>;
 
-type Fingers = NonNullable<Frame['fingers']>;
 type Hand = Fingers['left'];
 
 interface Shape {
   bones: Bones;
   /** Hips above the floor in metres on the reference skeleton; omit to estimate it. */
   hips?: number;
-  /** Finger block (§5.5); omit for relaxed hands. */
+  /** The hands as finger block bytes (§5.5); omit for relaxed hands. */
   fingers?: Fingers;
+  /**
+   * Finger bones by `bone_mask` bit, for a hand shape the block cannot make. `fingers` is
+   * then the nearest the block gets, for a sender that has only the block.
+   */
+  joints?: Map<number, Quat>;
   /** Omit for a still face that only blinks. */
   face?: Face;
   /** Shown next to the pose selector: what is on right now. */
@@ -40,10 +45,8 @@ interface Shape {
 export interface Face {
   /** Eyelids left and right, 0 open … 1 shut. Omit for ordinary blinking. */
   blink?: [number, number];
-  /** Mouth shapes and moods by Standard-Sync slot name, 0 … 1. */
-  shape?: Partial<Record<Exclude<keyof typeof SLOT, 'blinkLeft' | 'blinkRight' | `tongue${string}`>, number>>;
-  /** Tongue: out 0 … 1, then toward the avatar's left and upward, −1 … 1. */
-  tongue?: [number, number, number];
+  /** Mouth shapes and moods by VRM-Sync slot name, 0 … 1. */
+  shape?: Partial<Record<Exclude<keyof typeof SLOT, 'blinkLeft' | 'blinkRight'>, number>>;
   /** Gaze in degrees, left and up positive. Omit to let the eyes follow the head. */
   gaze?: [number, number];
 }
@@ -124,8 +127,9 @@ const alive = (t: number): Bones => ({
   head: [['y', 9 * wave(t, 0.1)], ['x', 4 * wave(t, 0.17)]],
 });
 
-// Hands. Curl runs thumb to little finger, 0 straight … 255 closed; splay is positive
-// toward the thumb side (§5.5).
+// Hands. Curl runs thumb to little finger, 0 straight … 255 closed. Finger splay is
+// positive toward the thumb side, ±127 = ±30°; thumb splay is positive outward, ±127 = ±90°
+// (§5.5). FIST and the thumb of OPEN are the spec's shape bytes ("Fist", "Counting, thumb out").
 const hand = (curl: number[], splay = [0, 0, 0, 0, 0], thumbOpposition = 40): Hand => ({
   curl: curl as Hand['curl'],
   splay: splay as Hand['splay'],
@@ -142,12 +146,12 @@ const mixHand = (a: Hand, b: Hand, k: number): Hand =>
 /** Hanging at the side: fingers a little bent, more so toward the little finger. */
 const RELAXED = hand([40, 50, 60, 70, 80]);
 /** Fingers straight and spread, thumb out. */
-const OPEN = hand([0, 0, 0, 0, 0], [100, 70, 10, -50, -100], 0);
+const OPEN = hand([4, 0, 0, 0, 0], [36, 35, 5, -25, -50], 0);
 /** Lying on a thigh or held out flat. */
-const FLAT = hand([20, 12, 12, 15, 20], [30, 15, 0, -15, -30], 20);
+const FLAT = hand([20, 12, 12, 15, 20], [15, 8, 0, -8, -15], 20);
 /** Resting on the hip: fingers wrapped forward, thumb behind. */
-const ON_HIP = hand([30, 95, 100, 105, 110], [60, 10, 0, -10, -20], 0);
-const FIST = hand([235, 235, 235, 235, 235], [0, 0, 0, 0, 0], 170);
+const ON_HIP = hand([30, 95, 100, 105, 110], [30, 5, 0, -5, -10], 0);
+const FIST = hand([164, 255, 255, 255, 255], [-27, 0, 0, 0, 0], 100);
 
 export const RELAXED_HANDS = both(RELAXED);
 
@@ -370,10 +374,12 @@ const COUNT_STEP = 0.7;
 function countingHand(raised: number, v: number): Hand {
   // Thumb first, then index to little; each finger opens over half a step.
   const open = [0, 1, 2, 3, 4].map((i) => smooth((v - COUNT_START - COUNT_STEP * i) / (COUNT_STEP / 2)));
+  // Each finger goes from its place in the fist to straight; the thumb lies across the
+  // fist until it is counted, then stands out.
   const counting = hand(
-    open.map((o) => FIST.curl[0] * (1 - o)),
-    [0, 0, 0, 0, 0],
-    FIST.thumbOpposition * (1 - open[0]), // the thumb lies across the fist until it is counted
+    open.map((o, i) => mix(FIST.curl[i], OPEN.curl[i], o)),
+    [mix(FIST.splay[0], OPEN.splay[0], open[0]), 0, 0, 0, 0],
+    FIST.thumbOpposition * (1 - open[0]),
   );
   return mixHand(RELAXED, counting, raised);
 }
@@ -391,19 +397,30 @@ const FACE: Array<[note: string, face: (k: number) => Face]> = [
   ['oh', (k) => ({ shape: { oh: k } })],
   ['happy', (k) => ({ shape: { happy: k } })],
   ['surprised', (k) => ({ shape: { surprised: k } })],
-  ['tongue out', () => ({ tongue: [1, 0, 0] })],
-  ['tongue left', (k) => ({ tongue: [1, k, 0] })],
-  ['tongue right', (k) => ({ tongue: [1, -k, 0] })],
-  ['tongue up', (k) => ({ tongue: [1, 0, k] })],
-  ['tongue down', (k) => ({ tongue: [1, 0, -k] })],
   ['gaze left', (k) => ({ gaze: [35 * k, 0] })],
   ['gaze right', (k) => ({ gaze: [-35 * k, 0] })],
   ['gaze up', (k) => ({ gaze: [0, 30 * k] })],
   ['gaze down', (k) => ({ gaze: [0, -30 * k] })],
 ];
 
-const TONGUE_FROM = FACE.findIndex(([note]) => note.startsWith('tongue'));
-const TONGUE_TO = TONGUE_FROM + FACE.filter(([note]) => note.startsWith('tongue')).length;
+// A claw: the base joint of each finger stays straight while the two outer joints bend.
+// One curl byte bends all three joints together, so the finger block cannot make this
+// shape; it takes one rotation per joint (`finger_bones`, pose vector g01). The thumb bits
+// stay clear: a receiver shows the rest hand there (§5.5).
+const CLAW_BEND = 70; // degrees on each outer joint
+function claw(k: number): Map<number, Quat> {
+  const joints = new Map<number, Quat>();
+  for (const [side, sign] of [['left', -1], ['right', 1]] as const) {
+    const half = (sign * CLAW_BEND * k * Math.PI) / 360; // into the palm: −Z left, +Z right
+    for (const finger of ['Index', 'Middle', 'Ring', 'Little']) {
+      const bit = (joint: string) => (BONE_NAMES as readonly string[]).indexOf(`${side}${finger}${joint}`);
+      joints.set(bit('Proximal'), { x: 0, y: 0, z: 0, w: 1 });
+      joints.set(bit('Intermediate'), { x: 0, y: 0, z: Math.sin(half), w: Math.cos(half) });
+      joints.set(bit('Distal'), { x: 0, y: 0, z: Math.sin(half), w: Math.cos(half) });
+    }
+  }
+  return joints;
+}
 
 const DETAIL: Pose[] = [
   {
@@ -445,6 +462,28 @@ const DETAIL: Pose[] = [
     },
   },
   {
+    id: 'claw',
+    label: 'Claw: only per-joint fingers can show it',
+    group: 'Hands',
+    look: 'hands',
+    hold: 8,
+    at: (t, since) => {
+      const k = 0.5 - 0.5 * Math.cos(since * 1.6); // 0..1: open hand .. claw
+      const curl = Math.round(150 * k);
+      return {
+        bones: merge(
+          // Both forearms up, palms to the camera, as in the count.
+          { leftUpperArm: [['y', -14], ['z', -58]], leftLowerArm: [['z', 142], ['x', -50]] },
+          { rightUpperArm: [['y', 14], ['z', 58]], rightLowerArm: [['z', -142], ['x', -50]] },
+          alive(t),
+        ),
+        joints: claw(k),
+        fingers: both(hand([40, curl, curl, curl, curl])),
+        note: 'through the block every joint bends; per joint the base stays straight',
+      };
+    },
+  },
+  {
     id: 'toes',
     label: 'Toes up: left, right, then both on tiptoe',
     group: 'Feet',
@@ -469,7 +508,7 @@ const DETAIL: Pose[] = [
   },
   {
     id: 'face',
-    label: 'Face: lids, mouth, tongue, gaze',
+    label: 'Face: lids, mouth, gaze',
     group: 'Face',
     look: 'head',
     hold: FACE_STEP * FACE.length,
@@ -477,12 +516,9 @@ const DETAIL: Pose[] = [
       const u = since % (FACE_STEP * FACE.length);
       const i = Math.floor(u / FACE_STEP);
       const [note, face] = FACE[i];
-      const shown = face(bump((u % FACE_STEP) / FACE_STEP));
-      // The tongue comes out once and stays out through all of its steps.
-      const out = smooth((u - TONGUE_FROM * FACE_STEP) / 0.3) * smooth((TONGUE_TO * FACE_STEP - u) / 0.3);
       return {
         bones: armsDown(), // head and body still, so that only the face moves
-        face: { blink: [0, 0], gaze: [0, 0], ...shown, tongue: [out, shown.tongue?.[1] ?? 0, shown.tongue?.[2] ?? 0] },
+        face: { blink: [0, 0], gaze: [0, 0], ...face(bump((u % FACE_STEP) / FACE_STEP)) },
         note,
       };
     },
@@ -560,8 +596,10 @@ export interface BodyPose {
   bones: Map<number, Quat>;
   /** Root-block hips height (§5.4). */
   h: number;
-  /** Finger block, when the pose sets the hands itself. */
-  fingers?: Fingers;
+  /** The hands as finger block bytes. */
+  fingers: Fingers;
+  /** Finger bones by bit, when the pose gives the hands joint by joint. */
+  joints?: Map<number, Quat>;
   face?: Face;
   note?: string;
   /** The pose being performed. */
@@ -626,5 +664,5 @@ export function bodyPoseAt(tSec: number, selected: string): BodyPose {
   const bones = new Map<number, Quat>();
   for (const [name, q] of quats) bones.set(BIT[name], { x: q.x, y: q.y, z: q.z, w: q.w });
   const h = Math.round((hips / skeleton.standing_hip_height) * 32768);
-  return { bones, h: Math.min(65535, Math.max(0, h)), fingers: shape.fingers, face: shape.face, note: shape.note, id: pose.id, look: pose.look };
+  return { bones, h: Math.min(65535, Math.max(0, h)), fingers: shape.fingers ?? RELAXED_HANDS, joints: shape.joints, face: shape.face, note: shape.note, id: pose.id, look: pose.look };
 }

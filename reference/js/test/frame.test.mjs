@@ -1,120 +1,55 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { encode, decode, PosyEncodeError, PosyDecodeError, FINGER_BONES_MASK } from '../dist/index.js';
+import { encode, decode, PosyEncodeError, PosyDecodeError, FINGER_BONES_MASK, VERSION } from '../dist/index.js';
+
+// What the frame vectors do not cover. Byte layouts, the reject cases, reserved bone bits,
+// extras and finger bones on the wire are in testvectors/frames (vectors.test.mjs).
 
 const idQuat = { x: 0, y: 0, z: 0, w: 1 };
+const flatHand = { curl: [0, 0, 0, 0, 0], splay: [0, 0, 0, 0, 0], thumbOpposition: 0 };
+const minimal = (over = {}) => ({ version: VERSION, seq: 1, timestampMs: 0, bones: new Map([[0, idQuat]]), ...over });
+// The typical 13-bone upper body: 0,1,2,4,5,17..24.
+const upperBody = (over = {}) =>
+  minimal({ bones: new Map([0, 1, 2, 4, 5, 17, 18, 19, 20, 21, 22, 23, 24].map((b) => [b, idQuat])), ...over });
 
-function upperBodyBones() {
-  // typical 13-bone upper body: 0,1,2,4,5,17..24
-  const bits = [0, 1, 2, 4, 5, 17, 18, 19, 20, 21, 22, 23, 24];
-  const m = new Map();
-  for (const b of bits) m.set(b, idQuat);
-  return m;
-}
-
-function baseFrame(over = {}) {
-  return {
-    version: 1,
-    seq: 7,
-    timestampMs: 1000,
-    bones: upperBodyBones(),
-    ...over,
-  };
-}
-
-test('001-minimal is 20 bytes with exact spec bytes', () => {
-  const bytes = encode({ version: 1, seq: 1, timestampMs: 0, bones: new Map([[0, idQuat]]) });
-  assert.equal(bytes.length, 20);
-  const hex = [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
-  assert.equal(hex, '010001000000000001000000000000000002 08e0'.replaceAll(' ', ''));
-});
-
-test('115 B golden: 13 bones + root + fingers + VRM-Sync', () => {
-  const f = baseFrame({
+test('frame sizes of §6: 115 B with VRM-Sync, 154 B with Perfect-Sync', () => {
+  const typical = (perfectSync) => upperBody({
     root: { x: 0x8000, y: 0x4000, z: -1500, h: 0x6000 },
-    fingers: {
-      left: { curl: [0, 64, 128, 192, 255], splay: [-127, -64, 0, 64, 127], thumbOpposition: 30 },
-      right: { curl: [255, 192, 128, 64, 0], splay: [127, 64, 0, -64, -127], thumbOpposition: 60 },
-    },
-    expressions: { perfectSync: false, weights: new Uint8Array(13), gazeYaw: 0, gazePitch: 0 },
+    fingers: { left: { curl: [0, 64, 128, 192, 255], splay: [-127, -64, 0, 64, 127], thumbOpposition: 30 }, right: flatHand },
+    expressions: { perfectSync, weights: new Uint8Array(perfectSync ? 52 : 13), gazeYaw: 10, gazePitch: -10 },
   });
-  const bytes = encode(f);
-  // 16 + 4*13 + 8 + 24 + 15 = 115
-  assert.equal(bytes.length, 115);
+  assert.equal(encode(typical(false)).length, 16 + 4 * 13 + 8 + 24 + 15); // 115
+  const bytes = encode(typical(true));
+  assert.equal(bytes.length, 16 + 4 * 13 + 8 + 24 + 54); // 154
   const back = decode(bytes);
-  assert.equal(back.bones.size, 13);
-  assert.equal(back.root.z, -1500);
-  assert.equal(back.root.h, 0x6000);
-  assert.deepEqual([...back.fingers.left.curl], [0, 64, 128, 192, 255]);
+  assert.deepEqual(back.root, { x: 0x8000, y: 0x4000, z: -1500, h: 0x6000 });
   assert.deepEqual([...back.fingers.left.splay], [-127, -64, 0, 64, 127]);
-  assert.equal(back.expressions.weights.length, 13);
-});
-
-test('154 B golden: 13 bones + root + fingers + Perfect-Sync', () => {
-  const f = baseFrame({
-    root: { x: 1, y: 2, z: 3, h: 0x8000 },
-    fingers: {
-      left: { curl: [0, 0, 0, 0, 0], splay: [0, 0, 0, 0, 0], thumbOpposition: 0 },
-      right: { curl: [0, 0, 0, 0, 0], splay: [0, 0, 0, 0, 0], thumbOpposition: 0 },
-    },
-    expressions: { perfectSync: true, weights: new Uint8Array(52), gazeYaw: 10, gazePitch: -10 },
-  });
-  const bytes = encode(f);
-  // 16 + 52 + 8 + 24 + 54 = 154
-  assert.equal(bytes.length, 154);
-  const back = decode(bytes);
-  assert.equal(back.expressions.perfectSync, true);
-  assert.equal(back.expressions.weights.length, 52);
-  assert.equal(back.expressions.gazeYaw, 10);
   assert.equal(back.expressions.gazePitch, -10);
 });
 
-test('reject: length < 16', () => {
-  assert.throws(() => decode(new Uint8Array(8)), PosyDecodeError);
+test('encoder refuses what a frame cannot carry', () => {
+  // An empty extras block, and more than 255 entries.
+  assert.throws(() => encode(minimal({ extra: { bones: [], values: new Uint8Array(0) } })), PosyEncodeError);
+  assert.throws(() => encode(minimal({ extra: { bones: [], values: new Uint8Array(256) } })), PosyEncodeError);
+  // The finger block together with finger bones (bit 28): the two are mutually exclusive.
+  const both = minimal({ bones: new Map([[0, idQuat], [28, idQuat]]), fingers: { left: flatHand, right: flatHand } });
+  assert.throws(() => encode(both), PosyEncodeError);
+  // A face block of the wrong size; 14 was the VRM-Sync block of 1.4.1.
+  for (const [perfectSync, length] of [[true, 16], [false, 14]]) {
+    const f = minimal({ expressions: { perfectSync, weights: new Uint8Array(length), gazeYaw: 0, gazePitch: 0 } });
+    assert.throws(() => encode(f), PosyEncodeError);
+  }
 });
 
-test('reject: truncated frame (last byte removed)', () => {
-  const bytes = encode({ version: 1, seq: 1, timestampMs: 0, bones: new Map([[0, idQuat]]) });
-  assert.throws(() => decode(bytes.slice(0, bytes.length - 1)), PosyDecodeError);
-});
-
-test('reject: extended frame (trailing byte)', () => {
-  const bytes = encode({ version: 1, seq: 1, timestampMs: 0, bones: new Map([[0, idQuat]]) });
-  const longer = new Uint8Array(bytes.length + 1);
-  longer.set(bytes);
-  assert.throws(() => decode(longer), PosyDecodeError);
-});
-
-test('reject: high version nibble != 0', () => {
-  const bytes = encode({ version: 1, seq: 1, timestampMs: 0, bones: new Map([[0, idQuat]]) });
-  bytes[0] = 0x10; // major version 1
+test('extras: HAS_EXTRA without a block is rejected', () => {
+  const bytes = encode(minimal());
+  bytes[1] |= 0x20;
   assert.throws(() => decode(bytes), PosyDecodeError);
-});
-
-test('extras: round trip, and the counts decide the length', () => {
-  const frame = {
-    version: 3, seq: 1, timestampMs: 0, bones: new Map([[0, idQuat]]),
-    extra: { bones: [idQuat, idQuat], values: new Uint8Array([1, 2, 3]) },
-  };
-  const bytes = encode(frame);
-  assert.equal(bytes.length, 16 + 4 + 2 * 4 + 3);
-  assert.equal(bytes[1] & 0x20, 0x20);
-  const back = decode(bytes, { bones: 2, values: 3 });
-  assert.equal(back.extra.bones.length, 2);
-  assert.deepEqual([...back.extra.values], [1, 2, 3]);
-  assert.throws(() => decode(bytes, { bones: 1, values: 3 }), PosyDecodeError);
-  assert.throws(() => decode(bytes, { bones: 2, values: 4 }), PosyDecodeError);
-  assert.equal(decode(bytes).extra, undefined); // no declaration: block skipped
-});
-
-test('extras: encoder refuses an empty block and more than 255 entries', () => {
-  const base = { version: 3, seq: 1, timestampMs: 0, bones: new Map([[0, idQuat]]) };
-  assert.throws(() => encode({ ...base, extra: { bones: [], values: new Uint8Array(0) } }), PosyEncodeError);
-  assert.throws(() => encode({ ...base, extra: { bones: [], values: new Uint8Array(256) } }), PosyEncodeError);
+  assert.throws(() => decode(bytes, { bones: 1, values: 0 }), PosyDecodeError);
 });
 
 test('flag bit 4 is reserved since 1.4.6: never set by the encoder, ignored by the decoder', () => {
-  const bytes = encode({ version: 4, seq: 1, timestampMs: 0, idle: true, bones: new Map([[0, idQuat]]) });
+  const bytes = encode(minimal({ idle: true }));
   assert.equal(bytes[1] & 0x10, 0, 'an old caller asking for IDLE sets nothing');
   bytes[1] |= 0x10; // a frame of an earlier revision with IDLE set
   const f = decode(bytes);
@@ -122,92 +57,26 @@ test('flag bit 4 is reserved since 1.4.6: never set by the encoder, ignored by t
   assert.equal('idle' in f, false);
 });
 
-test('extras: HAS_EXTRA without a block is rejected', () => {
-  const bytes = encode({ version: 3, seq: 1, timestampMs: 0, bones: new Map([[0, idQuat]]) });
-  bytes[1] |= 0x20;
-  assert.throws(() => decode(bytes), PosyDecodeError);
-  assert.throws(() => decode(bytes, { bones: 1, values: 0 }), PosyDecodeError);
-});
-
-test('encoder allows per-joint finger bones (finger_bones) without the compact block', () => {
-  // bits 28 (leftIndexProximal) and 30 (leftIndexDistal) — a claw-like partial hand.
-  const m = new Map([[0, idQuat], [28, idQuat], [30, idQuat]]);
-  const bytes = encode({ version: 4, seq: 1, timestampMs: 0, bones: m });
-  assert.equal(bytes.length, 16 + 4 * 3); // three quaternions, no compact finger block
-  const back = decode(bytes);
-  assert.ok(back.bones.has(28));
-  assert.ok(back.bones.has(30));
-  assert.equal(back.fingers, undefined);
-});
-
-test('encoder refuses the compact finger block together with finger bones (mutually exclusive)', () => {
-  const m = new Map([[0, idQuat], [28, idQuat]]); // 28 is a finger bit
-  const f = {
-    version: 4, seq: 1, timestampMs: 0, bones: m,
-    fingers: {
-      left: { curl: [0, 0, 0, 0, 0], splay: [0, 0, 0, 0, 0], thumbOpposition: 0 },
-      right: { curl: [0, 0, 0, 0, 0], splay: [0, 0, 0, 0, 0], thumbOpposition: 0 },
-    },
-  };
-  assert.throws(() => encode(f), PosyEncodeError);
-});
-
-test('encoder refuses wrong expression weight length', () => {
-  const f = baseFrame({ expressions: { perfectSync: true, weights: new Uint8Array(16), gazeYaw: 0, gazePitch: 0 } });
-  assert.throws(() => encode(f), PosyEncodeError);
-  // The VRM-Sync block of 1.4.1 had 14 slots (13 presets and tongueOut); it has 13.
-  const old = baseFrame({ expressions: { perfectSync: false, weights: new Uint8Array(14), gazeYaw: 0, gazePitch: 0 } });
-  assert.throws(() => encode(old), PosyEncodeError);
-});
-
-test('reserved bone bit is consumed and preserved, rest parses', () => {
-  // Hand-craft a frame with bit 0 and reserved bit 60 set. popcount=2 -> len 16+8=24.
-  const buf = new Uint8Array(24);
-  const dv = new DataView(buf.buffer);
-  dv.setUint8(0, 1);
-  dv.setUint8(1, 0);
-  dv.setUint16(2, 5, true);
-  dv.setUint32(4, 0, true);
-  const mask = (1n << 0n) | (1n << 60n);
-  dv.setBigUint64(8, mask, true);
-  dv.setUint32(16, 0xe0080200, true); // bit 0 identity
-  dv.setUint32(20, 0xe0080200, true); // bit 60 identity
-  const f = decode(buf);
-  assert.equal(f.bones.size, 2);
-  assert.ok(f.bones.has(0));
-  assert.ok(f.bones.has(60)); // unknown/reserved bone still stored, offsets stayed aligned
-  assert.equal(f.seq, 5);
-});
-
-test('reserved flag bits 6-7 are ignored, not rejected', () => {
-  const bytes = encode({ version: 1, seq: 1, timestampMs: 0, bones: new Map([[0, idQuat]]) });
-  bytes[1] |= 0xc0; // set flags 6,7
-  const f = decode(bytes); // must not throw
-  assert.equal(f.bones.size, 1);
-});
-
-test('a block of a later revision behind flag bit 6 or 7: the known part decodes', () => {
-  const known = encode(baseFrame({ root: { x: 1, y: 2, z: 3, h: 0x8000 } }));
+test('flag bits 6 and 7: a block of a later revision may follow, the known part decodes', () => {
+  const known = encode(upperBody({ root: { x: 1, y: 2, z: 3, h: 0x8000 } }));
   for (const bits of [0x40, 0x80, 0xc0]) {
-    const bytes = new Uint8Array(known.length + 5).fill(0xaa);
-    bytes.set(known);
-    bytes[1] |= bits;
-    const f = decode(bytes);
-    assert.equal(f.bones.size, 13);
-    assert.equal(f.root.z, 3);
+    for (const more of [0, 5]) {
+      const bytes = new Uint8Array(known.length + more).fill(0xaa);
+      bytes.set(known);
+      bytes[1] |= bits;
+      const f = decode(bytes);
+      assert.equal(f.bones.size, 13);
+      assert.equal(f.root.z, 3);
+    }
   }
-  // Without the bit the same bytes are malformed (vector 004b) ...
-  const plain = new Uint8Array(known.length + 5);
-  plain.set(known);
-  assert.throws(() => decode(plain), PosyDecodeError);
-  // ... and the bit does not excuse a frame that is too short for the blocks known here.
+  // The bit does not excuse a frame that is too short for the blocks known here.
   const short = known.slice(0, known.length - 1);
   short[1] |= 0x40;
   assert.throws(() => decode(short), PosyDecodeError);
 });
 
 test('a later block follows the extras block', () => {
-  const known = encode(baseFrame({ extra: { bones: [idQuat], values: new Uint8Array([7, 9]) } }));
+  const known = encode(upperBody({ extra: { bones: [idQuat], values: new Uint8Array([7, 9]) } }));
   const bytes = new Uint8Array(known.length + 3).fill(0xaa);
   bytes.set(known);
   bytes[1] |= 0x80;
@@ -216,30 +85,16 @@ test('a later block follows the extras block', () => {
   assert.throws(() => decode(bytes, { bones: 2, values: 2 }), PosyDecodeError); // too short for that declaration
 });
 
-// --- Folded S6: the §1.2 relay grant-check over the whole 64-bit mask ---
-// The relay (not the decoder) enforces the grant. The decoder stays tolerant of unknown
-// bits (above); these tests pin the mask arithmetic the relay runs, per spec §1.2 check 3.
-const BONES_MASK = 0x0000000001FE01FFn;
-const LEGS_MASK = 0x000000000000EE00n;
-const relayRejects = (mask, grantedMask) => (mask & ~grantedMask) !== 0n;
-
-test('relay grant-check: reserved bits 55-63 are never granted, so a set one is rejected', () => {
-  // decoder is tolerant (covered above); the relay refuses it as malformed.
-  const granted = BONES_MASK | LEGS_MASK | FINGER_BONES_MASK; // even granting everything real
-  assert.equal(relayRejects(1n << 60n | 1n, granted), true, 'bit 60 belongs to no type');
-  assert.equal(relayRejects(1n << 55n, granted), true, 'bit 55 is the first reserved bit');
-});
-
-test('relay grant-check: finger bones pass only when finger_bones is granted', () => {
-  const fingerFrame = (1n << 0n) | (1n << 28n) | (1n << 30n); // hips + two finger bones
-  assert.equal(relayRejects(fingerFrame, BONES_MASK), true, 'finger bits set without finger_bones granted');
-  assert.equal(relayRejects(fingerFrame, BONES_MASK | FINGER_BONES_MASK), false, 'granted → passes');
-});
-
-test('FINGER_BONES_MASK is exactly bits 25-54', () => {
-  assert.equal(FINGER_BONES_MASK, 0x007FFFFFFE000000n);
-  // 30 bits set
-  let n = 0n, m = FINGER_BONES_MASK;
-  while (m) { m &= m - 1n; n++; }
-  assert.equal(n, 30n);
+// The relay, not the decoder, enforces the grant (§1.2 check 3): `bone_mask & ~granted_mask`
+// over all 64 bits. The decoder tolerates unknown bits (vector 006).
+test('the grant check of §1.2 over the type masks', () => {
+  assert.equal(FINGER_BONES_MASK, 0x007FFFFFFE000000n); // bits 25–54
+  const BONES_MASK = 0x0000000001FE01FFn, LEGS_MASK = 0x000000000000EE00n;
+  const refused = (mask, granted) => (mask & ~granted) !== 0n;
+  const everything = BONES_MASK | LEGS_MASK | FINGER_BONES_MASK;
+  assert.ok(refused(1n << 55n, everything), 'bit 55 is the first reserved bit');
+  assert.ok(refused((1n << 60n) | 1n, everything), 'bit 60 belongs to no type');
+  const fingerFrame = 1n | (1n << 28n) | (1n << 30n); // hips and two finger bones
+  assert.ok(refused(fingerFrame, BONES_MASK), 'finger bits without finger_bones granted');
+  assert.ok(!refused(fingerFrame, BONES_MASK | FINGER_BONES_MASK));
 });
