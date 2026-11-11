@@ -1,5 +1,5 @@
 /*!
- * Posy — codec helpers.
+ * Posy site: codec helpers.
  * Classic script (no ES modules) so the page works when opened straight from disk (file://).
  * Ports the smallest-three quaternion packing from spec §5.3 / Appendix B and the frame-size formula from §5.1.
  * Exposes: window.PosyCodec
@@ -89,12 +89,16 @@
     };
   }
 
-  /** §5.1: 16 + 4*bones + 8*root + 24*fingers + (expr ? (perfectSync ? 54 : 18) : 0). */
+  /**
+   * §5.1: 16 + 4*bones + 8*root + 24*fingers + (expr ? (perfectSync ? 54 : 15) : 0)
+   *       + (extra ? 4*B + V : 0). `boneCount` counts every set mask bit, finger bones included.
+   */
   function packetSize(o) {
     var size = 16 + 4 * o.boneCount;
     if (o.hasRoot) size += 8;
     if (o.hasFingers) size += 24;
-    if (o.hasExpressions) size += o.perfectSync ? 54 : 18;
+    if (o.hasExpressions) size += o.perfectSync ? 54 : 15;
+    if (o.hasExtra) size += 4 * o.extraBones + o.extraValues;
     return size;
   }
 

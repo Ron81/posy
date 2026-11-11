@@ -1,5 +1,5 @@
-// Forward kinematics for the finger pose vectors (spec §5.5). Used by the generator and by
-// test/poses.test.mjs. Plain quaternion math, no dependency on the codec. The point of these
+// Forward kinematics for the finger pose vectors (spec §5.5). Used by the generator, by
+// test/poses.test.mjs and by the loopback demo, which has no finger synthesis of its own. Plain quaternion math, no dependency on the codec. The point of these
 // vectors is to pin the §5.5 *synthesis*: a receiver turns the curl / splay / opposition bytes
 // into the 30 finger-bone rotations, and a wrong axis, sign or order moves a fingertip here.
 
@@ -27,8 +27,7 @@ const axisQuat = (axis, deg) => {
 };
 
 /**
- * Euler XYZ in degrees → quaternion, matching three.js THREE.Euler default order 'XYZ'
- * (the demo's synthesis uses it): R = Rx · Ry · Rz, so with x = 0 that is Ry · Rz —
+ * Euler XYZ in degrees → quaternion: R = Rx · Ry · Rz, so with x = 0 that is Ry · Rz,
  * splay (Y) outside curl (Z), as §5.5 orders the proximal joint.
  */
 export const eulerXYZ = (x, y, z) => mul(mul(axisQuat('x', x), axisQuat('y', y)), axisQuat('z', z));

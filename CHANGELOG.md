@@ -21,6 +21,20 @@ The format is frozen: from this release on a 1.x revision only adds (§9).
 - **The `version` byte is 5** (§5.1, §9). Codec: `VERSION = 5`. All frame vectors regenerated;
   each differs in byte 0 only (`testvectors/VERIFICATION.md`).
 - CONTRIBUTING and the protocol-change issue template describe the frozen format.
+- **Loopback demo** brought to this revision; its do-not-use notice is gone. It built the
+  16-slot expression block of 1.4.0, which the encoder refuses since 1.4.1. Now: the 13-slot
+  VRM-Sync block; the tongue as a declared extra value (`tongueOut` on the stick figure, and
+  on a model whose file has it); the finger block as §5.5 defines it since 1.4.5, through
+  `reference/js/scripts/finger-fk.mjs` and with the thumb's rest measured on a loaded model;
+  a switch to per-joint fingers (`finger_bones`) and a pose that needs them (a claw).
+- **Interactive site** brought to this revision, shortened and restyled, with a German version
+  (`docs/de/`); its notice is gone. It described
+  1.1.0 (118 B, "70× smaller than VMC", 16 expression slots, finger bits that must be 0, the
+  `IDLE` flag, a 6-byte root term in the formula, an MMD formula). The packet builder knows
+  `finger_bones` and the extras block and shows the declaration a frame needs. Texts that
+  repeated the FAQ, and data and code for parts the page no longer has, are removed.
+- The two site tests skipped since 1.4.1 run again; the site's release tag is tested against
+  `package.json`.
 
 ## [1.4.6] - 2026-10-24
 

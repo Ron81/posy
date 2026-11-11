@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import { encode, type Frame } from 'posy';
 import { poseAt, extrasAt } from './animator.ts';
 import { POSES, GROUPS, bodyPoseAt } from './poses.ts';
-import { TRACKERS, FEATURES, computeSends, crop, region, declAt, NO_EXTRAS, type DataType, type ExtraDecl, type Tracker } from './declare.ts';
+import { TRACKERS, FEATURES, computeSends, crop, region, declAt, NO_EXTRAS, withFingerJoints, type DataType, type ExtraDecl, type Tracker } from './declare.ts';
 import { LossyChannel } from './channel.ts';
 import { Receiver } from './receiver.ts';
 import { StickFigure, VrmAvatar, type Avatar } from './avatar.ts';
@@ -34,7 +34,7 @@ if (!webglAvailable()) {
   const stage = document.querySelector('.stage');
   if (stage) {
     stage.innerHTML =
-      '<p style="grid-column:1/-1;padding:40px;color:#fca5a5;text-align:center">' +
+      '<p style="grid-column:1/-1;padding:40px;color:var(--warn);text-align:center">' +
       'This demo needs WebGL, which this browser isn’t providing. ' +
       'Try a normal desktop browser with hardware acceleration on.</p>';
   }
@@ -190,12 +190,10 @@ const setLoss = bind('loss', 'loss-out', (v) => `${v}%`, (v) => (channel.lossPct
 const setJitter = bind('jitter', 'jitter-out', (v) => `${v} ms`, (v) => (channel.jitterMs = v));
 bind('rate', 'rate-out', (v) => `${v} FPS`, (v) => (sendRateHz = v));
 
-// Connection-quality presets. Posy frames are tiny, so a link's *feel* is set by
-// latency, jitter and loss — not bandwidth. Each preset dials those to match a
-// real-world tier. baseLatency is the fixed one-way-ish delay; jitter is the
-// random spread on top; loss is drop probability. `mbit` is that tier's real
-// bandwidth (used only for the "tiny slice of your connection" comparison), and
-// `quip` is the flavour text that leads the comparison line.
+// Connection presets. Posy frames are small, so what a link does to them is latency,
+// jitter and loss, not bandwidth. `latency` is the fixed delay, `jitter` the random
+// spread on top, `loss` the drop probability. `mbit` is the line's bandwidth and `quip`
+// the words that lead the comparison with it.
 interface Preset {
   latency: number;
   jitter: number;
@@ -204,10 +202,10 @@ interface Preset {
   quip: string;
 }
 const PRESETS: Record<string, Preset> = {
-  excellent: { latency: 10, jitter: 5, loss: 0, mbit: 1000, quip: 'Gigabit fibre, fancy — Posy barely tickles it,' },
-  standard: { latency: 30, jitter: 25, loss: 1, mbit: 50, quip: 'Normal home broadband, and Posy is comfy at' },
-  countryside: { latency: 80, jitter: 90, loss: 6, mbit: 25, quip: 'Out in the countryside, huh? Still totally fine at' },
-  nosignal: { latency: 180, jitter: 260, loss: 35, mbit: 5, quip: 'Oh, so you live in a cave. Sucks to be you — but it still works at' },
+  excellent: { latency: 10, jitter: 5, loss: 0, mbit: 1000, quip: 'On gigabit fibre Posy uses' },
+  standard: { latency: 30, jitter: 25, loss: 1, mbit: 50, quip: 'On home broadband Posy uses' },
+  countryside: { latency: 80, jitter: 90, loss: 6, mbit: 25, quip: 'On a rural line Posy uses' },
+  nosignal: { latency: 180, jitter: 260, loss: 35, mbit: 5, quip: 'On a poor mobile link Posy still gets by with' },
 };
 
 const presetButtons = [...document.querySelectorAll<HTMLButtonElement>('.preset[data-preset]')];
@@ -236,6 +234,11 @@ for (const id of ['loss', 'jitter']) {
 const params = new URLSearchParams(location.search);
 let tracker: Tracker = TRACKERS.find((t) => t.id === params.get('tracker')) ?? TRACKERS[0];
 let sends: ReadonlySet<DataType> = new Set();
+// Fingers go out as the compact block, or one rotation per joint (`?fingers=joints`).
+const jointsBox = document.getElementById('finger-joints') as HTMLInputElement;
+jointsBox.checked = params.get('fingers') === 'joints';
+/** The tracker as it sends its fingers right now. */
+const sending = (): Tracker => withFingerJoints(tracker, jointsBox.checked);
 
 const trackerRow = document.getElementById('trackers')!;
 const capsBody = document.getElementById('caps-body')!;
@@ -245,10 +248,11 @@ const chipsLabel = document.getElementById('chips-label')!;
 
 function renderDeclaration(): void {
   const avatar = receiverView.avatar.caps;
-  const list = computeSends(tracker, avatar);
+  const from = sending();
+  const list = computeSends(from, avatar);
   sends = new Set(list);
   capsBody.innerHTML = FEATURES.map(({ type, label }) => {
-    const t = tracker.delivers.includes(type);
+    const t = from.delivers.includes(type);
     const a = avatar.has(type);
     const s = sends.has(type);
     const trackerCell = !t ? 'no' : type === 'bones' && tracker.bonesOnly ? tracker.bonesOnly.note : 'yes';
@@ -272,7 +276,7 @@ function renderDeclaration(): void {
   // The same information as one row of chips, with the reason spelled out.
   chipsRow.querySelectorAll('.chip').forEach((c) => c.remove());
   for (const { type, short } of FEATURES) {
-    const t = tracker.delivers.includes(type);
+    const t = from.delivers.includes(type);
     const a = avatar.has(type);
     const s = sends.has(type);
     const chip = document.createElement('span');
@@ -307,6 +311,7 @@ for (const t of TRACKERS) {
   });
   trackerRow.append(b);
 }
+jointsBox.addEventListener('change', renderDeclaration);
 renderDeclaration();
 
 // Pose: first the part of the body, then one pose of that group or a cycle through all of
@@ -452,8 +457,8 @@ function declareExtras(): void {
   extraChips.hidden = extraClear.hidden = bones.length + values.length === 0;
   extraNote.textContent =
     has.bones.length + has.values.length === 0
-      ? 'Extras need a loaded avatar: the stick figure is the humanoid body and nothing else.'
-      : `This avatar has ${has.bones.length} further bones and ${has.values.length} expressions of its own. ` +
+      ? 'This avatar has nothing beyond the humanoid body.'
+      : `Beyond the humanoid body and the face block this avatar has ${has.bones.length} bones and ${has.values.length} expressions. ` +
         `Declared: ${bones.length} bones, ${values.length} values = ${4 * bones.length + values.length} B per frame. ` +
         'Declared bones are moved by a sender-side animation; the others stay with the spring bones.';
 }
@@ -502,7 +507,8 @@ function maybeSend(nowMs: number): void {
   // Extras follow the declaration that applies at this frame's timestamp (§2.6).
   const decl = declAt(decls, performance.timestampMs);
   performance.extra = extrasAt(nowMs / 1000, decl);
-  const bytes = encode({ ...crop(performance, tracker, sends), extra: performance.extra }); // only the declared parts go out
+  // Only the declared parts go out.
+  const bytes = encode({ ...crop(performance, sending(), sends, body.fingers, senderView.avatar.thumbRest), extra: performance.extra });
   stats.frame(bytes.length);
   senderView.avatar.applyPose(performance, 0.5, decl); // left: everything the performer does
   channel.send(bytes);

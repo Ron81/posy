@@ -10,7 +10,7 @@ export class Stats {
 
   private lastBytes = 0;
 
-  // The active connection preset's bandwidth + flavour text, or null when the
+  // The active connection preset's bandwidth and its name, or null when the
   // user is driving the sliders by hand (no named connection to compare against).
   private connMbit: number | null = null;
   private connQuip: string | null = null;
@@ -33,20 +33,17 @@ export class Stats {
     this.deliveredEl.textContent = String(delivered);
     this.droppedEl.textContent = String(dropped);
 
-    // People know Mbit/s from speed tests, but the raw number here is ~0.03 — so
-    // lead with how tiny a slice of the chosen connection that is. When a preset
-    // is active the baseline (and the quip) follow it; otherwise stay neutral.
+    // The raw number is about 0.03 Mbit/s, so it is shown as a share of the chosen line.
     if (kbits <= 0) return;
     const mbits = kbits / 1000;
     if (this.connMbit && this.connQuip) {
       const fraction = Math.round((this.connMbit * 1000) / kbits);
       this.compareEl.innerHTML =
-        `${this.connQuip} <b>${mbits.toFixed(3)} Mbit/s</b> — ` +
-        `about <b>1/${fraction}</b> of your ${this.connMbit} Mbit/s line.`;
+        `${this.connQuip} <b>${mbits.toFixed(3)} Mbit/s</b>, ` +
+        `about <b>1/${fraction}</b> of a ${this.connMbit} Mbit/s line.`;
     } else {
       this.compareEl.innerHTML =
-        `≈ <b>${mbits.toFixed(3)} Mbit/s</b> up — smaller than the voice call it rides alongside. ` +
-        `Pick a connection above to see how little that really is.`;
+        `≈ <b>${mbits.toFixed(3)} Mbit/s</b> up. Pick a connection above to compare it with a line.`;
     }
   }
 }

@@ -3,17 +3,33 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
     <title>Posy transmission demo</title>
     <style>
       :root {
-        --bg: #12131a;
-        --panel: #1b1d27;
-        --ink: #e7e9f0;
-        --muted: #9aa0b4;
-        --line: #2b2e3c;
-        --accent: #7dd3fc;
-        --warn: #fca5a5;
-        --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        /* The palette of the site (docs/assets/style.css). */
+        --bg: #fbfaf6;
+        --ink: #1d1c1a;
+        --muted: #55514a;
+        --line: #d8d3c8;
+        --well: #f2efe7;
+        --accent: #a83a17;
+        --ok: #4a6d2c;
+        --warn: #a83a17;
+        --mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+        --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #17181a;
+          --ink: #e9e6df;
+          --muted: #b5b1a7;
+          --line: #36383c;
+          --well: #1f2123;
+          --accent: #e8805c;
+          --ok: #86ad5d;
+          --warn: #e8805c;
+        }
       }
       * { box-sizing: border-box; }
       body {
@@ -34,7 +50,7 @@
         background: var(--line);
         margin: 16px 0;
       }
-      .panel { background: var(--panel); position: relative; }
+      .panel { background: #1b1d27; --muted: #9aa0b4; position: relative; }
       .panel canvas { display: block; width: 100%; height: 46vh; }
       .panel .tag {
         position: absolute; top: 10px; left: 12px;
@@ -52,17 +68,17 @@
       }
       .presets-label { color: var(--muted); font-size: 13px; margin-right: 4px; }
       .preset {
-        cursor: pointer; background: #242736; color: var(--ink);
-        border: 1px solid var(--line); border-radius: 999px;
+        cursor: pointer; background: none; color: var(--ink);
+        border: 1px solid var(--line);
         padding: 6px 14px; font-size: 13px;
       }
-      .preset:hover { border-color: var(--accent); }
-      .preset.active { border-color: var(--accent); color: var(--accent); }
+      .preset:hover { border-color: var(--ink); }
+      .preset.active { border-color: var(--ink); background: var(--ink); color: var(--bg); }
       .preset.now { border-style: dashed; border-color: var(--accent); }
       .caps { border-collapse: collapse; margin: 10px 24px 8px; font-size: 13px; }
       .caps th, .caps td { text-align: left; padding: 4px 22px 4px 0; border-bottom: 1px solid var(--line); }
       .caps th { color: var(--muted); font-weight: 600; }
-      .caps td.y { color: #86efac; }
+      .caps td.y { color: var(--ok); }
       .caps td.n, .caps tr.off td:first-child { color: var(--muted); }
       .ctl { display: flex; flex-direction: column; gap: 4px; min-width: 180px; }
       .ctl label { font-size: 13px; color: var(--muted); }
@@ -84,8 +100,8 @@
       .explainer b { color: var(--ink); font-weight: 600; }
       .file button, .file label.fake {
         display: inline-block; cursor: pointer;
-        background: #242736; color: var(--ink);
-        border: 1px solid var(--line); border-radius: 8px;
+        background: none; color: var(--ink);
+        border: 1px solid var(--ink);
         padding: 8px 12px; font-size: 13px;
       }
       .file input { display: none; }
@@ -97,12 +113,12 @@
       footer h2 { font-size: 15px; color: var(--ink); margin: 0 0 10px; }
       footer .thanks { display: grid; gap: 14px; max-width: 80ch; }
       footer .thanks p { margin: 0; }
-      footer a { color: var(--accent); }
+      footer a { color: inherit; }
       code { font-family: var(--mono); color: var(--ink); }
       [hidden] { display: none !important; }
       /* Layout: avatars on top, every control in one strip directly below. */
       header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; padding: 10px 24px 6px; }
-      header h1 { margin: 0; font-size: 17px; }
+      header h1 { margin: 0; font: 600 20px var(--serif); }
       header p { max-width: none; font-size: 13px; }
       .stage { margin: 4px 0 0; }
       .panel canvas { height: 54vh; min-height: 260px; }
@@ -119,8 +135,8 @@
       .row .lbl { color: var(--muted); font-size: 13px; min-width: 52px; }
       .row .preset { padding: 4px 11px; font-size: 12.5px; }
       .row select, .row input[type="text"] {
-        background: #242736; color: var(--ink); border: 1px solid var(--line);
-        border-radius: 8px; padding: 5px 8px; font-size: 13px; max-width: 100%;
+        background: var(--bg); color: var(--ink); border: 1px solid var(--line);
+        padding: 5px 8px; font-size: 13px; max-width: 100%;
       }
       .row #pose, .row #pose-group { flex: 1 1 0; min-width: 0; }
       .row select:disabled { color: var(--muted); }
@@ -132,10 +148,10 @@
       button.chip:hover { border-color: var(--warn); color: var(--warn); }
       .row .now { color: var(--accent); font-size: 12px; }
       .chip {
-        font-size: 11.5px; line-height: 1; padding: 4px 8px; border-radius: 999px;
+        font: 11.5px/1 var(--mono); padding: 4px 8px;
         border: 1px solid var(--line); color: var(--muted); white-space: nowrap;
       }
-      .chip.on { color: #86efac; border-color: #2f5d43; }
+      .chip.on { color: var(--ok); border-color: var(--ok); }
       .sliders { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
       .sliders .ctl { min-width: 0; }
       .strip .stats { padding: 0; gap: 4px 18px; font-size: 12.5px; }
@@ -149,9 +165,6 @@
     </style>
   </head>
   <body>
-    <div role="alert" style="position:sticky;top:0;z-index:1000;width:100%;box-sizing:border-box;padding:12px 16px;text-align:center;background:#7f1d1d;color:#fee2e2;border-bottom:2px solid #ef4444;font:600 14px/1.4 system-ui,sans-serif">
-      IN PROGRESS OF BEING UPDATED — DO NOT USE TILL 1.5.0. This demo is being reworked for the 1.4.x → 1.5.0 window and still encodes the pre-1.4.1 expression block, so it does not match the current protocol. The normative source is <a href="https://github.com/Ron81/posy/blob/main/spec/Posy.md" style="color:#fff;text-decoration:underline">spec/Posy.md</a>.
-    </div>
     <header>
       <h1>Posy transmission demo</h1>
       <p>Left: what you do. Right: what the room sees — only what you declared, after a lossy channel. Runs entirely in this tab.</p>
@@ -173,6 +186,10 @@
       <section>
         <h2>Send</h2>
         <div class="row" id="trackers"><span class="lbl">Tracker</span></div>
+        <div class="row">
+          <span class="lbl">Fingers</span>
+          <label class="chk" title="Spec §4, §5.5: one rotation per finger joint in place of the 24-byte finger block"><input id="finger-joints" type="checkbox" /> one rotation per joint (<code>finger_bones</code>) in place of the block</label>
+        </div>
         <div class="row">
           <label class="lbl" for="pose-group">Pose</label>
           <select id="pose-group" title="Part of the body the poses are there to show"></select>
@@ -196,7 +213,7 @@
           <button type="button" class="preset" data-preset="excellent">Excellent · fibre</button>
           <button type="button" class="preset" data-preset="standard">Standard · good</button>
           <button type="button" class="preset" data-preset="countryside">Countryside</button>
-          <button type="button" class="preset" data-preset="nosignal">NoSignalNation</button>
+          <button type="button" class="preset" data-preset="nosignal">Poor mobile</button>
         </div>
         <div class="sliders">
           <div class="ctl">
@@ -230,7 +247,7 @@
           <button type="button" class="preset" id="extra-clear" hidden>Clear</button>
         </div>
         <div class="row" id="extra-chips" hidden></div>
-        <p class="note" id="extra-note">Extras need a loaded avatar: the stick figure is the humanoid body and nothing else.</p>
+        <p class="note" id="extra-note"></p>
         <div class="stats">
           <span>frame: <b><span id="stat-bytes">–</span> B</b></span>
           <span>rate: <b><span id="stat-hz">–</span> FPS</b></span>
@@ -254,9 +271,8 @@
         (spec §2.1). That set is declared once as <code>caps.sends</code> = <code id="sends"></code>.
         Everything else stays in its rest pose on the right and costs no bytes. The right-hand
         camera frames the declared region. The stick figure has a part for every data type:
-        fingers, one toe piece per foot, lids, mouth, tongue and pupils. What a loaded model
-        can show is read from the model. Finger joints are worked out on the receiving side
-        from the finger block (spec §5.5); the face comes from the expression block (§5.6).
+        fingers, one toe piece per foot, lids, mouth and pupils. What a loaded model can show
+        is read from the model. The face comes from the expression block (§5.6).
       </p>
     </details>
     <details>
@@ -272,18 +288,24 @@
         "Turn" do it; a double-click puts them back. That is how a tail or wings get seen.
       </p>
       <p>
-        <b>Extras.</b> With a model loaded, the two lists hold its further bones and the
-        expressions of its own that the face block does not carry (spec §2.6). Picking a name
-        declares it; a chip takes it out again. Another avatar starts with nothing declared.
+        <b>Fingers.</b> By default the 24-byte finger block goes out, and the receiving side
+        works the 30 joints out from it (spec §5.5). With "one rotation per joint" the sender
+        declares <code>finger_bones</code> and sends each joint itself: 120 bytes for both hands.
+        The pose "Claw" needs it: the block bends all three joints of a finger together.
+      </p>
+      <p>
+        <b>Extras.</b> The two lists hold the avatar's bones beyond the humanoid body and the
+        expressions the face block does not carry (spec §2.6). Picking a name declares it; a
+        chip takes it out again. The tongue is such an expression: the stick figure has
+        <code>tongueOut</code>, a loaded model has it if its file does.
       </p>
       <p>
         <b>Hands, feet and face.</b> "Count to ten" raises one hand and opens it finger by
         finger, thumb first, then the other hand. "Toes" lifts the toes of each foot, then
-        stands on tiptoe. "Face" goes through the lids, the mouth shapes, the tongue and the
-        gaze one at a time; the step that is on is named next to the selector. The view
-        selector moves both cameras close to the hands, the feet or the face; on "auto" these
-        three poses do that themselves. On a model, the toes are easiest to see barefoot, and
-        the tongue direction has nothing to drive: only the stick figure shows it.
+        stands on tiptoe. "Face" goes through the lids, the mouth shapes and the gaze one at
+        a time; the step that is on is named next to the selector. The view selector moves
+        both cameras close to the hands, the feet or the face; on "auto" these poses do that
+        themselves. On a model, the toes are easiest to see barefoot.
       </p>
       <p>
         <b>What moves.</b> In every pose the hands and the face do what fits it: hands hang
@@ -304,25 +326,13 @@
     </details>
 
     <footer>
-      <h2>Thanks to the projects this demo stands on</h2>
+      <h2>Built on</h2>
       <div class="thanks">
         <p>
-          <a href="https://threejs.org/" target="_blank" rel="noopener"><b>three.js</b></a> —
-          does all the 3D heavy lifting here: scenes, cameras, the WebGL renderer, and the quaternion
-          maths we lean on when applying decoded rotations. It's the backbone of basically all 3D on
-          the open web, and a from-scratch mocap tool like this simply wouldn't come together in a
-          reasonable time without it. Thank you for keeping something this powerful free and readable.
-        </p>
-        <p>
-          <a href="https://github.com/pixiv/three-vrm" target="_blank" rel="noopener"><b>@pixiv/three-vrm</b></a> —
-          makes VRM avatars first-class citizens in three.js: humanoid bone mapping, expressions, the
-          whole rig. When you load your own <code>.vrm</code> above, this is what brings it to life.
-          pixiv open-sourcing the VRM tooling is a big part of why indie VTubing is something a hobbyist
-          can actually reach — genuinely grateful that it exists and that it's open.
-        </p>
-        <p>
-          And of course VRM itself, and the broader VTuber / mocap community whose formats and habits
-          this protocol tries to fit into rather than fight.
+          <a href="https://threejs.org/" target="_blank" rel="noopener"><b>three.js</b></a> for scenes, cameras,
+          rendering and quaternion maths, and
+          <a href="https://github.com/pixiv/three-vrm" target="_blank" rel="noopener"><b>@pixiv/three-vrm</b></a>
+          for loading and driving VRM avatars. Thanks to both projects, and to VRM itself.
         </p>
       </div>
     </footer>

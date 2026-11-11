@@ -24,7 +24,7 @@ export const BIT = {
   rightHand: 24,
 } as const;
 
-// Standard-Sync expression slots by name (spec §5.6).
+// VRM-Sync expression slots by name (spec §5.6): the 13 VRM presets.
 export const SLOT = {
   blinkLeft: 0,
   blinkRight: 1,
@@ -39,7 +39,4 @@ export const SLOT = {
   relaxed: 10,
   surprised: 11,
   neutral: 12,
-  tongueOut: 13, // u8
-  tongueX: 14, // i8, positive = toward the avatar's own left
-  tongueY: 15, // i8, positive = upward
 } as const;

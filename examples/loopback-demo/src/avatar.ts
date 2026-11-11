@@ -16,6 +16,7 @@ import { VRMLoaderPlugin, VRMUtils, type VRM, type VRMSpringBoneJoint, VRMHumanB
 import type { Frame } from 'posy';
 import { BIT, SLOT } from './bones.ts';
 import type { DataType, ExtraDecl } from './declare.ts';
+import { handJoints, measureThumbs, REFERENCE_THUMBS, type ThumbRest } from './hands.ts';
 
 export interface Avatar {
   readonly object: THREE.Object3D;
@@ -29,6 +30,8 @@ export interface Avatar {
    * many of the listed bones it hangs under, so a picker can show and take a whole chain.
    */
   readonly extras: { bones: string[]; boneLevels: number[]; values: string[] };
+  /** How this avatar's thumbs rest against the reference hand (§5.5, the axes rule). */
+  readonly thumbRest: ThumbRest;
   /**
    * Move rendered bones a fraction toward the decoded pose. `extra` is the declaration the
    * frame's extras block follows.
@@ -41,7 +44,6 @@ export interface Avatar {
 const _q = new THREE.Quaternion();
 const _w = new THREE.Quaternion();
 const _v = new THREE.Vector3();
-const _e = new THREE.Euler();
 const DEG = Math.PI / 180;
 
 /** Hips height as a fraction of standing (§5.4). No root block → standing. */
@@ -55,9 +57,6 @@ const REST_ROTATION = new Map<number, [number, number, number, number]>([
   [BIT.leftLowerArm, [0, -0.087156, 0, 0.996195]],
   [BIT.rightLowerArm, [0, 0.087156, 0, 0.996195]],
 ]);
-
-// §5.5: the hand a receiver shows when a frame carries no finger block.
-const REST_HAND = { curl: [40, 50, 60, 70, 80], splay: [0, 0, 0, 0, 0], thumbOpposition: 40 };
 
 /** The bone's rotation from the frame, or its non-identity rest rotation. False = identity. */
 function frameQuat(frame: Frame, bit: number, out: THREE.Quaternion): boolean {
@@ -100,46 +99,12 @@ const VRM_BONE: Array<[number, VRMHumanBoneName]> = [
 // What a receiver works out from the blocks, for either avatar
 // ---------------------------------------------------------------------------
 
-// Finger joints a receiver synthesises from the finger block, with the flexion in degrees
-// at curl 255 (§5.5). Order of FINGERS is the order of the block.
-const FINGERS = ['Thumb', 'Index', 'Middle', 'Ring', 'Little'] as const;
-const FLEXION = { Proximal: 90, Intermediate: 110, Distal: 70 };
-const THUMB_FLEXION = { Proximal: 60, Distal: 80 };
-
-/**
- * §5.5: the rotations of the 30 finger bones. `set` gets the VRM humanoid bone name and
- * Euler XYZ angles in degrees, in avatar space; with x = 0 that is Ry · Rz, splay outside
- * curl, as §5.5 orders them. No finger block → the rest hand.
- */
-function fingerAngles(frame: Frame, set: (bone: string, x: number, y: number, z: number) => void): void {
-  for (const side of ['left', 'right'] as const) {
-    const hand = frame.fingers?.[side] ?? REST_HAND;
-    // Toward −Y (curl) and toward the thumb (splay) is −Z / −Y on the left hand, + on the right.
-    const sign = side === 'left' ? -1 : 1;
-    FINGERS.forEach((finger, i) => {
-      const curl = hand.curl[i] / 255;
-      const splay = (hand.splay[i] / 127) * 15;
-      for (const [joint, max] of Object.entries(finger === 'Thumb' ? THUMB_FLEXION : FLEXION)) {
-        const y = joint === 'Proximal' ? sign * splay : 0;
-        // The thumb lies in the palm plane, so it flexes about Y, toward the fingers.
-        if (finger === 'Thumb') set(`${side}${finger}${joint}`, 0, y - sign * curl * max, 0);
-        else set(`${side}${finger}${joint}`, 0, y, sign * curl * max);
-      }
-    });
-    set(`${side}ThumbMetacarpal`, (hand.thumbOpposition / 255) * 60, 0, 0);
-  }
-}
-
-/** A Standard-Sync slot as 0 … 1 (§5.6). No expression block → 0. */
+/** A VRM-Sync slot as 0 … 1 (§5.6). No expression block → 0. */
 const slot = (frame: Frame, index: number): number => (frame.expressions?.weights[index] ?? 0) / 255;
 
-/** Tongue as [out 0 … 1, left −1 … 1, up −1 … 1]. Direction counts only while it is out (§5.6). */
-function tongue(frame: Frame): [number, number, number] {
-  const w = frame.expressions?.weights;
-  if (!w || w[SLOT.tongueOut] === 0) return [0, 0, 0];
-  const i8 = (v: number) => Math.max(-127, v > 127 ? v - 256 : v) / 127;
-  return [w[SLOT.tongueOut] / 255, i8(w[SLOT.tongueX]), i8(w[SLOT.tongueY])];
-}
+// The tongue is no VRM preset and has no slot (§5.6): an avatar that has one offers it as
+// an extra value under its own name, here and on a loaded model alike (§2.6).
+const TONGUE = 'tongueOut';
 
 /** Gaze in degrees, [left, up] (§5.6: ±127 is ±45°). */
 const gaze = (frame: Frame): [number, number] => [
@@ -154,9 +119,11 @@ const gaze = (frame: Frame): [number, number] => [
 /** A jointed humanoid made of boxes and spheres. Bones map bit → pivot group. */
 export class StickFigure implements Avatar {
   readonly object = new THREE.Group();
-  readonly caps: ReadonlySet<DataType> = new Set<DataType>(['bones', 'legs', 'toes', 'root', 'fingers', 'expressions', 'tongue']);
-  /** The figure is the humanoid core and nothing else. */
-  readonly extras = { bones: [], boneLevels: [], values: [] };
+  readonly caps: ReadonlySet<DataType> = new Set<DataType>(['bones', 'legs', 'toes', 'root', 'fingers', 'finger_bones', 'expressions']);
+  /** The figure is the humanoid core, and a tongue. */
+  readonly extras = { bones: [], boneLevels: [], values: [TONGUE] };
+  /** Its thumbs are built along the reference direction. */
+  readonly thumbRest = REFERENCE_THUMBS;
   readonly height = 1.75;
   private static readonly HIP_HEIGHT = 0.9;
   private readonly hips = new THREE.Group();
@@ -315,7 +282,7 @@ export class StickFigure implements Avatar {
     chain('Thumb', ['Metacarpal', 'Proximal', 'Distal'], [0.015 * side, 0, 0.036], [0.032, 0.03, 0.025], side * Math.SQRT1_2, Math.SQRT1_2, 0.018);
   }
 
-  applyPose(frame: Frame, smoothing: number): void {
+  applyPose(frame: Frame, smoothing: number, extra?: ExtraDecl): void {
     const ease = (now: number, target: number) => now + (target - now) * smoothing;
 
     for (const [bit, pivotNode] of this.pivots) {
@@ -332,9 +299,9 @@ export class StickFigure implements Avatar {
     // Hips height: `h` scales this figure's own standing hip height (§8.5).
     this.hips.position.y = ease(this.hips.position.y, StickFigure.HIP_HEIGHT * hipsRatio(frame));
 
-    fingerAngles(frame, (bone, x, y, z) => {
-      this.fingers.get(bone)?.quaternion.slerp(_q.setFromEuler(_e.set(x * DEG, y * DEG, z * DEG)), smoothing);
-    });
+    for (const [bone, q] of handJoints(frame, this.thumbRest)) {
+      this.fingers.get(bone)?.quaternion.slerp(_q.set(q.x, q.y, q.z, q.w), smoothing);
+    }
 
     // Lids squash the eye; gaze moves the pupil on it (left and up positive).
     const [yaw, pitch] = gaze(frame);
@@ -352,12 +319,11 @@ export class StickFigure implements Avatar {
     this.mouth.scale.x = ease(this.mouth.scale.x, 0.034 * wide);
     this.mouth.scale.y = ease(this.mouth.scale.y, 0.004 + 0.034 * open);
 
-    // Tongue: length is protrusion; it swings toward the avatar's left and upward.
-    const [out, left, up] = tongue(frame);
+    // Tongue: a declared extra value; its length is the protrusion.
+    const i = extra?.values.indexOf(TONGUE) ?? -1;
+    const out = i < 0 ? 0 : (frame.extra?.values[i] ?? 0) / 255;
     this.tongue.scale.z = ease(this.tongue.scale.z, Math.max(out, 0.001));
     this.tongue.visible = this.tongue.scale.z > 0.03;
-    this.tongue.rotation.y = ease(this.tongue.rotation.y, left * 38 * DEG);
-    this.tongue.rotation.x = ease(this.tongue.rotation.x, -up * 38 * DEG);
   }
 
   update(): void {
@@ -379,12 +345,12 @@ export class StickFigure implements Avatar {
 // VRM
 // ---------------------------------------------------------------------------
 
-// Standard-Sync slots that are VRM 1.0 expression presets of the same name.
+// VRM-Sync slots that are VRM 1.0 expression presets of the same name.
 const VRM_EXPRESSIONS = ['aa', 'ih', 'ou', 'ee', 'oh', 'happy', 'angry', 'sad', 'relaxed', 'surprised', 'neutral'] as const;
 
 // Expressions §5.6 already carries; every other expression of a model is an extra value.
 const CORE_EXPRESSIONS = new Set(
-  [...VRM_EXPRESSIONS, 'blink', 'blinkLeft', 'blinkRight', 'lookUp', 'lookDown', 'lookLeft', 'lookRight', 'tongueOut'].map((n) => n.toLowerCase()),
+  [...VRM_EXPRESSIONS, 'blink', 'blinkLeft', 'blinkRight', 'lookUp', 'lookDown', 'lookLeft', 'lookRight'].map((n) => n.toLowerCase()),
 );
 
 /** The name a node has in the avatar file. GLTFLoader keeps it here when it had to change it. */
@@ -407,13 +373,14 @@ export class VrmAvatar implements Avatar {
   private readonly parked = new Map<string, VRMSpringBoneJoint[]>();
   private drivenDecl: ExtraDecl | undefined;
   readonly height: number;
+  readonly thumbRest: ThumbRest;
   private readonly rest = new Map<VRMHumanBoneName, THREE.Quaternion>();
   private readonly hips: THREE.Object3D | null;
   private readonly hipsRestY: number;
   /** The model has one lid expression per eye; otherwise only the common `blink`. */
   private readonly lids: boolean;
   /**
-   * Standard-Sync slot name → the model's expression of that name, compared without case.
+   * VRM-Sync slot name → the model's expression of that name, compared without case.
    * VRM 0.x has no `surprised` preset; models that have one carry it as a custom
    * "Surprised".
    */
@@ -429,16 +396,13 @@ export class VrmAvatar implements Avatar {
     this.object = vrm.scene;
     const node = (name: VRMHumanBoneName) => vrm.humanoid.getNormalizedBoneNode(name);
 
-    // What this model can show. Legs are required VRM bones; toes, fingers, expressions
-    // and a tongue expression are optional and differ from model to model.
+    // What this model can show. Legs are required VRM bones; toes, fingers and expressions
+    // are optional and differ from model to model. Fingers can be driven either way.
     const caps = new Set<DataType>(['bones', 'legs', 'root']);
     if (node(VRMHumanBoneName.LeftToes) && node(VRMHumanBoneName.RightToes)) caps.add('toes');
-    if (node(VRMHumanBoneName.LeftIndexProximal)) caps.add('fingers');
+    if (node(VRMHumanBoneName.LeftIndexProximal)) caps.add('fingers').add('finger_bones');
     const em = vrm.expressionManager;
-    if (em) {
-      caps.add('expressions');
-      if (em.getExpression('tongueOut')) caps.add('tongue');
-    }
+    if (em) caps.add('expressions');
     this.caps = caps;
     this.lids = !!em?.getExpression('blinkLeft') && !!em.getExpression('blinkRight');
     for (const e of em?.expressions ?? []) {
@@ -452,6 +416,15 @@ export class VrmAvatar implements Avatar {
     // standing hip height (§5.4).
     this.hips = node(VRMHumanBoneName.Hips);
     this.hipsRestY = this.hips?.position.y ?? 0;
+    // The scene is not placed anywhere yet and faces +Z, so world positions are in avatar
+    // space: the thumbs' resting directions are measured here for the axes rule (§5.5).
+    this.thumbRest = measureThumbs((side) => {
+      const from = vrm.humanoid.getRawBoneNode(`${side}ThumbMetacarpal` as VRMHumanBoneName);
+      const to = vrm.humanoid.getRawBoneNode(`${side}ThumbDistal` as VRMHumanBoneName);
+      if (!from || !to) return null;
+      const d = to.getWorldPosition(new THREE.Vector3()).sub(from.getWorldPosition(_v));
+      return [d.x, d.y, d.z];
+    });
     // Record each driven bone's rest rotation once.
     for (const [, name] of VRM_BONE) {
       const node = vrm.humanoid.getNormalizedBoneNode(name);
@@ -514,12 +487,13 @@ export class VrmAvatar implements Avatar {
       const hipsY = this.hipsRestY * hipsRatio(frame);
       this.hips.position.y += (hipsY - this.hips.position.y) * smoothing;
     }
-    // §5.5. Normalized finger bones rest at identity, so the angles are set directly.
+    // §5.5. Normalized finger bones rest at identity, so the rotations are set directly,
+    // converted like every other bone on a rig that faces −Z (§3.2).
     if (this.caps.has('fingers')) {
-      fingerAngles(frame, (bone, x, y, z) => {
+      for (const [bone, q] of handJoints(frame, this.thumbRest)) {
         const node = this.vrm.humanoid.getNormalizedBoneNode(bone as VRMHumanBoneName);
-        node?.quaternion.slerp(_q.setFromEuler(_e.set(this.xz * x * DEG, y * DEG, this.xz * z * DEG)), smoothing);
-      });
+        node?.quaternion.slerp(_q.set(this.xz * q.x, q.y, this.xz * q.z, q.w), smoothing);
+      }
     }
     this.applyFace(frame, smoothing);
   }
@@ -562,8 +536,7 @@ export class VrmAvatar implements Avatar {
     });
   }
 
-  // §5.6. Tongue direction has no VRM expression, so only protrusion is shown, and only
-  // on a model that brings a `tongueOut` expression.
+  // §5.6. A model's tongue expression is not set here: it is an extra value (applyExtras).
   private applyFace(frame: Frame, smoothing: number): void {
     const em = this.vrm.expressionManager;
     if (!em) return;
@@ -580,7 +553,6 @@ export class VrmAvatar implements Avatar {
       ease('blink', Math.max(left, right));
     }
     for (const [name, own] of this.expressions) ease(own, slot(frame, SLOT[name as (typeof VRM_EXPRESSIONS)[number]]));
-    if (this.caps.has('tongue')) ease('tongueOut', tongue(frame)[0]);
 
     // three-vrm takes gaze in degrees: yaw positive to the avatar's left as in §5.6, but
     // pitch positive downward, the opposite of §5.6.
