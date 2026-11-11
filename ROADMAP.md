@@ -1,60 +1,44 @@
-# Posy roadmap — the road to 1.5
+# Posy roadmap: the road to 1.5
 
-This is where 1.x is going. It is a plan, not a promise of dates. The guiding rule is the one in
-§9: Posy is **soft-locked**, not frozen — the packet format (§5) and signaling (§2) may still change
-in a 1.x revision, but every change needs a stated justification, and once a real implementation
-ships on a given shape, that shape is settled.
+Where 1.x is going. A plan, not a promise of dates.
 
-We are in a deliberate, time-boxed window where the last few **breaking** tidy-ups land together, as
-a sequence of small reviewed changes, and then the core locks down for a long, calm, **additive-only**
-1.x. The intent is simple: anyone building on Posy after 1.5.0 should be able to treat the wire as
-stable for a long time.
+Until 1.5.0 the packet format (§5) and signaling (§2) may still change in a 1.x release, and
+every change needs a stated justification (§9). The breaking changes that were left are made in
+this window, each as its own reviewed change, instead of one per release over months. 1.5.0
+closes it: from then on 1.x only adds, so that anyone who builds on Posy after 1.5.0 can treat
+the wire as stable.
 
-## Why a window, and why now
-
-Earlier releases left a handful of changes that are each small but each break the wire or the
-signaling layer: a mask-width question, a couple of naming cleanups, and a new finger-fidelity option
-that needs real estate in the bone mask. Dribbling them out one per release would mean many breaking
-1.x bumps spread over months. Instead they land close together, each on its own reviewed branch, and
-**1.5.0 is the line** past which the core is treated as locked.
-
-The version byte on the wire is the **minor** revision (§9), so every step in this window writes the
-same byte until 1.5.0; the sub-numbers below are release labels, not wire versions.
+The version byte on the wire is the minor revision (§9). Every release of the window writes the
+same byte; the numbers below are release labels, not wire versions.
 
 ## The sequence
 
 | Step | What | Wire? |
 |---|---|---|
-| **1.3.2** *(done)* | `session.multiplexed` handshake field, so a receiver knows up front whether a connection carries the §1.3 multi-sender `uid` prefix. | No — signaling only. |
-| **1.4.0** *(done)* | A per-joint **`finger_bones`** type: full per-joint finger rotations as a declared alternative to the compact one-curl-per-finger block (§5.5), for rigs and poses the compact block can't express (e.g. a claw). Carried on reserved `bone_mask` bits, mutually exclusive with the existing `fingers` type. Folds in the long-planned mask-check tidy-up (one unified grant check over the whole mask; bits that belong to no type are rejected by relays). | **Yes.** |
-| **1.4.1** *(done)* | Small spec cleanups batched together: directional tongue moves into declared extras, the expression tiers are renamed, and a size estimate is corrected. | Mixed. |
-| **1.4.5** *(done)* | A tested **PMX / MMD driver** and normative per-type driver sections (§3.2), verified against the pose vectors in a real MMD runtime, plus pinning a single hips-height landmark across avatar types. | **Yes.** |
-| **1.4.6** *(done)* | The session layer reviewed by real use (one clock sync at join, `rate` 0 pauses a sender nobody wants, `IDLE` removed), loss concealment by intent (a long unexplained silence freezes rather than easing to a neutral idle, §8.3), and a `silence` message by which a still-connected sender may say why its frames stopped (§2.8). | No — no frame changes size or layout. |
-| *(free gaps)* | The numbers between the planned steps (1.4.2–1.4.4, 1.4.7–1.4.9) are kept free, so a surprise fix never has to wait for the next planned step. | — |
-| **1.5.0** | The window closes. The core is locked for a long additive-only 1.x. | Locks it. |
+| **1.3.2** *(done)* | `session.multiplexed`: a receiver knows from the handshake whether a connection carries the §1.3 multi-sender `uid` prefix. | No, signaling only. |
+| **1.4.0** *(done)* | Per-joint fingers (`finger_bones`): full finger rotations as a declared alternative to the compact block (§5.5), for hand shapes the block cannot express (a claw). On reserved `bone_mask` bits, mutually exclusive with `fingers`. With it, one grant check over the whole mask; relays reject bits that belong to no type. | **Yes.** |
+| **1.4.1** *(done)* | Directional tongue moves into declared extras, the expression tiers are renamed, a size estimate is corrected. | Mixed. |
+| **1.4.5** *(done)* | A tested PMX / MMD driver and normative per-type driver sections (§3.2), checked against the pose vectors in an MMD runtime; a hips-height landmark per avatar type. | **Yes.** |
+| **1.4.6** *(done)* | The session layer reviewed by real use (one clock sync at join, `rate` 0 pauses a sender nobody wants, `IDLE` removed), a long unexplained silence freezes instead of easing to an idle pose (§8.3), and a `silence` message by which a connected sender says why its frames stopped (§2.8). | No frame changes size or layout. |
+| *(free)* | 1.4.2–1.4.4 and 1.4.7–1.4.9 are kept free, so that a fix does not wait for the next planned step. | |
+| **1.5.0** | The window closes. From here 1.x only adds. | Locks it. |
 
 ## The gate before 1.5.0
 
-1.5.0 is not cut on a checklist alone. Once the last step above is in, the whole window is exercised
-in **real use** — real people, live tracking, a real relay, mixed avatar types in one room, every new
-wire feature used at least once — and 1.5.0 ships on the strength of that run. If something breaks, it
-comes back as a fix on one of the free numbers, and the window stays open until the real-use pass is
-clean.
+1.5.0 is cut after the whole window has been used for real: real people, live tracking, a real
+relay, mixed avatar types in one room, every new wire feature used at least once. A fault found
+there is fixed on a free number, and the window stays open until the run is clean.
 
 ## After 1.5.0
 
-A long, calm run of **additive-only** 1.x: new optional data types and extras, new profiles, more
-language ports — nothing that breaks a 1.5+ implementation. The extras mechanism (§5.8) is what makes
-this possible: most new needs are a declared extra, not a format change.
-
-**2.0 is deliberately far off.** It is the rare, last-resort home for a change that genuinely cannot
-be additive — not where routine work goes. The honest summary: after 1.5.0, if you ship against Posy,
-you should be able to stop watching for breaking changes.
+Additive only: new optional data types and extras, new profiles, ports to other languages.
+Nothing that breaks a 1.5 implementation. Most new needs are a declared extra (§5.8), not a
+format change. 2.0 is the place for a change that cannot be additive; none is planned.
 
 ---
 
-*Change history is in [`CHANGELOG.md`]; the reasoning behind the harder calls is in
-[`docs/DECISIONS.md`]. Spec changes start with an issue — see [`CONTRIBUTING.md`].*
+*Change history is in [`CHANGELOG.md`]; the reasoning behind the harder decisions is in
+[`docs/DECISIONS.md`]. Spec changes start with an issue, see [`CONTRIBUTING.md`].*
 
 [`CHANGELOG.md`]: CHANGELOG.md
 [`docs/DECISIONS.md`]: docs/DECISIONS.md
