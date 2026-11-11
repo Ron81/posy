@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Posy: ein offenes Protokoll für Avatar-Posen</title>
-  <meta name="description" content="Posy ist ein offenes, kompaktes Protokoll, das Posen humanoider Avatare (Körper, Finger, Gesicht) zwischen vielen Teilnehmern überträgt: etwa 115 Bytes pro Frame, 25- bis 35-mal kleiner als VMC." />
+  <title>Posy: ein offenes Protokoll für Avatar-Bewegungen</title>
+  <meta name="description" content="Posy ist ein offenes, kompaktes Protokoll, das Bewegungen von Avataren (Körper, Finger, Gesicht) zwischen vielen Teilnehmern überträgt: etwa 115 Bytes pro Frame, 25- bis 35-mal kleiner als VMC." />
   <meta name="color-scheme" content="light dark" />
   <link rel="alternate" hreflang="en" href="../index.html" />
   <link rel="icon" href="../assets/favicon.svg" type="image/svg+xml" />
@@ -31,13 +31,13 @@
   </div>
 </header>
 
-<noscript><p class="noscript">JavaScript ist aus: Frame-Baukasten, Bandbreitenrechner und Spec-Tabellen bleiben leer.</p></noscript>
+<noscript><p class="noscript">JavaScript ist ausgeschaltet, d.h. Frame-Baukasten, Bandbreitenrechner und Spec-Tabellen bleiben leer.</p></noscript>
 
 <main class="page">
 
 <section class="hero">
-  <h1>Avatar-Posen in 115 Bytes pro Frame</h1>
-  <p class="lede">Posy ist ein offenes Protokoll, das Körper-, Finger- und Gesichtsposen humanoider Avatare in Echtzeit zwischen vielen Teilnehmern überträgt, über einen WebRTC-Datenkanal oder einen WebSocket.</p>
+  <h1>Avatar-Bewegungen mit nur 115 Bytes pro Frame</h1>
+  <p class="lede">Posy ist ein offenes Protokoll, das Körper-, Finger- und Gesichtsbewegungen von Avataren in Echtzeit zwischen mehreren Teilnehmern über einen WebRTC-Datenkanal oder einen WebSocket übertragen kann.</p>
 
   <figure class="frame-fig">
     <div class="bytemap" id="hero-map" aria-hidden="true"></div>
@@ -46,38 +46,37 @@
       <li><i class="b-quat"></i>13 Knochenrotationen<b>52</b></li>
       <li><i class="b-root"></i>Position + Hüfthöhe<b>8</b></li>
       <li><i class="b-fing"></i>Finger, beide Hände<b>24</b></li>
-      <li><i class="b-face"></i>13 Ausdrücke + Blick<b>15</b></li>
+      <li><i class="b-face"></i>13 Emotes + Blick<b>15</b></li>
     </ul>
-    <figcaption>Ein typischer Oberkörper-Frame im Maßstab, ein Feld pro Byte: 115 Bytes. Dieselbe Pose braucht über VMC etwa 3,3 KB, das 25- bis 35-Fache (Spec §6).</figcaption>
+    <figcaption>Ein typischer Oberkörper-Frame hat 115 Bytes, hier im Maßstab mit einem Feld pro Byte. Dieselbe Pose braucht über VMC ca. 3,3 KB, das 25- bis 35-Fache.</figcaption>
   </figure>
 
   <p class="links">
     <a class="btn" href="https://github.com/Ron81/posy/blob/main/spec/Posy.md" target="_blank" rel="noopener">Spec lesen</a>
     <a class="btn" href="../demo/">Demo öffnen</a>
     <a class="btn plain" href="#packet-lab">Frame bauen</a>
-    <span class="hint">Apache-2.0 · Kanal-Label <code>avatar-pose</code> · Protokoll <code>posy/1</code> · Spec und Demo sind englisch</span>
+    <span class="hint">Apache-2.0 · Kanal-Label <code>avatar-pose</code> · Protokoll <code>posy/1</code> · Spec und Demo sind nur auf Englisch</span>
   </p>
 </section>
 
 <section class="sec" id="overview">
-  <div class="sec-head"><span class="sec-no">1</span><h2>Passt es für dich?</h2></div>
+  <div class="sec-head"><span class="sec-no">1</span><h2>Ist es was für deine App?</h2></div>
   <div class="sec-body">
     <div class="two">
       <div>
-        <h3>Passt</h3>
+        <h3>Optimal, wenn</h3>
         <ul class="plus">
-          <li>Du baust Avatar-Anwendungen für mehrere Nutzer, im Browser oder nativ</li>
-          <li>Viele Teilnehmer an gewöhnlichen Internetanschlüssen</li>
-          <li>Körper, Finger und Gesicht in einem kleinen Frame, für VRM-1.0-, VRM-0.x- und PMX-Avatare</li>
-          <li>Eine kleine Gruppe, gehostet über den Heimanschluss eines Mitglieds</li>
+          <li>Avatarbewegungen vieler Nutzer übertragen werden</li>
+          <li>Bandbreite und Fehlertoleranz ein Thema sind</li>
+          <li>Neben Fullbody &amp; Face weitere Extras benötigt werden</li>
+          <li>Bewegungsdaten schnell online übertragen werden sollen</li>
         </ul>
       </div>
       <div>
-        <h3>Passt nicht</h3>
+        <h3>Eher nichts, wenn</h3>
         <ul class="minus">
-          <li>Verlustfreie Motion-Capture-Aufzeichnung: dafür VMC oder BVH</li>
-          <li>Ein Peer-to-Peer-Netz ohne Routing-Peer</li>
-          <li>Delta-Kodierung, Weglassen einzelner Felder, Requisiten und Szenenzustand: auf v2 verschoben (Spec §11)</li>
+          <li>Motion-Capture verlustfrei aufgezeichnet werden soll (nimm VMC)</li>
+          <li>Das Ganze eh nur im Heimnetzwerk bleibt (geht, bringt aber wenig)</li>
         </ul>
       </div>
     </div>
@@ -87,31 +86,31 @@
 <section class="sec" id="how-it-works">
   <div class="sec-head"><span class="sec-no">2</span><h2>Funktionsweise</h2></div>
   <div class="sec-body">
-    <p>Jeder Pose-Frame geht vom Sender zum Routing-Peer und von dort zu den Empfängern. Der Routing-Peer führt die Sitzungsuhr, die Raumzugehörigkeit, die Berechtigungen und die Ratensteuerung. Er ist eine Rolle: der Rechner eines Teilnehmers, ein VPS oder ein gehosteter SFU kann sie übernehmen.</p>
+    <p>Jeder Bewegungs-Frame geht vom Sender zum Server und von dort zu den Empfängern. Der Server gibt Takt, Uhrzeit und Berechtigungen vor. Er braucht kaum Power, kann also locker auch auf einem lokalen PC oder einem kleinen gehosteten VPS laufen.</p>
 
-    <svg class="topo" viewBox="0 0 720 96" role="img" aria-label="Sender, Routing-Peer, Empfänger">
+    <svg class="topo" viewBox="0 0 720 96" role="img" aria-label="Sender, Server, Empfänger">
       <g fill="none" stroke="currentColor" stroke-width="1.5">
         <rect x="1" y="18" width="190" height="60" /><rect x="265" y="18" width="190" height="60" /><rect x="529" y="18" width="190" height="60" />
         <path d="M191 48H257M249 42l8 6-8 6M455 48H521M513 42l8 6-8 6" />
       </g>
       <g text-anchor="middle">
-        <text class="t1" x="96" y="44">Sender</text><text class="t2" x="96" y="63">erfasst, kodiert</text>
-        <text class="t1" x="360" y="44">Routing-Peer</text><text class="t2" x="360" y="63">leitet weiter, verwirft</text>
+        <text class="t1" x="96" y="44">Sender</text><text class="t2" x="96" y="63">trackt, kodiert</text>
+        <text class="t1" x="360" y="44">Server</text><text class="t2" x="360" y="63">prüft, leitet weiter</text>
         <text class="t1" x="624" y="44">Empfänger</text><text class="t2" x="624" y="63">interpolieren, rendern</text>
       </g>
     </svg>
 
     <ol class="steps">
-      <li><b>Der Sender deklariert, dann sendet er.</b> Er deklariert die Datentypen, die sein Tracker liefert und sein Avatar zeigen kann, und sendet nur diese. Ein verlorener Frame wird nie erneut gesendet: jeder Frame steht für sich.</li>
-      <li><b>Der Routing-Peer leitet weiter.</b> Er prüft die Länge eines Frames und ob er innerhalb dessen bleibt, was dem Sender gewährt wurde, ohne die Rotationen zu dekodieren. Für eine Ratenstufe verwirft er ganze Frames; die Bytes eines Frames ändert er nie.</li>
-      <li><b>Der Empfänger steuert den Avatar des Senders.</b> Jeder Empfänger wendet den Frame auf seine Kopie des Sender-Avatars an, interpoliert zwischen den Frames und überbrückt kurze Lücken. Nichts wird auf ein anderes Rig übertragen.</li>
+      <li><b>Der Sender deklariert, dann sendet er.</b> Er deklariert die Datentypen, die sein Tracker liefert und sein Avatar zeigen kann, und sendet nur diese. Ein verlorener Frame ist weg und wird nicht neu gesendet.</li>
+      <li><b>Der Server serviert.</b> Zumindest solange die Länge der Frames dem entspricht, was dem Sender gewährt wurde. Wird ihm was Falsches untergeschoben, verwirft er den ganzen Frame, ohne die Rotationen überhaupt anzufassen.</li>
+      <li><b>Der Empfänger rendert den ganzen Bumms.</b> Jeder Empfänger verwendet die Daten der Frames, um die Avatarbewegungen darzustellen, interpoliert zwischen den Frames und überbrückt kurze Lücken.</li>
     </ol>
 
     <dl class="defs">
       <dt>Posy avatar space (§3)</dt>
-      <dd>Rechtshändig, Y nach oben, das Modell blickt nach +Z, Meter. Jeder humanoide Knochen hat in der T-Pose die Identitätsrotation, und jedes Quaternion ist die Rotation eines Knochens relativ zu seinem Elternknochen. Der Raum deckt sich mit dem normalisierten Rig der VRM-1.0-Laufzeiten; VRM-0.x- und PMX-Rigs passt der Avatar-Treiber auf jeder Seite an (§3.2). Auf der Leitung ist es für alle drei dasselbe.</dd>
-      <dt>Über den humanoiden Körper hinaus (§2.6)</dt>
-      <dd>Schwänze, Tierohren, weitere Gliedmaßen und eigene Ausdrücke eines Avatars sind deklarierte Extras. Der Sender nennt sie einmal mit den Namen aus seiner Avatar-Datei. Ein Frame trägt dann 4 Bytes pro deklariertem Knochen und 1 Byte pro deklariertem Wert, ohne Namen auf der Leitung.</dd>
+      <dd>Ist identisch zum normalisierten Rig der VRM-1.0-Runtime. Fertig. Wir haben das Rad nicht neu erfunden.</dd>
+      <dt>Humanoides steht in §3, der Rest in §2.6</dt>
+      <dd>Katzenohren, Flügel, Schwänze und weitere Gliedmaßen sind optional deklarierte Extras, alles, was die Avatar-Datei so hergibt.</dd>
     </dl>
   </div>
 </section>
@@ -119,11 +118,11 @@
 <section class="sec" id="packet-lab">
   <div class="sec-head"><span class="sec-no">3</span><h2>Einen Frame bauen</h2></div>
   <div class="sec-body">
-    <p>Die Formeln aus Spec §5. Knochen und Blöcke umschalten und Größe, Maske und Deklaration des Frames ablesen.</p>
+    <p>Links kann man Knochen und Blöcke an- und ausschalten, rechts sieht man den resultierenden Frame.</p>
     <div id="packet-builder"></div>
 
-    <h3>Smallest-three: ein Quaternion in 4 Bytes (§5.3)</h3>
-    <p>Die größte Komponente weglassen, sie nicht-negativ machen, die anderen drei auf je 10 Bit quantisieren und in ein <code>u32</code> packen.</p>
+    <h3>Quaternion in 4 Bytes (§5.3)</h3>
+    <p>Wir sparen bei jedem Knochen, indem wir die größte der vier Komponenten weglassen und die anderen drei auf je 10 Bit quantisieren.</p>
     <div class="lab" id="quat-lab">
       <div class="lab-ctl">
         <label class="slider"><span>Yaw <output id="q-yaw-v">35°</output></span><input id="q-yaw" type="range" min="-180" max="180" value="35" /></label>
@@ -134,13 +133,13 @@
       <div class="lab-out">
         <dl class="kv">
           <dt>normalisiertes Quaternion (x, y, z, w)</dt>
-          <dd><code id="q-comps">–</code><p class="hint">Die markierte Komponente (<span id="q-axis">?</span>) ist die größte. Sie wird weggelassen und beim Dekodieren neu berechnet.</p></dd>
+          <dd><code id="q-comps">–</code><p class="hint">Die markierte Komponente (<span id="q-axis">?</span>) wird weggelassen und beim Dekodieren neu berechnet.</p></dd>
           <dt>gepacktes u32</dt>
           <dd><code id="q-hex">–</code></dd>
           <dt>Bit-Layout: <span class="s0">Index (2)</span> <span class="s1">a (10)</span> <span class="s2">b (10)</span> <span class="s3">c (10)</span></dt>
           <dd><code id="q-bits">–</code></dd>
           <dt>Fehler nach Kodieren und Dekodieren</dt>
-          <dd><code id="q-err">–</code><p class="hint">Im schlechtesten Fall ≈ 0,25°. Die Identität ergibt ≈ 0,14°: 0 / 0 / 0 liegt auf einer Rundungsgrenze.</p></dd>
+          <dd><code id="q-err">–</code><p class="hint">Im Worst Case ≈ 0,25°. Bei 0 / 0 / 0 stehen hier ≈ 0,14°, weil die Identität genau auf einer Rundungsgrenze liegt. Sieht man beides nicht.</p></dd>
         </dl>
       </div>
     </div>
@@ -150,27 +149,27 @@
 <section class="sec" id="bandwidth">
   <div class="sec-head"><span class="sec-no">4</span><h2>Bandbreite</h2></div>
   <div class="sec-body">
-    <p>Ein Sender lädt einen Strom hoch, und dessen Größe wächst nicht mit dem Raum. Was wächst, ist das, was der Routing-Peer wieder hinausschickt: Zuschauer sind deshalb billig, und ein großer Raum braucht einen guten Uplink. Die Zahlen folgen Spec §6 für den typischen Oberkörper-Frame.</p>
+    <p>Jeder User mit Tracking lädt jeweils einen Stream hoch und der Server schickt ihn an alle Teilnehmer. Dem User kann es also egal sein, wie viele Leute dabei sind, solange er nicht selbst den Server hostet. Der Server hingegen muss alles an alle weiterleiten, da kann sich die Bandbreite schnell summieren.</p>
     <div class="lab">
       <div class="lab-ctl">
         <div class="field"><span class="field-l">Szenario</span><div class="seg" id="bw-scenarios"></div></div>
         <label class="slider"><span>FULL-Sender <output id="bw-full-v">1</output></span><input id="bw-full" type="range" min="0" max="100" value="1" /><small>30 Hz: wer im Fokus steht, schnelle Hände, Perfect-Sync-Gesichter</small></label>
         <label class="slider"><span>NORMAL-Sender <output id="bw-normal-v">0</output></span><input id="bw-normal" type="range" min="0" max="100" value="0" /><small>15 Hz: der Standard</small></label>
-        <label class="slider"><span>MINIMAL-Sender <output id="bw-minimal-v">0</output></span><input id="bw-minimal" type="range" min="0" max="100" value="0" /><small>5 Hz: Vorschaubilder, Peers im Hintergrund</small></label>
-        <label class="slider"><span>Zuschauer <output id="bw-viewers-v">49</output></span><input id="bw-viewers" type="range" min="0" max="100" value="49" /><small>Nur Empfang: keine Erfassung, kein Upload</small></label>
+        <label class="slider"><span>MINIMAL-Sender <output id="bw-minimal-v">0</output></span><input id="bw-minimal" type="range" min="0" max="100" value="0" /><small>5 Hz: Mini-Ansichten, Leute im Hintergrund</small></label>
+        <label class="slider"><span>Zuschauer <output id="bw-viewers-v">49</output></span><input id="bw-viewers" type="range" min="0" max="100" value="49" /><small>Nur Empfang: kein Tracking, kein Upload</small></label>
         <div class="field"><span class="field-l">Gesichtsblock</span><div class="seg"><button type="button" id="bw-perfect">VRM-Sync (115 B)</button></div></div>
       </div>
       <div class="lab-out">
         <div>
-          <div class="size"><b id="bw-egress">–</b>sendet der Routing-Peer</div>
+          <div class="size"><b id="bw-egress">–</b>sendet der Server</div>
           <p class="verdict" id="bw-egress-sub">–</p>
         </div>
         <table class="parts">
           <tr><td>Raum</td><td><span id="bw-total">–</span> <span id="bw-total-sub"></span></td></tr>
           <tr><td>Ein Zuschauer empfängt<small id="bw-viewer-sub"></small></td><td id="bw-viewer">–</td></tr>
-          <tr><td>Ein Sender empfängt<small>die Posen aller anderen, ohne die eigene</small></td><td id="bw-sender">–</td></tr>
-          <tr><td>Der Routing-Peer empfängt</td><td id="bw-ingress">–</td></tr>
-          <tr><td>Ein Strom bei FULL / NORMAL / MINIMAL</td><td><span id="bw-t-full">–</span> / <span id="bw-t-normal">–</span> / <span id="bw-t-minimal">–</span> kbit/s</td></tr>
+          <tr><td>Ein Sender empfängt<small>die Bewegungen aller anderen, ohne die eigenen</small></td><td id="bw-sender">–</td></tr>
+          <tr><td>Der Server empfängt</td><td id="bw-ingress">–</td></tr>
+          <tr><td>Pro Sender Upload bei Full/Normal/Minimal</td><td><span id="bw-t-full">–</span> / <span id="bw-t-normal">–</span> / <span id="bw-t-minimal">–</span> kbit/s</td></tr>
         </table>
       </div>
     </div>
@@ -180,11 +179,11 @@
 <section class="sec" id="spec">
   <div class="sec-head"><span class="sec-no">5</span><h2>Tabellen der Spec</h2></div>
   <div class="sec-body">
-    <p>Was man beim Implementieren nachschlägt. Der vollständige und normative Text ist <a href="https://github.com/Ron81/posy/blob/main/spec/Posy.md" target="_blank" rel="noopener"><code>spec/Posy.md</code></a>, auf Englisch.</p>
+    <p>Der vollständige und normative Text ist <a href="https://github.com/Ron81/posy/blob/main/spec/Posy.md" target="_blank" rel="noopener"><code>spec/Posy.md</code></a>, auf Englisch.</p>
 
     <div class="tabs">
       <button type="button" class="active" data-tab="bones">Knochen (§4)</button>
-      <button type="button" data-tab="blend">Ausdrücke (§5.6)</button>
+      <button type="button" data-tab="blend">Emotes (§5.6)</button>
       <button type="button" data-tab="fingers">Fingerblock (§5.5)</button>
       <button type="button" data-tab="errors">Fehler (§2.5)</button>
     </div>
@@ -195,7 +194,7 @@
         <div class="keys" id="bone-legend"></div>
       </div>
       <div class="cells" id="bone-grid"></div>
-      <p class="hint" style="margin-top:12px">Eine 64-Bit-Maske. Ist Bit <em>n</em> gesetzt, ist das Quaternion von Knochen <em>n</em> vorhanden; die Quaternionen folgen in aufsteigender Bit-Reihenfolge. Die Farben zeigen den deklarierten Typ, zu dem ein Bit gehört. Ein Relay weist einen Frame ab, der ein Bit eines Typs setzt, der dem Sender nicht gewährt wurde, oder eines der Bits 55–63.</p>
+      <p class="hint" style="margin-top:12px">Eine 64-Bit-Maske. Ist Bit <em>n</em> gesetzt, ist das Quaternion von Knochen <em>n</em> vorhanden; die Quaternionen folgen in aufsteigender Bit-Reihenfolge. Die Farben zeigen den deklarierten Typ, zu dem ein Bit gehört. Setzt ein Frame ein Bit, dessen Typ dem Sender nicht gewährt wurde, oder eines der Bits 55–63, lehnt der Server ihn ab.</p>
     </div>
 
     <div data-pane="blend" hidden>
@@ -204,7 +203,7 @@
         <button type="button" id="bs-perfect">Perfect-Sync: 52 Slots, 54 B</button>
       </div>
       <div class="cells" id="bs-grid"></div>
-      <p class="hint" style="margin-top:12px">Ein Byte pro Slot, 0–255 für 0,0–1,0. Beide Blöcke enden mit zwei <code>i8</code>-Blick-Bytes, Yaw und Pitch, ±127 für ±45°: die Blickrichtung, vom Kopf aus gemessen. Die Perfect-Sync-Reihenfolge sind die 52 ARKit-Namen, nach Code-Unit sortiert. Eine Zunge und jeder Ausdruck darüber hinaus ist ein deklarierter Extra-Wert.</p>
+      <p class="hint" style="margin-top:12px">Ein Byte pro Slot, 0–255 für 0,0–1,0. Beide Blöcke enden mit zwei <code>i8</code>-Blick-Bytes, Yaw und Pitch, ±127 für ±45°: die Blickrichtung, vom Kopf aus gemessen. Die Perfect-Sync-Reihenfolge sind die 52 ARKit-Namen, nach Code-Unit sortiert. Eine Zunge und jedes Emote darüber hinaus ist ein deklarierter Extra-Wert.</p>
     </div>
 
     <div data-pane="fingers" hidden>
@@ -214,17 +213,17 @@
           <table class="grid-t"><thead><tr><th>Offset</th><th>Typ</th><th>Feld</th></tr></thead><tbody id="finger-body"></tbody></table>
         </div>
         <div class="prose">
-          <p><b>Curl</b> (0 = gestreckt … 255 = ganz gebeugt) beugt alle drei Gelenke eines Fingers: proximal 90°, intermediär 110°, distal 70°, um Z, zur Handfläche hin.</p>
-          <p><b>Splay</b> (−127…+127 für −30°…+30°) dreht das proximale Gelenk um Y; positiv ist zur Daumenseite.</p>
-          <p><b>Der Daumen</b> wird von seinen drei Bytes gemeinsam gesteuert: Splay ±90° in der Ebene der Handfläche, Opposition 0–60° zur Handfläche hin mit einer gleich großen Rollbewegung, Curl 60° und 80° an den beiden äußeren Gelenken. Ein Empfänger misst einmal, wie der Daumen seines Avatars ruht, und dreht das Ergebnis entsprechend. Die Definition steht in Spec §5.5; die Pose-Vektoren <code>f01</code>–<code>f09</code> legen sie fest.</p>
-          <p>Ein Frame trägt diesen Block oder Fingerknochen pro Gelenk (Bits 25–54), nie beides. Ohne beides zeigt ein Empfänger die Ruhehand.</p>
+          <p><b>Curl</b> (0 = gestreckt … 255 = ganz gebeugt) beugt alle drei Gelenke eines Fingers: Grundgelenk 90°, Mittelgelenk 110°, Endgelenk 70°, um Z, zur Handfläche hin.</p>
+          <p><b>Splay</b> (−127…+127 für −30°…+30°) dreht das Grundgelenk um Y; positiv heißt: zur Daumenseite.</p>
+          <p><b>Der Daumen</b> wird von seinen drei Bytes gemeinsam gesteuert: Splay ±90° in der Ebene der Handfläche, Opposition 0–60° zur Handfläche hin mit einer gleich großen Rollbewegung, Curl 60° und 80° an den beiden äußeren Gelenken. Ein Empfänger misst einmal, wie der Daumen seines Avatars in Ruhe steht, und dreht das Ergebnis entsprechend. Die Definition steht in Spec §5.5; die Pose-Vektoren <code>f01</code>–<code>f09</code> legen sie fest.</p>
+          <p>Ein Frame enthält diesen Block oder Fingerknochen pro Gelenk (Bits 25–54), nie beides. Ohne beides zeigt ein Empfänger die Ruhehand.</p>
         </div>
       </div>
     </div>
 
     <div data-pane="errors" hidden>
-      <p class="hint" style="margin-bottom:12px">Fehler setzt der Server durch. Ein Empfänger prüft die Länge eines Frames und sonst nichts: er sieht nur Frames, die der Server durchgelassen hat.</p>
-      <table class="grid-t"><thead><tr><th>Code</th><th>Bedeutung</th><th>Aktion des Servers</th></tr></thead><tbody id="error-body"></tbody></table>
+      <p class="hint" style="margin-bottom:12px">Um Fehler kümmert sich der Server. Ein Empfänger prüft die Länge eines Frames und sonst nichts: er sieht nur Frames, die der Server durchgelassen hat.</p>
+      <table class="grid-t"><thead><tr><th>Code</th><th>Bedeutung</th><th>Was der Server tut</th></tr></thead><tbody id="error-body"></tbody></table>
     </div>
   </div>
 </section>
@@ -233,10 +232,10 @@
   <div class="sec-head"><span class="sec-no">6</span><h2>Posy implementieren</h2></div>
   <div class="sec-body">
     <ol class="steps">
-      <li><b>Den Kern lesen.</b> §3 (Avatar-Raum), §4 (Knochen) und §5 (Pakete) von <a href="https://github.com/Ron81/posy/blob/main/spec/Posy.md" target="_blank" rel="noopener"><code>spec/Posy.md</code></a> sind das, worin jede Implementierung übereinstimmen muss. §2 ist die Sitzungsschicht.</li>
-      <li><b>Den Referenz-Codec nutzen oder lesen.</b> <a href="https://www.npmjs.com/package/posy-protocol" target="_blank" rel="noopener"><code>posy-protocol</code></a> auf npm (<code>reference/js</code>): TypeScript, keine Laufzeit-Abhängigkeiten.</li>
-      <li><b>Die Testvektoren bestehen.</b> <code>testvectors/frames</code> prüft Bytes: jede <code>.bin</code> dekodieren, mit ihrer <code>.json</code> vergleichen, die mit <code>reject</code> markierten abweisen. <code>testvectors/poses</code> prüft die Bedeutung: Achsen und Vorzeichen von Beinen und Fingern.</li>
-      <li><b>In Bewegung sehen.</b> Die <a href="../demo/">Loopback-Demo</a> schickt einen Avatar durch einen verlustbehafteten Kanal, im Browser und ohne Server.</li>
+      <li><b>Die Spec lesen und implementieren.</b> §3 (Avatar-Raum), §4 (Knochen) und §5 (Pakete) von <a href="https://github.com/Ron81/posy/blob/main/spec/Posy.md" target="_blank" rel="noopener"><code>spec/Posy.md</code></a> sind das, wo jede Implementierung übereinstimmen muss. §2 beschreibt den Session Layer. Hier kannst du eigentlich schon aufhören, der Rest ist nice to have.</li>
+      <li><b>Referenz-Codec nutzen.</b> Das <a href="https://www.npmjs.com/package/posy-protocol" target="_blank" rel="noopener"><code>posy-protocol</code></a> auf npm (<code>reference/js</code>) ist in TypeScript geschrieben, hat keine Laufzeit-Abhängigkeiten und ist per se nur eine Implementierungshilfe.</li>
+      <li><b>Teste deine Implementierung mit den</b> <code>testvectors/frames</code>. Sie prüfen Bytes: jede <code>.bin</code> wird mit ihrer <code>.json</code> verglichen. <code>testvectors/poses</code> checkt hauptsächlich, ob irgendwas aus Versehen invertiert wurde.</li>
+      <li>Schau dir die <a href="../demo/">Loopback-Demo</a> an. Sie simuliert einen verlustbehafteten Kanal, ergo scheiß Internet.</li>
     </ol>
     <div class="cmd"><pre id="copy-src">npm install posy-protocol</pre><button type="button" id="copy-btn"><span>Kopieren</span></button></div>
   </div>

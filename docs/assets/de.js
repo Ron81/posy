@@ -16,14 +16,14 @@
     partJoints: '30 Fingerknochen',
     partRoot: 'Position + Hüfthöhe',
     partFingers: 'Fingerblock',
-    partVrm: '13 VRM-Ausdrücke + Blick',
+    partVrm: '13 VRM-Emotes + Blick',
     partPerfect: '52 ARKit-Blendshapes + Blick',
     partExtra: 'Extras: {b} Knochen, {v} Werte',
     preset: 'Vorlage',
     mask: 'bone_mask: ein Klick auf einen Knochen schaltet sein Bit um (§4)',
-    blocks: 'Blöcke (§5.2); ein ? erklärt einen',
+    blocks: 'Blöcke (§5.2); ein Klick auf ? erklärt den Block',
     whatIs: 'Was ist {x}?',
-    eyeNote: 'Augenknochen und Ausdrucksblock werden beide gesendet. Das ist erlaubt, aber beim Empfänger gewinnen die Blick-Bytes.',
+    eyeNote: 'Augenknochen und Gesichtsblock werden beide gesendet. Das ist erlaubt, aber beim Empfänger gewinnen die Blick-Bytes.',
     bytes: 'Bytes',
     maskOut: 'bone_mask (u64)',
     declared: 'deklariert als (§2.1)',
@@ -33,7 +33,7 @@
     watch: '≈ {n} KB/s, um den ganzen Raum zu sehen',
     homeOk: 'Passt in den Upload eines Glasfaser-Heimanschlusses.',
     homeNo: 'Braucht einen Uplink wie im Rechenzentrum oder an einer starken Glasfaserleitung.',
-    noBones: 'Kein Knochen passt.',
+    noBones: 'Kein Knochen gefunden.',
     copy: 'Kopieren',
     copied: 'Kopiert',
     pressCopy: 'Strg+C drücken'
@@ -49,7 +49,7 @@
   };
 
   [
-    ['Gesichts-Tracker (Hals + Kopf)', 'Kopfrotation und der Gesichtsblock. Die Arme hängen in Ruhe.'],
+    ['Gesichts-Tracker (Hals + Kopf)', 'Kopfrotation und der Gesichtsblock. Die Arme hängen einfach runter.'],
     ['Oberkörper (13 Knochen)', 'Wirbelsäule, Kopf und beide Arme: der typische Frame aus Spec §6.'],
     ['Ganzer Körper (+ Beine und Zehen)', 'Dazu die sechs Beinknochen und beide Zehen: 32 Bytes mehr.']
   ].forEach(function (text, i) {
@@ -60,11 +60,11 @@
   D.FLAG_INFO = {
     HAS_ROOT: {
       title: 'HAS_ROOT: wo der Avatar ist',
-      body: 'Fügt 8 Bytes hinzu: x und y normiert auf den Playspace, die Tiefe in Millimetern und die Hüfthöhe als Bruchteil der Hüfthöhe des stehenden Avatars, damit Hocken, Sitzen, Knien und Springen funktionieren. Ohne den Block behält ein Empfänger die letzte Position.'
+      body: 'Fügt 8 Bytes hinzu: x und y normiert auf den Playspace, die Tiefe in Millimetern und die Hüfthöhe als Anteil der Hüfthöhe im Stehen, damit Hocken, Sitzen, Knien und Springen funktionieren. Ohne den Block behält ein Empfänger die letzte Position.'
     },
     HAS_FINGERS: {
       title: 'HAS_FINGERS: beide Hände in 24 Bytes',
-      body: 'Curl und Splay pro Finger und die Opposition des Daumens. Der Empfänger berechnet daraus die 30 Gelenkrotationen (§5.5). Ein Frame trägt diesen Block oder Fingerknochen pro Gelenk, nie beides.'
+      body: 'Curl und Splay pro Finger und die Opposition des Daumens. Der Empfänger berechnet daraus die 30 Gelenkrotationen (§5.5). Ein Frame enthält diesen Block oder Fingerknochen pro Gelenk, nie beides.'
     },
     FINGER_BONES: {
       title: 'finger_bones: eine Rotation pro Fingergelenk',
@@ -72,15 +72,15 @@
     },
     HAS_EXPRESSIONS: {
       title: 'HAS_EXPRESSIONS: das Gesicht',
-      body: 'Gewichte für Lider, Mundformen und Stimmungen sowie zwei Blick-Bytes für die Blickrichtung. Das Gesicht reist nicht als Knochen: die Augen- und Kieferknochen (Bits 6–8) sind ein Ausweg für Rigs, die über Knochenrotation gesteuert werden, und wenn Blick und Augenknochen beide gesendet werden, gewinnt der Blick.'
+      body: 'Gewichte für Lider, Mundformen und Stimmungen sowie zwei Blick-Bytes für die Blickrichtung. Das Gesicht wird nicht als Knochen übertragen: die Augen- und Kieferknochen (Bits 6–8) sind eine Notlösung für Rigs, die über Knochenrotation gesteuert werden, und wenn Blick und Augenknochen beide gesendet werden, gewinnt der Blick.'
     },
     PERFECT_SYNC: {
       title: 'PERFECT_SYNC: welcher Gesichtsblock',
-      body: 'Aus = VRM-Sync: die 13 VRM-Ausdrucks-Presets und der Blick, 15 Bytes. An = Perfect-Sync: alle 52 ARKit-Blendshapes und der Blick, 54 Bytes. Es hat nur zusammen mit HAS_EXPRESSIONS eine Bedeutung.'
+      body: 'Aus = VRM-Sync: die 13 VRM-Emotes und der Blick, 15 Bytes. An = Perfect-Sync: alle 52 ARKit-Blendshapes und der Blick, 54 Bytes. Zählt nur zusammen mit HAS_EXPRESSIONS.'
     },
     HAS_EXTRA: {
       title: 'HAS_EXTRA: was der Avatar über den humanoiden Körper hinaus hat',
-      body: 'Schwänze, Ohren, weitere Gliedmaßen und eigene Ausdrücke des Avatars. Der Sender deklariert sie einmal mit den Namen aus seiner Avatar-Datei; ein Frame trägt dann 4 Bytes pro deklariertem Knochen und 1 Byte pro deklariertem Wert, ohne Namen oder Anzahl (§2.6, §5.8). Das Beispiel hier sind zwei Ohren mit je zwei Knochen und drei Werte: 19 Bytes.'
+      body: 'Schwänze, Ohren, weitere Gliedmaßen und eigene Emotes des Avatars. Der Sender deklariert sie einmal mit den Namen aus seiner Avatar-Datei; ein Frame enthält dann 4 Bytes pro deklariertem Knochen und 1 Byte pro deklariertem Wert, ohne Namen oder Anzahl (§2.6, §5.8). Das Beispiel hier sind zwei Ohren mit je zwei Knochen und drei Werte: 19 Bytes.'
     }
   };
 
