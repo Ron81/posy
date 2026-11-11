@@ -8,7 +8,7 @@ that commit messages and the spec text do not keep in one place.
 
 ## 0018 — 1.5.0 freezes the format
 
-**Date:** 2026-11-11 · **Status:** Proposed · **Affects:** Status, §2, §5.1, §9, the `version` byte
+**Date:** 2026-11-11 · **Status:** Accepted · **Affects:** Status, §2, §5.1, §9, the `version` byte
 
 ### Context
 
@@ -40,7 +40,7 @@ protocol.
 
 ## 0017 — Posy defines no audio
 
-**Date:** 2026-11-11 · **Status:** Proposed · **Affects:** §0, §1.1, §6, §8.2, §8.4
+**Date:** 2026-11-11 · **Status:** Accepted · **Affects:** §0, §1.1, §6, §8.2, §8.4
 
 ### Context
 

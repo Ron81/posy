@@ -1,5 +1,5 @@
 # POSY — Pose Synchronization
-**Version:** 1.4.6
+**Version:** 1.5.0
 **Status:** Released — packet format (§5) and signaling (§2) are frozen since 1.5.0: a 1.x revision only adds (§9)
 **Channel label:** `avatar-pose`
 **Channel protocol string:** `posy/1`

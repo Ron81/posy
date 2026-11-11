@@ -6,7 +6,7 @@
 [![npm](https://img.shields.io/npm/v/posy-protocol.svg)](https://www.npmjs.com/package/posy-protocol)
 [![runtime deps](https://img.shields.io/badge/runtime%20deps-0-brightgreen.svg)](https://www.npmjs.com/package/posy-protocol?activeTab=dependencies)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-![Spec: 1.4.6](https://img.shields.io/badge/spec-1.4.6-brightgreen.svg)
+![Spec: 1.5.0](https://img.shields.io/badge/spec-1.5.0-brightgreen.svg)
 
 Posy (**Po**se **Sy**nchronization) carries humanoid avatar poses between many participants in
 real time. Each sender streams its own pose, and every receiver applies it to its copy of that

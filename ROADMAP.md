@@ -21,7 +21,7 @@ same byte; the numbers below are release labels, not wire versions.
 | **1.4.5** *(done)* | A tested PMX / MMD driver and normative per-type driver sections (§3.2), checked against the pose vectors in an MMD runtime; a hips-height landmark per avatar type. | **Yes.** |
 | **1.4.6** *(done)* | The session layer reviewed by real use (one clock sync at join, `rate` 0 pauses a sender nobody wants, `IDLE` removed), a long unexplained silence freezes instead of easing to an idle pose (§8.3), and a `silence` message by which a connected sender says why its frames stopped (§2.8). | No frame changes size or layout. |
 | *(free)* | 1.4.2–1.4.4 and 1.4.7–1.4.9 are kept free, so that a fix does not wait for the next planned step. | |
-| **1.5.0** | The window closes. From here 1.x only adds. | Locks it. |
+| **1.5.0** *(done)* | The window closes. From here 1.x only adds. | Locks it. |
 
 ## The gate before 1.5.0
 
