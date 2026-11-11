@@ -113,3 +113,7 @@ The reference implementation generated these vectors, so on its own it proves no
   0–15, §9, so no test caught the stale byte). Regenerating from `generate-testvectors.mjs` at 1.4.1
   brings `001`, `003`, `005`, `006`, `007`, `008` to byte 4; only byte 0 changed on `001`/`003`/`005`/
   `006`. `010-finger-bones` was already byte 4; `004e-bad-version` keeps its deliberate `0x10`.
+
+- **Version byte, 1.5 (2026-11-11).** 1.5 writes 5. All frame vectors were regenerated and compared
+  byte by byte with their 1.4.6 state: each differs in byte 0 only (`04` → `05`); `004d` and
+  `004e` are unchanged. The pose vectors and `quaternions.csv` are unchanged.

@@ -6,6 +6,38 @@ that commit messages and the spec text do not keep in one place.
 
 ---
 
+## 0018 — 1.5.0 freezes the format
+
+**Date:** 2026-11-11 · **Status:** Proposed · **Affects:** Status, §2, §5.1, §9, the `version` byte
+
+### Context
+
+Since 1.4.0 the format was open for justified breaking changes, to be closed at 1.5.0 after a run
+of real use (ROADMAP). The changes of the window are released (1.4.0 to 1.4.6), and a run with
+real people, live tracking, a relay and VRM and PMX avatars in one room found no fault in the
+protocol.
+
+### Decision
+
+- The packet format (§5) and signaling (§2) are frozen from 1.5.0. A 1.x revision makes only the
+  additive changes §9 lists; everything else needs `posy/2`.
+- 1.5 writes 5 in the `version` byte (0003). A value below 5 does not identify a layout, since
+  the releases before 1.5 changed the layout under one value.
+
+### Alternatives rejected
+
+- *Keeping the byte at 4.* 0003 makes it the minor revision; a frozen layout is the first one
+  the value identifies.
+- *Freezing later.* Nothing breaking is open, and implementers wait for a stable wire.
+
+### Consequences
+
+- Sender, relay and receiver of a session before 1.5 have to be on the same release; from 1.5 on
+  a later 1.x peer and an earlier one work together by §2.7 and §9.
+- All frame vectors change in byte 0.
+
+---
+
 ## 0017 — Posy defines no audio
 
 **Date:** 2026-11-11 · **Status:** Proposed · **Affects:** §0, §1.1, §6, §8.2, §8.4

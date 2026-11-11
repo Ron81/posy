@@ -1,6 +1,6 @@
 # POSY — Pose Synchronization
 **Version:** 1.4.6
-**Status:** Released — packet format (§5) and signaling (§2) are soft-locked: they may change in a 1.x revision, and every change needs a stated justification
+**Status:** Released — packet format (§5) and signaling (§2) are frozen since 1.5.0: a 1.x revision only adds (§9)
 **Channel label:** `avatar-pose`
 **Channel protocol string:** `posy/1`
 
@@ -168,10 +168,9 @@ producer") makes it unforgeable, which is why no separate per-frame sender tag i
 
 ## 2. Session Layer
 
-> **Soft-locked.** §2 was frozen at 1.0.0. The freeze is lifted until the full-body
-> work is settled: no implementation has shipped, so there is nothing to stay compatible
-> with. Messages and fields may change in a 1.x revision; each change needs a stated
-> justification in the changelog.
+> **Frozen since 1.5.0.** The messages and fields of this section no longer change or go
+> away in a 1.x revision. A later revision adds only what a peer of an earlier one
+> survives (§2.7, §9).
 
 ### 2.1 Join
 
@@ -808,7 +807,7 @@ decode every valid frame, whichever of the peer's types it chooses to render.
 ```
 Offset  Size  Field
 ------  ----  ---------------------------------------------
-  0      1    u8   version          (= 4 in 1.4; the minor revision, §9)
+  0      1    u8   version          (= 5 in 1.5; the minor revision, §9)
   1      1    u8   flags
   2      2    u16  seq
   4      4    u32  timestamp_ms     (ms since session epoch)
@@ -1358,16 +1357,16 @@ legs, kneeling, lying down and jumping without any pose-specific rule on the rec
   version is carried by `protocol` in the `hello` handshake (§2.1) instead, and a mismatch is
   answered with a `BAD_VERSION` error.
 - The `version` byte carries the **minor** revision of the spec release the sender
-  implements: a 1.y sender writes y. 1.4 writes 4. (1.0 and 1.1 both wrote 1.) The value
+  implements: a 1.y sender writes y. 1.5 writes 5. (1.0 and 1.1 both wrote 1.) The value
   is 0–15 for every 1.x release, which is all that `version >> 4 == 0` tests; it does not
   encode the major version, which is in the `protocol` string. Receivers MUST accept any
-  value 0–15 and MUST ignore unknown flag bits and unknown `bone_mask` bits. A receiver
-  MAY use the value to tell which revision's layout a frame follows while the soft lock
-  allows layout changes. If a minor revision above 15 were ever needed, releases continue
+  value 0–15 and MUST ignore unknown flag bits and unknown `bone_mask` bits. A value below
+  5 does not identify a layout: the releases before 1.5 changed the layout under one value
+  (every 1.4.x wrote 4). If a minor revision above 15 were ever needed, releases continue
   as patch releases of 1.15 and the byte stays 15.
-- **Soft lock.** While the format is soft-locked (see Status), a justified layout or
-  signaling change ships as a 1.x revision under `posy/1`. Once the maintainers declare
-  the format frozen, any such change requires `posy/2`.
+- **Frozen.** Up to 1.4.x a justified layout or signaling change shipped as a 1.x revision
+  under `posy/1`. 1.5.0 froze the format: such a change now requires `posy/2`, and a 1.x
+  revision is additive (below).
 - Extension mechanism: avatar-specific data travels as declared extras (§2.6), which
   need no further change to the format. Reserved for other extensions: flag bit 4 (a flag
   without a block), flag bits 6–7, bone bits 55–63 and the reserved finger byte. A relay rejects a frame that sets a reserved
@@ -1388,7 +1387,7 @@ legs, kneeling, lying down and jumping without any pose-specific rule on the rec
   (§1.2), so it forwards a block only if it knows it. A later revision therefore gives
   every new block a data type (§2.1). A server that does not know the type does not grant
   it (§2.7), the sender does not send the block, and its relay never has to size it.
-- **Additive.** Once the format is frozen, a 1.x revision makes only changes that a peer
+- **Additive.** From 1.5.0 on, a 1.x revision makes only changes that a peer
   of an earlier 1.x revision survives by the rules above and those of §2.7: a new message,
   field, data type or error code; a meaning for flag bit 4; a block behind flag bit 6 or 7; a
   bone on bits 55–63; a meaning for a reserved byte. Everything else requires `posy/2`: changing or removing

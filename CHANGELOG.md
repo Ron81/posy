@@ -5,6 +5,8 @@ The spec follows the versioning rules in §9 (major version = channel protocol s
 
 ## [Unreleased]
 
+The format is frozen: from this release on a 1.x revision only adds (§9).
+
 ### Changed
 - **Posy defines no audio** (§0, §1.1, §6, §8.2, §8.4). Removed: the requirement that voice use
   WebRTC Opus tracks (§1.1), and the rule that playout time is derived from the audio clock of
@@ -14,6 +16,11 @@ The spec follows the versioning rules in §9 (major version = channel protocol s
   "the peer in focus", and Appendix C says "Posy avatar space" for what it still called "VRM 1.0
   normalized rotations". No frame, message or check
   changes. `docs/DECISIONS.md` 0017.
+- **The format is frozen** (Status, §2, §9). Up to 1.4.x a justified layout or signaling change
+  shipped as a 1.x revision; from 1.5.0 such a change needs `posy/2`. `docs/DECISIONS.md` 0018.
+- **The `version` byte is 5** (§5.1, §9). Codec: `VERSION = 5`. All frame vectors regenerated;
+  each differs in byte 0 only (`testvectors/VERIFICATION.md`).
+- CONTRIBUTING and the protocol-change issue template describe the frozen format.
 
 ## [1.4.6] - 2026-10-24
 
