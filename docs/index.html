@@ -34,7 +34,7 @@
 
 <section class="hero">
   <h1>Avatar poses in 115 bytes a frame</h1>
-  <p class="lede">Posy is an open protocol for streaming humanoid body, finger and face poses between many participants in real time, over a WebRTC data channel or a WebSocket.</p>
+  <p class="lede">Posy streams a whole room of avatars — body, fingers, face — in real time, in about 115 bytes a frame. WebRTC data channel or WebSocket, open spec, nothing to sign up for.</p>
 
   <figure class="frame-fig">
     <div class="bytemap" id="hero-map" aria-hidden="true"></div>
@@ -45,7 +45,7 @@
       <li><i class="b-fing"></i>fingers, both hands<b>24</b></li>
       <li><i class="b-face"></i>13 expressions + gaze<b>15</b></li>
     </ul>
-    <figcaption>A typical upper-body frame to scale, one cell per byte: 115 bytes. The same pose over VMC takes about 3.3 KB, 25–35× more (spec §6).</figcaption>
+    <figcaption>A typical upper-body frame, to scale, one cell per byte: 115 bytes. The same pose over VMC runs about 3.3 KB — 25 to 35 times the size.</figcaption>
   </figure>
 
   <p class="links">
@@ -63,18 +63,17 @@
       <div>
         <h3>A fit</h3>
         <ul class="plus">
-          <li>You build multi-user avatar applications, in the browser or native</li>
-          <li>Many participants on ordinary internet connections</li>
-          <li>Body, fingers and face in a small frame, for VRM 1.0, VRM 0.x and PMX avatars</li>
-          <li>A small group hosted from one member's home connection</li>
+          <li>You're building something where lots of avatars move together</li>
+          <li>Bandwidth and the odd dropped frame are things you have to care about</li>
+          <li>You want body, fingers and face — plus room for extras — on VRM 1.0, VRM 0.x and PMX</li>
+          <li>You want the motion online <em>fast</em>, not perfect</li>
         </ul>
       </div>
       <div>
-        <h3>Not a fit</h3>
+        <h3>Probably not</h3>
         <ul class="minus">
-          <li>Lossless motion-capture recording: use VMC or BVH</li>
-          <li>A peer-to-peer mesh without a routing peer</li>
-          <li>Delta encoding, field stripping, props and scene state: deferred to v2 (spec §11)</li>
+          <li>You want a lossless mocap recording — grab VMC or BVH instead</li>
+          <li>It never leaves your home network (works fine, just not much point)</li>
         </ul>
       </div>
     </div>
@@ -84,31 +83,33 @@
 <section class="sec" id="how-it-works">
   <div class="sec-head"><span class="sec-no">2</span><h2>How it works</h2></div>
   <div class="sec-body">
-    <p>Every pose frame goes from the sender to the routing peer and from there to the receivers. The routing peer owns the session clock, room membership, authorization and rate control. It is a role: a participant's machine, a VPS or a hosted SFU can take it.</p>
+    <p class="hint">This page is the pitch. The exact rules — coordinate space, packet layout, who's allowed to send what — live in <a href="https://github.com/Ron81/posy/blob/main/spec/Posy.md" target="_blank" rel="noopener"><code>spec/Posy.md</code></a>.</p>
 
-    <svg class="topo" viewBox="0 0 720 96" role="img" aria-label="Sender, routing peer, receivers">
+    <p>Every frame goes from the sender to the server, and the server hands it to everyone else. The server sets the tempo, keeps the clock and decides who may send what. It barely breaks a sweat doing it, so a spare PC or a cheap VPS is plenty.</p>
+
+    <svg class="topo" viewBox="0 0 720 96" role="img" aria-label="Sender, server, receivers">
       <g fill="none" stroke="currentColor" stroke-width="1.5">
         <rect x="1" y="18" width="190" height="60" /><rect x="265" y="18" width="190" height="60" /><rect x="529" y="18" width="190" height="60" />
         <path d="M191 48H257M249 42l8 6-8 6M455 48H521M513 42l8 6-8 6" />
       </g>
       <g text-anchor="middle">
         <text class="t1" x="96" y="44">Sender</text><text class="t2" x="96" y="63">captures, encodes</text>
-        <text class="t1" x="360" y="44">Routing peer</text><text class="t2" x="360" y="63">forwards or drops</text>
+        <text class="t1" x="360" y="44">Server</text><text class="t2" x="360" y="63">checks, forwards</text>
         <text class="t1" x="624" y="44">Receivers</text><text class="t2" x="624" y="63">interpolate, render</text>
       </g>
     </svg>
 
     <ol class="steps">
-      <li><b>The sender declares, then sends.</b> It declares the data types its tracker delivers and its avatar can show, and sends only those. A lost frame is never resent: every frame stands alone.</li>
-      <li><b>The routing peer forwards.</b> It checks a frame's length and that it stays within what the sender was granted, without decoding the rotations. It drops whole frames to keep a rate tier and never changes a frame's bytes.</li>
-      <li><b>The receiver drives the sender's avatar.</b> Each receiver applies the frame to its copy of the sender's avatar, interpolates between frames and conceals short gaps. Nothing is retargeted onto another rig.</li>
+      <li><b>The sender declares, then sends.</b> It says up front which data types its tracker produces and its avatar can show, and sends only those. A lost frame is just gone — nothing is ever resent.</li>
+      <li><b>The server forwards — as long as it adds up.</b> It checks that a frame's length matches what the sender was granted, and never reads the rotations themselves. Slip it something that doesn't fit and it bins the whole frame, untouched.</li>
+      <li><b>The receiver does the rest.</b> Each receiver takes the frame, drives its copy of the sender's avatar, smooths between frames and papers over short gaps. Nobody's motion gets retargeted onto someone else's rig.</li>
     </ol>
 
     <dl class="defs">
       <dt>Posy avatar space (§3)</dt>
-      <dd>Right-handed, Y-up, the model faces +Z, metres. Every humanoid bone has identity rotation in the T-pose, and each quaternion is a bone's rotation relative to its parent. It coincides with the normalized rig of VRM 1.0 runtimes; VRM 0.x and PMX rigs are adapted by the avatar driver on each end (§3.2). The wire is the same for all three.</dd>
-      <dt>Beyond the humanoid body (§2.6)</dt>
-      <dd>Tails, animal ears, further limbs and an avatar's own expressions are declared extras. The sender names them once as its avatar file does. A frame then carries 4 bytes per declared bone and 1 byte per declared value, with no names on the wire.</dd>
+      <dd>It's the normalized VRM 1.0 rig, as-is — no new wheel invented. VRM 0.x and PMX avatars get adapted on each end (§3.2); the wire is identical for all three.</dd>
+      <dt>Everything past the humanoid (§2.6)</dt>
+      <dd>Cat ears, wings, tails, extra limbs, an avatar's own expressions: all optional, declared extras — whatever the avatar file brings. The sender names them once; no names travel on the wire, just the data.</dd>
     </dl>
   </div>
 </section>
@@ -116,11 +117,11 @@
 <section class="sec" id="packet-lab">
   <div class="sec-head"><span class="sec-no">3</span><h2>Build a frame</h2></div>
   <div class="sec-body">
-    <p>The formulas of spec §5. Toggle bones and blocks and read the frame's size, mask and declaration.</p>
+    <p>Toggle bones and blocks on the left, watch the frame take shape on the right.</p>
     <div id="packet-builder"></div>
 
-    <h3>Smallest-three: one quaternion in 4 bytes (§5.3)</h3>
-    <p>Drop the largest component, make it non-negative, quantise the other three to 10 bits each, pack them into one <code>u32</code>.</p>
+    <h3>Quaternion in 4 bytes (§5.3)</h3>
+    <p>We save on every single bone: drop the biggest of the four components, quantise the other three to 10 bits each, done.</p>
     <div class="lab" id="quat-lab">
       <div class="lab-ctl">
         <label class="slider"><span>Yaw <output id="q-yaw-v">35°</output></span><input id="q-yaw" type="range" min="-180" max="180" value="35" /></label>
@@ -147,7 +148,7 @@
 <section class="sec" id="bandwidth">
   <div class="sec-head"><span class="sec-no">4</span><h2>Bandwidth</h2></div>
   <div class="sec-body">
-    <p>A sender uploads one stream, and its size does not grow with the room. What grows is what the routing peer sends back out, so viewers are cheap and a large room needs a good uplink. The figures follow spec §6 for the typical upper-body frame.</p>
+    <p>Each tracked user uploads one stream, and that stays the same whether two people are watching or two hundred. So as a sender you don't care how big the room gets — unless <em>you're</em> the one hosting the server. The server has to send everything to everyone, and that's where the bytes pile up.</p>
     <div class="lab">
       <div class="lab-ctl">
         <div class="field"><span class="field-l">scenario</span><div class="seg" id="bw-scenarios"></div></div>
@@ -159,14 +160,14 @@
       </div>
       <div class="lab-out">
         <div>
-          <div class="size"><b id="bw-egress">–</b>routing peer egress</div>
+          <div class="size"><b id="bw-egress">–</b>the server sends</div>
           <p class="verdict" id="bw-egress-sub">–</p>
         </div>
         <table class="parts">
           <tr><td>Room</td><td><span id="bw-total">–</span> <span id="bw-total-sub"></span></td></tr>
           <tr><td>Viewer downstream<small id="bw-viewer-sub"></small></td><td id="bw-viewer">–</td></tr>
           <tr><td>Sender downstream<small>everyone else's pose, without their own</small></td><td id="bw-sender">–</td></tr>
-          <tr><td>Routing peer ingress</td><td id="bw-ingress">–</td></tr>
+          <tr><td>The server receives</td><td id="bw-ingress">–</td></tr>
           <tr><td>One stream at FULL / NORMAL / MINIMAL</td><td><span id="bw-t-full">–</span> / <span id="bw-t-normal">–</span> / <span id="bw-t-minimal">–</span> kbit/s</td></tr>
         </table>
       </div>
@@ -177,7 +178,7 @@
 <section class="sec" id="spec">
   <div class="sec-head"><span class="sec-no">5</span><h2>Tables of the spec</h2></div>
   <div class="sec-body">
-    <p>What you look up while implementing. The full and normative text is <a href="https://github.com/Ron81/posy/blob/main/spec/Posy.md" target="_blank" rel="noopener"><code>spec/Posy.md</code></a>.</p>
+    <p>The handful of tables you actually look up while building. The full, normative text is <a href="https://github.com/Ron81/posy/blob/main/spec/Posy.md" target="_blank" rel="noopener"><code>spec/Posy.md</code></a>.</p>
 
     <div class="tabs">
       <button type="button" class="active" data-tab="bones">Bones (§4)</button>
@@ -192,7 +193,7 @@
         <div class="keys" id="bone-legend"></div>
       </div>
       <div class="cells" id="bone-grid"></div>
-      <p class="hint" style="margin-top:12px">A 64-bit mask. Bit <em>n</em> set means the quaternion of bone <em>n</em> is present; quaternions follow in ascending bit order. The colours are the declared types a bit belongs to. A relay refuses a frame that sets a bit of a type the sender was not granted, or one of bits 55–63.</p>
+      <p class="hint" style="margin-top:12px">A 64-bit mask. Bit <em>n</em> set means the quaternion of bone <em>n</em> is present; quaternions follow in ascending bit order. The colours are the declared types a bit belongs to. The server refuses a frame that sets a bit of a type the sender was not granted, or one of bits 55–63.</p>
     </div>
 
     <div data-pane="blend" hidden>
@@ -230,10 +231,10 @@
   <div class="sec-head"><span class="sec-no">6</span><h2>Implementing Posy</h2></div>
   <div class="sec-body">
     <ol class="steps">
-      <li><b>Read the core.</b> §3 (avatar space), §4 (bones) and §5 (packets) of <a href="https://github.com/Ron81/posy/blob/main/spec/Posy.md" target="_blank" rel="noopener"><code>spec/Posy.md</code></a> are what every implementation has to agree on. §2 is the session layer.</li>
-      <li><b>Use or read the reference codec.</b> <a href="https://www.npmjs.com/package/posy-protocol" target="_blank" rel="noopener"><code>posy-protocol</code></a> on npm (<code>reference/js</code>): TypeScript, no runtime dependencies.</li>
-      <li><b>Pass the test vectors.</b> <code>testvectors/frames</code> checks bytes: decode each <code>.bin</code>, compare with its <code>.json</code>, refuse the ones marked <code>reject</code>. <code>testvectors/poses</code> checks meaning: axes and signs of legs and fingers.</li>
-      <li><b>See it move.</b> The <a href="demo/">loopback demo</a> sends an avatar through a lossy channel, in the browser and without a server.</li>
+      <li><b>Read the spec and build it.</b> §3 (avatar space), §4 (bones) and §5 (packets) of <a href="https://github.com/Ron81/posy/blob/main/spec/Posy.md" target="_blank" rel="noopener"><code>spec/Posy.md</code></a> are where every implementation has to agree. §2 is the session layer. Honestly, you can stop there — the rest is nice-to-have.</li>
+      <li><b>Grab the reference codec.</b> <a href="https://www.npmjs.com/package/posy-protocol" target="_blank" rel="noopener"><code>posy-protocol</code></a> on npm (<code>reference/js</code>): TypeScript, zero runtime dependencies. It's a leg-up, not a requirement.</li>
+      <li><b>Run it against the test vectors.</b> <code>testvectors/frames</code> checks the bytes — every <code>.bin</code> against its <code>.json</code>. <code>testvectors/poses</code> mostly catches anything you accidentally flipped.</li>
+      <li><b>Watch it move.</b> The <a href="demo/">loopback demo</a> runs an avatar through a deliberately lossy channel — i.e. real, crap internet — right in the browser, no server.</li>
     </ol>
     <div class="cmd"><pre id="copy-src">npm install posy-protocol</pre><button type="button" id="copy-btn"><span>Copy</span></button></div>
   </div>
